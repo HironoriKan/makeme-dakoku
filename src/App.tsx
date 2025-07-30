@@ -4,7 +4,6 @@ import CalendarTabs from './components/CalendarTabs';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LineLogin from './components/LineLogin';
 import AuthCallback from './components/AuthCallback';
-import TimeRecordDashboard from './components/TimeRecordDashboard';
 import { TimeRecordService } from './services/timeRecordService';
 
 interface TimeEntry {
@@ -225,11 +224,6 @@ const TimeTrackingApp: React.FC = () => {
     return <LineLogin />;
   }
 
-  // 新しいダッシュボードを表示する場合（URLパラメータで切り替え）
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('dashboard') === 'new') {
-    return <TimeRecordDashboard />;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -263,15 +257,6 @@ const TimeTrackingApp: React.FC = () => {
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                     <div className="py-1">
-                      <button
-                        onClick={() => {
-                          window.location.href = '/?dashboard=new';
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <Clock className="w-4 h-4 mr-2" />
-                        新しいダッシュボード
-                      </button>
                       <button
                         onClick={() => {
                           logout();

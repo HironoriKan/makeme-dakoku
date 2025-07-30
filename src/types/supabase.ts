@@ -21,6 +21,7 @@ export type Database = {
           id: string
           note: string | null
           shift_date: string
+          shift_status: Database["public"]["Enums"]["shift_status"]
           shift_type: Database["public"]["Enums"]["shift_type"]
           start_time: string | null
           updated_at: string | null
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           note?: string | null
           shift_date: string
+          shift_status?: Database["public"]["Enums"]["shift_status"]
           shift_type: Database["public"]["Enums"]["shift_type"]
           start_time?: string | null
           updated_at?: string | null
@@ -43,6 +45,7 @@ export type Database = {
           id?: string
           note?: string | null
           shift_date?: string
+          shift_status?: Database["public"]["Enums"]["shift_status"]
           shift_type?: Database["public"]["Enums"]["shift_type"]
           start_time?: string | null
           updated_at?: string | null
@@ -147,6 +150,7 @@ export type Database = {
     }
     Enums: {
       record_type: "clock_in" | "clock_out" | "break_start" | "break_end"
+      shift_status: "adjusting" | "confirmed"
       shift_type: "early" | "late" | "normal" | "off"
     }
     CompositeTypes: {
@@ -276,6 +280,7 @@ export const Constants = {
   public: {
     Enums: {
       record_type: ["clock_in", "clock_out", "break_start", "break_end"],
+      shift_status: ["adjusting", "confirmed"],
       shift_type: ["early", "late", "normal", "off"],
     },
   },

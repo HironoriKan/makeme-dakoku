@@ -7,10 +7,12 @@ type Shift = Database['public']['Tables']['shifts']['Row']
 type ShiftInsert = Database['public']['Tables']['shifts']['Insert']
 type ShiftUpdate = Database['public']['Tables']['shifts']['Update']
 type ShiftType = Database['public']['Enums']['shift_type']
+type ShiftStatus = Database['public']['Enums']['shift_status']
 
 export interface ShiftData {
   date: string // YYYY-MM-DD format
   shiftType: ShiftType | ''  // 空文字列でnullを表現
+  shiftStatus?: ShiftStatus // デフォルトは'adjusting'
   startTime?: string // HH:MM format
   endTime?: string // HH:MM format
   note?: string
@@ -86,6 +88,7 @@ export class ShiftService {
       user_id: user.id,
       shift_date: shiftData.date,
       shift_type: shiftData.shiftType,
+      shift_status: shiftData.shiftStatus || 'adjusting' as ShiftStatus,
       start_time: shiftData.startTime || null,
       end_time: shiftData.endTime || null,
       note: shiftData.note || null,
@@ -224,5 +227,21 @@ export class ShiftService {
   static formatTime(time: string | null): string {
     if (!time) return ''
     return time.substring(0, 5) // HH:MM:SS -> HH:MM
+  }
+
+  static getShiftStatusLabel(shiftStatus: ShiftStatus): string {
+    const labels = {
+      adjusting: 'シフト調整中',
+      confirmed: 'シフト確定'
+    }
+    return labels[shiftStatus] || shiftStatus
+  }
+
+  static isShiftEditable(shift: Shift): boolean {
+    return shift.shift_status === 'adjusting'
+  }
+
+  static canConfirmShift(shift: Shift): boolean {
+    return shift.shift_status === 'adjusting'
   }
 }

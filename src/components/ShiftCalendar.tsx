@@ -148,6 +148,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
       setEditingShift({
         date: dateString,
         shiftType: existingShift.shift_type,
+        shiftStatus: existingShift.shift_status,
         startTime: existingShift.start_time ? ShiftService.formatTime(existingShift.start_time) : '',
         endTime: existingShift.end_time ? ShiftService.formatTime(existingShift.end_time) : '',
         note: existingShift.note || ''
@@ -157,6 +158,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
       setEditingShift({
         date: dateString,
         shiftType: '',
+        shiftStatus: 'adjusting',
         startTime: '09:00',
         endTime: '17:00',
         note: ''
@@ -366,9 +368,18 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
       {editingShift && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              シフト編集 - {new Date(editingShift.date).toLocaleDateString('ja-JP')}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                シフト編集 - {new Date(editingShift.date).toLocaleDateString('ja-JP')}
+              </h3>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                editingShift.shiftStatus === 'confirmed' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {ShiftService.getShiftStatusLabel(editingShift.shiftStatus || 'adjusting')}
+              </div>
+            </div>
             
             <div className="space-y-4">
               {/* シフトタイプ選択 */}
@@ -382,7 +393,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                     ...editingShift,
                     shiftType: e.target.value as ShiftType
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={editingShift.shiftStatus === 'confirmed'}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    editingShift.shiftStatus === 'confirmed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
                 >
                   <option value="">シフト未設定</option>
                   <option value="early">早番(オープン)</option>
@@ -405,7 +419,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                       ...editingShift,
                       startTime: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={editingShift.shiftStatus === 'confirmed'}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      editingShift.shiftStatus === 'confirmed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
               )}
@@ -423,7 +440,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                       ...editingShift,
                       endTime: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={editingShift.shiftStatus === 'confirmed'}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      editingShift.shiftStatus === 'confirmed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
               )}
@@ -439,8 +459,11 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                     ...editingShift,
                     note: e.target.value
                   })}
+                  disabled={editingShift.shiftStatus === 'confirmed'}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    editingShift.shiftStatus === 'confirmed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
                   placeholder="メモを入力（任意）"
                 />
               </div>
@@ -448,7 +471,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
 
             <div className="flex justify-between items-center mt-6">
               <div>
-                {selectedDate && getShiftForDate(currentMonthShifts, selectedDate) && (
+                {selectedDate && getShiftForDate(currentMonthShifts, selectedDate) && editingShift.shiftStatus === 'adjusting' && (
                   <button
                     onClick={handleDeleteShift}
                     className="px-4 py-2 text-red-600 hover:text-red-800 transition-colors"
@@ -466,14 +489,16 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                   }}
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                 >
-                  キャンセル
+                  {editingShift.shiftStatus === 'confirmed' ? '閉じる' : 'キャンセル'}
                 </button>
-                <button
-                  onClick={handleSaveShift}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                >
-                  保存
-                </button>
+                {editingShift.shiftStatus === 'adjusting' && (
+                  <button
+                    onClick={handleSaveShift}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                  >
+                    保存
+                  </button>
+                )}
               </div>
             </div>
           </div>
