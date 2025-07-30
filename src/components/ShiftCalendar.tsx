@@ -471,7 +471,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
 
             <div className="flex justify-between items-center mt-6">
               <div>
-                {selectedDate && getShiftForDate(currentMonthShifts, selectedDate) && editingShift.shiftStatus === 'adjusting' && (
+                {selectedDate && getShiftForDate(currentMonthShifts, selectedDate) && (editingShift.shiftStatus === 'adjusting' || !editingShift.shiftStatus) && (
                   <button
                     onClick={handleDeleteShift}
                     className="px-4 py-2 text-red-600 hover:text-red-800 transition-colors"
@@ -491,7 +491,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                 >
                   {editingShift.shiftStatus === 'confirmed' ? '閉じる' : 'キャンセル'}
                 </button>
-                {editingShift.shiftStatus === 'adjusting' && (
+                {(editingShift.shiftStatus === 'adjusting' || !editingShift.shiftStatus) && (
                   <button
                     onClick={handleSaveShift}
                     className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
