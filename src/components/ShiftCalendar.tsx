@@ -114,16 +114,11 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
           onClick={() => isCurrentMonth && handleDateClick(dateString, shift)}
         >
           {shift ? (
-            <div className="relative flex flex-col items-center">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
-                style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
-              >
-                {day}
-              </div>
-              <div className="absolute -bottom-2 text-xs font-medium text-gray-700 whitespace-nowrap">
-                {ShiftService.getShiftTypeLabel(shift.shift_type)}
-              </div>
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
+              style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
+            >
+              {day}
             </div>
           ) : isAvailable ? (
             <div
