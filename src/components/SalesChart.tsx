@@ -121,70 +121,76 @@ const SalesChart: React.FC<SalesChartProps> = () => {
 
     const maxValue = Math.max(...chartData.map(d => d.value));
     const chartHeight = 120;
-    const chartWidth = 280;
-    const barWidth = chartWidth / chartData.length - 8;
+    const minBarWidth = 40; // 最小バー幅
+    const barSpacing = 12; // バー間のスペース
+    const containerWidth = 280; // コンテナ幅
+    const totalBarsWidth = chartData.length * (minBarWidth + barSpacing);
+    const chartWidth = Math.max(containerWidth, totalBarsWidth);
+    const barWidth = Math.max(minBarWidth, (chartWidth - (chartData.length * barSpacing)) / chartData.length);
 
     return (
-      <div className="relative">
-        <svg width={chartWidth} height={chartHeight + 30} className="mx-auto">
-          {/* グリッドライン */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-            <line
-              key={i}
-              x1="0"
-              y1={chartHeight * (1 - ratio)}
-              x2={chartWidth}
-              y2={chartHeight * (1 - ratio)}
-              stroke="#e5e7eb"
-              strokeWidth="1"
-              opacity="0.5"
-            />
-          ))}
+      <div className="relative overflow-x-auto">
+        <div style={{ width: `${Math.max(containerWidth, chartWidth)}px` }}>
+          <svg width={chartWidth} height={chartHeight + 30}>
+            {/* グリッドライン */}
+            {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
+              <line
+                key={i}
+                x1="0"
+                y1={chartHeight * (1 - ratio)}
+                x2={chartWidth}
+                y2={chartHeight * (1 - ratio)}
+                stroke="#e5e7eb"
+                strokeWidth="1"
+                opacity="0.5"
+              />
+            ))}
 
-          {/* バーチャート */}
-          {chartData.map((point, index) => {
-            const barHeight = maxValue > 0 ? (point.value / maxValue) * chartHeight : 0;
-            const x = index * (chartWidth / chartData.length) + 4;
-            const y = chartHeight - barHeight;
+            {/* バーチャート */}
+            {chartData.map((point, index) => {
+              const barHeight = maxValue > 0 ? (point.value / maxValue) * chartHeight : 0;
+              const x = index * (barWidth + barSpacing) + barSpacing / 2;
+              const y = chartHeight - barHeight;
 
-            return (
-              <g key={index}>
-                {/* バー */}
-                <rect
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={barHeight}
-                  fill="#CB8585"
-                  rx="2"
-                  opacity="0.8"
-                />
-                {/* 値ラベル */}
-                {point.value > 0 && (
+              return (
+                <g key={index}>
+                  {/* バー */}
+                  <rect
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={barHeight}
+                    fill="#CB8585"
+                    rx="2"
+                    opacity="0.8"
+                  />
+                  {/* 値ラベル */}
+                  {point.value > 0 && (
+                    <text
+                      x={x + barWidth / 2}
+                      y={y - 5}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fill="#6b7280"
+                    >
+                      ¥{point.value.toLocaleString()}
+                    </text>
+                  )}
+                  {/* 日付ラベル */}
                   <text
                     x={x + barWidth / 2}
-                    y={y - 5}
+                    y={chartHeight + 15}
                     textAnchor="middle"
                     fontSize="10"
                     fill="#6b7280"
                   >
-                    ¥{point.value.toLocaleString()}
+                    {point.label}
                   </text>
-                )}
-                {/* 日付ラベル */}
-                <text
-                  x={x + barWidth / 2}
-                  y={chartHeight + 15}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="#6b7280"
-                >
-                  {point.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
       </div>
     );
   };
@@ -201,7 +207,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
   return (
     <div className="bg-white rounded-lg shadow-sm p-4">
       <div className="flex items-center space-x-2 mb-4">
-        <TrendingUp className="w-5 h-5 text-purple-600" />
+        <TrendingUp className="w-5 h-5" style={{ color: '#CB8585' }} />
         <h4 className="text-md font-semibold text-gray-900">売上推移</h4>
       </div>
 
@@ -217,9 +223,10 @@ const SalesChart: React.FC<SalesChartProps> = () => {
             onClick={() => setSelectedPeriod(key)}
             className={`flex-1 flex items-center justify-center space-x-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
               selectedPeriod === key
-                ? 'bg-white text-purple-600 shadow-sm'
+                ? 'bg-white shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
+            style={selectedPeriod === key ? { color: '#CB8585' } : {}}
           >
             <Icon className="w-4 h-4" />
             <span>{label}</span>
@@ -228,17 +235,17 @@ const SalesChart: React.FC<SalesChartProps> = () => {
       </div>
 
       {/* 統計情報 */}
-      <div className="bg-purple-50 rounded-lg p-3 mb-4">
+      <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: '#FDF2F2' }}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600">{getPeriodLabel()}の売上</p>
-            <p className="text-xl font-bold text-purple-600">
+            <p className="text-xl font-bold" style={{ color: '#CB8585' }}>
               ¥{totalSales.toLocaleString()}
             </p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-600">平均</p>
-            <p className="text-lg font-semibold text-purple-600">
+            <p className="text-lg font-semibold" style={{ color: '#CB8585' }}>
               ¥{chartData.length > 0 ? Math.round(totalSales / chartData.length).toLocaleString() : '0'}
             </p>
           </div>
@@ -250,7 +257,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
         {isLoading ? (
           <div className="h-40 flex items-center justify-center">
             <div className="flex items-center space-x-2 text-gray-500">
-              <div className="animate-spin w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full"></div>
+              <div className="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full" style={{ borderColor: '#CB8585', borderTopColor: 'transparent' }}></div>
               <span className="text-sm">読み込み中...</span>
             </div>
           </div>
