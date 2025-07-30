@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, MapPin, User, Coffee, LogIn, LogOut, Menu } from 'lucide-react';
 import CalendarTabs from './components/CalendarTabs';
 import CheckoutReportModal from './components/CheckoutReportModal';
+import Footer from './components/Footer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LineLogin from './components/LineLogin';
 import AuthCallback from './components/AuthCallback';
@@ -482,6 +483,9 @@ const TimeTrackingApp: React.FC = () => {
           isOpen={showCheckoutModal}
           onClose={() => setShowCheckoutModal(false)}
         />
+
+        {/* Footer */}
+        <Footer />
     </div>
   );
 };
