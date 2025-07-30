@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { exchangeCodeForToken, verifyIdToken, getUserProfile, refreshAuthSession } from '../utils/auth';
 import { LineUser } from '../types/auth';
+import { UserService } from '../services/userService';
 
 const AuthCallback: React.FC = () => {
   const { logout } = useAuth();
@@ -55,6 +56,15 @@ const AuthCallback: React.FC = () => {
         } else {
           // 3. プロフィールAPIからユーザー情報を取得（fallback）
           user = await getUserProfile(tokenResponse.access_token);
+        }
+
+        // Supabaseにユーザー情報を保存または更新
+        try {
+          const dbUser = await UserService.findOrCreateUser(user);
+          console.log('DBユーザー情報:', dbUser);
+        } catch (dbError) {
+          console.error('DB操作エラー:', dbError);
+          // DBエラーでもログイン処理は継続（フォールバック）
         }
 
         // ユーザー情報をローカルストレージに保存
