@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, MapPin, User, Coffee, LogIn, LogOut, Menu } from 'lucide-react';
-import ShiftCalendar from './components/ShiftCalendar';
+import CalendarTabs from './components/CalendarTabs';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LineLogin from './components/LineLogin';
 import AuthCallback from './components/AuthCallback';
@@ -483,9 +483,9 @@ const TimeTrackingApp: React.FC = () => {
           </div>
         )}
       </main>
-        {/* Shift Calendar */}
+        {/* Calendar Tabs */}
         <div className="max-w-md mx-auto px-4 mt-8">
-          <ShiftCalendar />
+          <CalendarTabs />
         </div>
     </div>
   );

@@ -159,4 +159,65 @@ export class TimeRecordService {
     const lastRecord = currentRecords[currentRecords.length - 1]
     return lastRecord.record_type === 'clock_in' || lastRecord.record_type === 'break_end'
   }
+
+  // 月間の打刻記録を取得
+  static async getMonthlyTimeRecords(
+    lineUser: LineUser,
+    year: number,
+    month: number
+  ): Promise<TimeRecord[]> {
+    console.log('📅 月間打刻記録取得開始:', { user: lineUser.userId, year, month });
+
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0] // 月末日
+
+    const { data: records, error } = await supabase
+      .from('time_records')
+      .select(`
+        *,
+        users!inner(line_user_id)
+      `)
+      .eq('users.line_user_id', lineUser.userId)
+      .gte('recorded_at', startDate)
+      .lte('recorded_at', endDate + 'T23:59:59.999Z')
+      .order('recorded_at', { ascending: true })
+
+    if (error) {
+      console.error('❌ 月間打刻記録取得エラー:', error);
+      return []
+    }
+
+    console.log('✅ 月間打刻記録取得成功:', records?.length, '件');
+    return records || []
+  }
+
+  // 特定日の打刻記録を取得
+  static async getDayTimeRecords(
+    lineUser: LineUser,
+    date: string // YYYY-MM-DD format
+  ): Promise<TimeRecord[]> {
+    console.log('📅 日別打刻記録取得開始:', { user: lineUser.userId, date });
+
+    const startOfDay = `${date}T00:00:00.000Z`
+    const endOfDay = `${date}T23:59:59.999Z`
+
+    const { data: records, error } = await supabase
+      .from('time_records')
+      .select(`
+        *,
+        users!inner(line_user_id)
+      `)
+      .eq('users.line_user_id', lineUser.userId)
+      .gte('recorded_at', startOfDay)
+      .lte('recorded_at', endOfDay)
+      .order('recorded_at', { ascending: true })
+
+    if (error) {
+      console.error('❌ 日別打刻記録取得エラー:', error);
+      return []
+    }
+
+    console.log('✅ 日別打刻記録取得成功:', records?.length, '件');
+    return records || []
+  }
 }
