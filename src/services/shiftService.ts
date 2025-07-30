@@ -208,7 +208,7 @@ export class ShiftService {
     const colors = {
       early: '#059669', // emerald-600 - 早番(オープン)
       late: '#dc2626', // red-600 - 遅番(締め)
-      normal: '#2563eb', // blue-600 - 通常入店
+      normal: '#CB8585', // 通常入店
       off: '#6b7280' // gray-500 - 休み
     }
     return colors[shiftType] || '#6b7280'

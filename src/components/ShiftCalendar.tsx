@@ -113,7 +113,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
           className="aspect-square flex items-center justify-center text-sm font-medium relative cursor-pointer hover:bg-gray-50 transition-colors"
           onClick={() => isCurrentMonth && handleDateClick(dateString, shift)}
         >
-          {shift ? (
+          {shift && shift.shift_type !== 'off' ? (
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
               style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
