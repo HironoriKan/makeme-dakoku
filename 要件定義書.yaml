@@ -1,0 +1,328 @@
+# メイクミー勤怠システム 要件定義書
+# Time Tracking Application Requirements Specification
+
+system_info:
+  project_name: "メイクミー勤怠"
+  project_name_english: "Time Tracking App"
+  version: "0.0.0"
+  development_type: "新規開発"
+  document_version: "1.0"
+  created_date: "2024年"
+  
+business_overview:
+  purpose: "化粧品業界の人材派遣会社向け勤怠管理システム。複数店舗での派遣スタッフの勤怠を効率的に管理"
+  industry: "化粧品業界人材派遣"
+  target_users:
+    - "派遣スタッフ（複数店舗での勤怠打刻を行うユーザー）"
+    - "クライアント権限者（店舗・拠点管理者）"
+    - "Admin権限者（システム全体管理者）"
+  business_value:
+    - "紙ベース勤怠管理から完全デジタル化への移行"
+    - "複数店舗間での勤怠データ統合管理"
+    - "リアルタイム勤怠反映によるエビデンス管理"
+    - "拠点別・全体統合の柔軟な管理モード"
+  scale:
+    initial_users: "20名以下でのスモールスタート"
+    target_users: "最大100名同時利用対応"
+    data_retention: "2年間保存"
+
+technical_architecture:
+  frontend:
+    framework: "React 18.3.1"
+    language: "TypeScript"
+    build_tool: "Vite 5.4.2"
+    styling: "Tailwind CSS 3.4.1"
+    icon_library: "Lucide React 0.344.0"
+  backend:
+    platform: "Supabase (PostgreSQL + Auth + Real-time)"
+    authentication: "Supabase Auth (SSO対応)"
+    database: "PostgreSQL (Supabase)"
+    api: "Supabase REST API + Real-time subscriptions"
+  development_tools:
+    linter: "ESLint 9.9.1"
+    bundler: "Vite"
+    css_preprocessor: "PostCSS 8.4.35"
+  infrastructure:
+    hosting: "クラウド (Supabase + Vercel/Netlify)"
+    backup: "Google Spreadsheet連携"
+    security: "デファクトスタンダード暗号化"
+  target_platform: "Web Application (PC・タブレット・スマホ対応)"
+  supported_browsers: "Chrome, Safari"
+
+functional_requirements:
+  authentication:
+    - name: "ユーザーログイン状態表示"
+      description: "ログイン済みユーザーの表示とステータス確認"
+      priority: "必須"
+    - name: "権限管理システム"
+      description: "Admin権限とクライアント権限の2階層管理"
+      priority: "必須"
+      details:
+        - "Admin: 全体システム管理、マスタデータ作成・編集"
+        - "クライアント: 拠点別勤怠管理、スタッフデータ閲覧"
+        - "SSO認証による簡易ログイン"
+      
+  time_tracking:
+    - name: "出勤打刻"
+      description: "勤務開始時刻を記録"
+      priority: "必須"
+      details:
+        - "チェックイン機能"
+        - "勤務場所選択（本社・支社・在宅）"
+        - "タイムスタンプ記録"
+        
+    - name: "退勤打刻"
+      description: "勤務終了時刻を記録"
+      priority: "必須"
+      details:
+        - "チェックアウト機能"
+        - "勤務時間自動計算"
+        
+    - name: "休憩時間管理"
+      description: "休憩開始・終了時刻を記録"
+      priority: "必須"
+      details:
+        - "休憩開始打刻"
+        - "休憩終了打刻"
+        - "休憩時間除外計算"
+        
+  work_status:
+    - name: "勤務状態表示"
+      description: "現在の勤務状況をリアルタイム表示"
+      priority: "必須"
+      status_types:
+        - "勤務外（グレー）"
+        - "勤務中（ブルー）"
+        - "休憩中（オレンジ）"
+        
+  location_management:
+    - name: "3階層拠点管理システム"
+      description: "地域 > エリア > ブランド名の階層構造による店舗管理"
+      priority: "必須"
+      hierarchy:
+        - "地域レベル: 都道府県等の地理的区分"
+        - "エリアレベル: 商業施設名等の中分類"
+        - "ブランドレベル: 実際の店舗・ブランド名"
+      details:
+        - "店舗別勤務ルール設定（9時間拘束7.5時間実働 or 時短等）"
+        - "拠点ごとの勤怠データ完全分離"
+        - "クライアント権限での複数拠点管理"
+        - "スタッフのアサイン店舗限定アクセス"
+    - name: "管理モード切り替え"
+      description: "拠点別管理と全体管理の2モード対応"
+      priority: "必須"
+      modes:
+        - "拠点別モード: 特定店舗の月別勤怠管理"
+        - "全体モード: 全拠点統合での勤怠管理"
+      access_control:
+        - "スタッフ: 自分のアサイン店舗のみ表示"
+        - "クライアント: 管理権限のある複数拠点表示"
+        - "Admin: 全拠点データアクセス可能"
+        
+  time_display:
+    - name: "リアルタイム時計"
+      description: "現在時刻を秒単位でリアルタイム表示"
+      priority: "必須"
+      format: "24時間表記（HH:MM:SS）"
+      
+    - name: "日付表示"
+      description: "現在の日付と曜日を日本語で表示"
+      priority: "必須"
+      format: "YYYY年MM月DD日（曜日）"
+      
+  calendar_system:
+    - name: "シフトカレンダー"
+      description: "月別シフト予定の表示と管理"
+      priority: "必須"
+      features:
+        - "現在月・次月の2か月表示"
+        - "出勤予定日のハイライト表示"
+        - "月間出勤日数の集計表示"
+        - "月移動ナビゲーション"
+        
+  shift_management:
+    - name: "シフト希望・決定ワークフロー"
+      description: "6段階のシフト管理プロセス"
+      priority: "必須"
+      workflow:
+        step1: "シフト希望作成: スタッフが入店可能日を選択"
+        step2: "シフト希望提出: 提出後は変更不可"
+        step3: "シフト決定: クライアントまたはAdminがシフト確定"
+        step4: "勤怠打刻: 確定シフト通りの入店・打刻管理"
+        step5: "シフト変更申請: 早出・遅刻・早退・残業・欠勤・休日出勤時"
+        step6: "変更承認・実績確認: 確定シフト vs 実際勤怠の比較表示"
+      approval_flow:
+        - "シフト変更申請の承認フロー必須"
+        - "Admin・クライアント権限での承認可能"
+        - "承認履歴の記録・追跡"
+      exception_handling:
+        - "早出・遅刻・早退・残業の記録"
+        - "欠勤・休日出勤の記録"
+        - "当日急遽変更は事後申請のみ"
+        
+  time_history:
+    - name: "打刻履歴表示"
+      description: "過去の打刻記録を時系列で表示"
+      priority: "必須"
+      details:
+        - "打刻種別の識別"
+        - "タイムスタンプ記録"
+        - "勤務場所記録"
+        
+  data_export:
+    - name: "勤怠データ出力機能"
+      description: "労基署対応のための複数形式データ出力"
+      priority: "必須"
+      formats:
+        - "CSV形式: データ分析・外部システム連携用"
+        - "Excel形式: 管理者向け帳票・集計用"
+        - "PDF形式: 公式書類・印刷用"
+      details:
+        - "期間指定での出力"
+        - "拠点別・従業員別フィルタリング"
+        - "勤怠集計データ含む"
+        
+  external_integration:
+    - name: "Google Spreadsheet連携"
+      description: "バックアップ・災害復旧のためのデータ同期"
+      priority: "必須"
+      sync_specification:
+        granularity: "日次集計データ"
+        timing: "バッチ処理（1日1回自動実行）"
+        structure: 
+          - "店舗別ブック分割"
+          - "スタッフ別ブック分割"
+        data_format:
+          - "日別勤怠集計"
+          - "シフト予定 vs 実績"
+          - "変更申請履歴"
+      backup_policy:
+        - "自動日次バックアップ"
+        - "災害復旧用データ保管"
+        - "手動エクスポート機能"
+
+non_functional_requirements:
+  usability:
+    - "モバイルファーストのレスポンシブデザイン"
+    - "直感的なボタン配置とUI"
+    - "カラーコードによるステータス識別"
+    - "日本語インターフェース"
+    
+  performance:
+    - "打刻データ反映: 1秒未満"
+    - "リアルタイム時計の正確な更新（1秒間隔）"
+    - "リアルタイム管理画面監視機能"
+    - "カレンダー表示の高速レンダリング"
+    - "100名同時利用時の安定稼働"
+    
+  device_support:
+    target_devices:
+      staff_usage:
+        - "スマートフォン: 90%"
+        - "PC: 5%"
+        - "タブレット: 5%"
+      client_usage:
+        - "PC: 70%"
+        - "スマートフォン: 20%"
+        - "タブレット: 10%"
+    shared_terminal: "なし（個人デバイスのみ）"
+    
+  design_system:
+    primary_color: "#CB8585"
+    secondary_colors:
+      - "グレー（勤務外状態）"
+      - "ブルー（勤務中状態）"
+      - "オレンジ（休憩中状態）"
+    typography: "日本語フォント対応"
+    layout: "最大幅md（モバイル中心）"
+
+user_interface:
+  header:
+    - "アプリケーションロゴ"
+    - "ユーザー名表示（管 大徳さん）"
+    - "挨拶メッセージ"
+    - "メニューボタン"
+    
+  main_screen:
+    - "ログイン状態バナー"
+    - "日付・勤務状態表示"
+    - "勤務場所選択ドロップダウン"
+    - "リアルタイム時計（大表示）"
+    - "4つの打刻ボタン（出勤・退勤・休憩開始・休憩終了）"
+    - "打刻履歴一覧"
+    
+  calendar_screen:
+    - "現在月カレンダー"
+    - "次月カレンダー"
+    - "月移動ナビゲーション"
+    - "出勤日ハイライト"
+    - "出勤日数集計"
+
+data_structure:
+  store_hierarchy:
+    fields:
+      - "region_id: string（地域ID）"
+      - "area_id: string（エリアID）"
+      - "brand_id: string（ブランドID）"
+      - "store_name: string（店舗名）"
+      - "work_rules: object（勤務ルール設定）"
+      
+  shift_data:
+    fields:
+      - "shift_id: string（シフトID）"
+      - "staff_id: string（スタッフID）"
+      - "store_id: string（店舗ID）"
+      - "status: 'draft' | 'submitted' | 'approved' | 'changed'"
+      - "scheduled_start: datetime（予定開始時刻）"
+      - "scheduled_end: datetime（予定終了時刻）"
+      - "change_requests: array（変更申請履歴）"
+      
+  time_entry:
+    fields:
+      - "id: string（一意識別子）"
+      - "shift_id: string（関連シフトID）"
+      - "type: 'check-in' | 'check-out' | 'break-start' | 'break-end'"
+      - "timestamp: Date（打刻時刻）"
+      - "location: string（勤務場所）"
+      - "exception_type: string（早出・遅刻・残業等）"
+      
+  work_status:
+    states:
+      - "out: 勤務外"
+      - "in: 勤務中" 
+      - "break: 休憩中"
+      
+  user_roles:
+    admin: "全システム管理・マスタデータ管理"
+    client: "複数拠点管理・シフト承認"
+    staff: "自分のアサイン店舗のみアクセス"
+
+business_rules:
+  punch_logic:
+    - "勤務外状態では出勤打刻のみ可能"
+    - "勤務中状態では退勤打刻・休憩開始打刻が可能"
+    - "休憩中状態では休憩終了打刻のみ可能"
+    - "打刻時は必ず勤務場所の選択が必要"
+    
+  calendar_logic:
+    - "出勤予定日は事前定義された配列で管理"
+    - "現在月と次月の2か月同時表示"
+    - "土曜日は青色、日曜日は赤色で表示"
+    
+future_enhancements:
+  potential_features:
+    - "管理者画面での勤怠データ管理"
+    - "CSV/Excel形式でのデータエクスポート"
+    - "GPS位置情報による打刻制限"
+    - "プッシュ通知機能"
+    - "多言語対応"
+    - "ダークモードサポート"
+    
+development_environment:
+  node_version: "推奨 Node.js 18+"
+  package_manager: "npm"
+  build_commands:
+    development: "npm run dev"
+    build: "npm run build"
+    preview: "npm run preview"
+    lint: "npm run lint" 

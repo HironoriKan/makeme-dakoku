@@ -1,0 +1,331 @@
+# メイクミー勤怠システム アジャイル開発計画書
+# Agile Development Plan for Time Tracking System
+
+development_approach:
+  methodology: "アジャイル（スクラム）"
+  sprint_duration: "2週間"
+  total_sprints: "6スプリント（約3ヶ月）"
+  team_size: "1-3名"
+  delivery_strategy: "段階的リリース（各スプリント後にデモ可能）"
+
+technical_foundation:
+  existing_codebase: "React + TypeScript + Tailwind CSS（メイクミー勤怠）"
+  target_architecture: "Supabase + Vercel/Netlify"
+  database: "PostgreSQL（Supabase）"
+  authentication: "Supabase Auth"
+
+# ==========================================
+# Sprint 1: 基礎MVP構築（2週間）
+# ==========================================
+sprint_1:
+  goal: "最小限の打刻機能が動作するMVPを構築"
+  target_users: "スタッフ1名での動作確認"
+  
+  week_1:
+    day_1_2:
+      - task: "Supabaseプロジェクト作成・設定"
+        details:
+          - "Supabaseアカウント作成"
+          - "新プロジェクト作成"
+          - "環境変数設定（.env.local）"
+          - "Supabase CLI インストール・初期化"
+      
+    day_3_4:
+      - task: "最小限データベース設計・構築"
+        tables:
+          time_entries:
+            columns:
+              - "id: uuid (primary key)"
+              - "user_id: uuid (foreign key to auth.users)"
+              - "type: text (check-in, check-out, break-start, break-end)"
+              - "timestamp: timestamptz"
+              - "created_at: timestamptz"
+        policies:
+          - "ユーザーは自分の打刻データのみ閲覧・作成可能"
+          
+    day_5_7:
+      - task: "現在のUI適応・シンプル化"
+        modifications:
+          - "既存のApp.tsxから不要な機能を一時削除"
+          - "打刻ボタン4つのみ残す"
+          - "時刻表示とログ表示のみ"
+          - "店舗選択は一時的にハードコード"
+
+  week_2:
+    day_8_10:
+      - task: "Supabaseクライアント統合"
+        implementation:
+          - "supabase-jsライブラリ統合"
+          - "環境変数読み込み"
+          - "データベース接続テスト"
+          
+    day_11_12:
+      - task: "基本打刻機能実装"
+        functions:
+          - "出勤打刻（check-in）"
+          - "退勤打刻（check-out）"
+          - "休憩開始（break-start）"
+          - "休憩終了（break-end）"
+        validation:
+          - "ステート管理による打刻制御"
+          - "エラーハンドリング"
+          
+    day_13_14:
+      - task: "打刻履歴表示機能"
+        features:
+          - "リアルタイム履歴更新"
+          - "データ表示フォーマット"
+          - "エラー時の適切な表示"
+      
+      - task: "Sprint 1デモ・テスト"
+        deliverable: "1名でのローカル動作確認完了"
+
+  success_criteria:
+    - "4つの打刻ボタンが正常動作"
+    - "Supabaseにデータが正しく保存"
+    - "打刻履歴がリアルタイム表示"
+    - "ステート制御が正常動作"
+    - "エラーが発生しない安定動作"
+
+# ==========================================
+# Sprint 2: 認証・拠点管理（2週間）
+# ==========================================
+sprint_2:
+  goal: "ユーザー認証と基本的な拠点管理を実装"
+  target_users: "複数ユーザーでの利用開始"
+  
+  week_1:
+    day_1_3:
+      - task: "Supabase Auth実装"
+        implementation:
+          - "メール/パスワード認証"
+          - "ログイン・ログアウト機能"
+          - "認証状態管理（React Context）"
+          - "ProtectedRoute コンポーネント"
+        
+    day_4_5:
+      - task: "データベース拡張（拠点管理）"
+        new_tables:
+          stores:
+            columns:
+              - "id: uuid (primary key)"
+              - "name: text"
+              - "region: text（地域）"
+              - "area: text（エリア）"
+              - "brand: text（ブランド）"
+              - "created_at: timestamptz"
+          user_store_assignments:
+            columns:
+              - "id: uuid (primary key)"
+              - "user_id: uuid (foreign key)"
+              - "store_id: uuid (foreign key)"
+              - "role: text（staff, client, admin）"
+              - "created_at: timestamptz"
+              
+    day_6_7:
+      - task: "time_entriesテーブル拡張"
+        modifications:
+          - "store_id カラム追加"
+          - "location フィールド追加"
+          - "RLS（Row Level Security）更新"
+
+  week_2:
+    day_8_10:
+      - task: "拠点選択UI実装"
+        components:
+          - "店舗選択ドロップダウン"
+          - "ユーザーの割り当て店舗のみ表示"
+          - "選択状態の永続化"
+          
+    day_11_12:
+      - task: "権限管理基礎実装"
+        features:
+          - "ユーザーロール判定"
+          - "店舗別データフィルタリング"
+          - "権限に応じたUI表示制御"
+          
+    day_13_14:
+      - task: "マスタデータ管理画面（Admin用）"
+        features:
+          - "店舗追加・編集機能"
+          - "ユーザー・店舗アサイン機能"
+        
+      - task: "Sprint 2テスト・デモ"
+        deliverable: "複数店舗・複数ユーザーでの動作確認"
+
+  success_criteria:
+    - "ユーザー認証が正常動作"
+    - "店舗別のデータ分離が機能"
+    - "権限に応じたアクセス制御"
+    - "Admin機能でマスタ管理可能"
+
+# ==========================================
+# Sprint 3: シフト管理基礎（2週間）
+# ==========================================
+sprint_3:
+  goal: "シフト希望登録とシフト決定機能を実装"
+  
+  week_1:
+    day_1_3:
+      - task: "シフト管理データベース設計"
+        new_tables:
+          shifts:
+            columns:
+              - "id: uuid (primary key)"
+              - "staff_id: uuid (foreign key)"
+              - "store_id: uuid (foreign key)"
+              - "shift_date: date"
+              - "start_time: time"
+              - "end_time: time"
+              - "status: text（draft, submitted, approved）"
+              - "created_at: timestamptz"
+          shift_requests:
+            columns:
+              - "id: uuid (primary key)"
+              - "staff_id: uuid (foreign key)"
+              - "store_id: uuid (foreign key)"
+              - "available_dates: json"
+              - "status: text（draft, submitted）"
+              - "submitted_at: timestamptz"
+              
+    day_4_7:
+      - task: "シフト希望カレンダーUI実装"
+        features:
+          - "既存のShiftCalendar.tsxを拡張"
+          - "日付選択・希望登録機能"
+          - "希望提出機能"
+          - "提出後の編集不可制御"
+
+  week_2:
+    day_8_10:
+      - task: "シフト決定機能（クライアント・Admin用）"
+        features:
+          - "希望一覧表示"
+          - "シフト割り当て機能"
+          - "シフト承認機能"
+          
+    day_11_12:
+      - task: "シフト表示機能"
+        features:
+          - "確定シフトカレンダー表示"
+          - "個人・店舗別シフト表示"
+          
+    day_13_14:
+      - task: "打刻とシフトの連携"
+        modifications:
+          - "シフト予定時刻との比較"
+          - "予定外打刻の警告表示"
+        
+      - task: "Sprint 3テスト・デモ"
+
+  success_criteria:
+    - "シフト希望の登録・提出が可能"
+    - "管理者によるシフト決定が可能"
+    - "確定シフトの表示が正常"
+    - "打刻とシフトの連携が動作"
+
+# ==========================================
+# Sprint 4: 高度なシフト管理（2週間）
+# ==========================================
+sprint_4:
+  goal: "シフト変更申請・承認フローと例外処理を実装"
+  
+  features:
+    - "シフト変更申請機能"
+    - "承認フロー実装"
+    - "早出・遅刻・残業等の例外記録"
+    - "実績とシフトの比較表示"
+    
+  new_tables:
+    shift_change_requests:
+      columns:
+        - "id: uuid (primary key)"
+        - "shift_id: uuid (foreign key)"
+        - "requested_by: uuid (foreign key)"
+        - "change_type: text（early, late, overtime, absence）"
+        - "reason: text"
+        - "status: text（pending, approved, rejected）"
+        - "approved_by: uuid (foreign key)"
+        - "created_at: timestamptz"
+
+# ==========================================
+# Sprint 5: データ出力機能（2週間）
+# ==========================================
+sprint_5:
+  goal: "CSV、Excel、PDF形式でのデータ出力機能実装"
+  
+  features:
+    - "期間指定での勤怠データ出力"
+    - "店舗別・従業員別フィルタリング"
+    - "勤怠集計レポート生成"
+    - "労基署対応フォーマット"
+    
+  technical_implementation:
+    - "CSV: Papa Parse ライブラリ"
+    - "Excel: xlsx ライブラリ"
+    - "PDF: jsPDF + html2canvas"
+
+# ==========================================
+# Sprint 6: 外部連携・最終調整（2週間）
+# ==========================================
+sprint_6:
+  goal: "Google Spreadsheet連携とシステム最終調整"
+  
+  features:
+    - "Google Sheets API連携"
+    - "日次バッチ処理実装"
+    - "店舗別・スタッフ別シート自動生成"
+    - "最終動作テスト・性能調整"
+
+# ==========================================
+# 開発ガイドライン・品質保証
+# ==========================================
+development_guidelines:
+  error_handling:
+    - "全ての非同期処理にtry-catchを実装"
+    - "ユーザーフレンドリーなエラーメッセージ"
+    - "ネットワークエラー時の適切な表示"
+    
+  testing_strategy:
+    - "各Sprint終了時に手動テスト実施"
+    - "複数ブラウザでの動作確認（Chrome, Safari）"
+    - "モバイル・デスクトップでのレスポンシブテスト"
+    
+  performance:
+    - "1秒未満の打刻反映を常に確認"
+    - "100名同時利用想定での負荷テスト（Sprint 4以降）"
+    
+  security:
+    - "RLS（Row Level Security）の確実な実装"
+    - "機密データの適切な暗号化"
+    - "認証・認可の厳密なテスト"
+
+deployment_strategy:
+  staging_environment:
+    - "各Sprint後にStagingデプロイ"
+    - "クライアント確認・フィードバック収集"
+    
+  production_deployment:
+    - "Sprint 3後: 限定ユーザーでのベータテスト"
+    - "Sprint 6後: 正式リリース"
+    
+  rollback_plan:
+    - "データベースマイグレーションのバックアップ"
+    - "前バージョンへの迅速なロールバック手順"
+
+risk_management:
+  technical_risks:
+    - "Supabase接続エラー → 代替認証方式の準備"
+    - "性能問題 → 段階的最適化アプローチ"
+    
+  business_risks:
+    - "要件変更 → アジャイル対応（Sprint計画の柔軟な調整）"
+    - "スケジュール遅延 → 機能優先度の再調整"
+
+success_metrics:
+  sprint_1: "基本打刻が安定動作"
+  sprint_2: "複数ユーザー・店舗での正常動作"
+  sprint_3: "シフト管理ワークフローの完成"
+  sprint_4: "例外処理・承認フローの安定動作"
+  sprint_5: "データ出力機能の完成"
+  sprint_6: "全機能統合・本格運用準備完了" 
