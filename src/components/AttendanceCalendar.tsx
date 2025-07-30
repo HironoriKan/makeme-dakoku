@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { TimeRecordService } from '../services/timeRecordService';
 import { TimeRecordChangeService, TimeRecordEditData, TimeRecordDeleteData } from '../services/timeRecordChangeService';
 import { DailyReportService, DailyReport } from '../services/dailyReportService';
+import SalesChart from './SalesChart';
 import { Database } from '../types/supabase';
 
 type TimeRecord = Database['public']['Tables']['time_records']['Row'];
@@ -546,6 +547,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             </div>
           </div>
         )}
+
+        {/* 売上推移グラフ */}
+        <SalesChart />
       </div>
 
       {/* 打刻記録表示モーダル */}
