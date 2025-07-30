@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Coffee, LogIn, LogOut, BarChart3, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Coffee, LogIn, LogOut, BarChart3, MapPin, Edit3, Trash2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { TimeRecordService } from '../services/timeRecordService';
+import { TimeRecordChangeService, TimeRecordEditData, TimeRecordDeleteData } from '../services/timeRecordChangeService';
+import { DailyReportService, DailyReport } from '../services/dailyReportService';
 import { Database } from '../types/supabase';
 
 type TimeRecord = Database['public']['Tables']['time_records']['Row'];
@@ -35,6 +37,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedRecords, setSelectedRecords] = useState<TimeRecord[]>([]);
+  const [selectedDailyReport, setSelectedDailyReport] = useState<DailyReport | null>(null);
+  const [editingRecord, setEditingRecord] = useState<TimeRecord | null>(null);
+  const [deleteRecord, setDeleteRecord] = useState<TimeRecord | null>(null);
+  const [editForm, setEditForm] = useState({
+    recordType: '' as RecordType,
+    recordedAt: '',
+    locationName: '',
+    note: '',
+    reason: ''
+  });
+  const [deleteReason, setDeleteReason] = useState('');
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -216,6 +229,112 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
 
     setSelectedDate(dateString);
     setSelectedRecords(attendance.records);
+
+    // その日の日報を取得
+    try {
+      const reportDate = new Date(dateString);
+      const reports = await DailyReportService.getMonthlyReports(user, reportDate.getFullYear(), reportDate.getMonth() + 1);
+      const dayReport = reports.find(report => report.report_date === dateString);
+      setSelectedDailyReport(dayReport || null);
+    } catch (error) {
+      console.error('日報取得エラー:', error);
+      setSelectedDailyReport(null);
+    }
+  };
+
+  // 編集開始
+  const handleEditStart = (record: TimeRecord) => {
+    setEditingRecord(record);
+    const recordDate = new Date(record.recorded_at);
+    setEditForm({
+      recordType: record.record_type,
+      recordedAt: recordDate.toISOString().slice(0, 16), // YYYY-MM-DDTHH:mm形式
+      locationName: record.location_name || '',
+      note: record.note || '',
+      reason: ''
+    });
+  };
+
+  // 編集保存
+  const handleEditSave = async () => {
+    if (!user || !editingRecord) return;
+
+    if (!editForm.reason.trim()) {
+      alert('変更理由を入力してください');
+      return;
+    }
+
+    try {
+      const editData: TimeRecordEditData = {
+        recordType: editForm.recordType,
+        recordedAt: new Date(editForm.recordedAt).toISOString(),
+        locationName: editForm.locationName || undefined,
+        note: editForm.note || undefined,
+        reason: editForm.reason
+      };
+
+      await TimeRecordChangeService.editTimeRecord(user, editingRecord.id, editData);
+      
+      // リフレッシュ
+      await loadMonthlyAttendance();
+      
+      // モーダルを閉じる
+      setEditingRecord(null);
+      setSelectedDate(null);
+      setSelectedRecords([]);
+      setSelectedDailyReport(null);
+      setEditForm({
+        recordType: '' as RecordType,
+        recordedAt: '',
+        locationName: '',
+        note: '',
+        reason: ''
+      });
+
+      alert('打刻記録を更新しました');
+    } catch (error) {
+      console.error('編集エラー:', error);
+      alert(`編集に失敗しました: ${error instanceof Error ? error.message : ''}`);
+    }
+  };
+
+  // 削除開始
+  const handleDeleteStart = (record: TimeRecord) => {
+    setDeleteRecord(record);
+    setDeleteReason('');
+  };
+
+  // 削除実行
+  const handleDeleteConfirm = async () => {
+    if (!user || !deleteRecord) return;
+
+    if (!deleteReason.trim()) {
+      alert('削除理由を入力してください');
+      return;
+    }
+
+    try {
+      const deleteData: TimeRecordDeleteData = {
+        reason: deleteReason
+      };
+
+      await TimeRecordChangeService.deleteTimeRecord(user, deleteRecord.id, deleteData);
+      
+      // リフレッシュ
+      await loadMonthlyAttendance();
+      
+      // モーダルを閉じる
+      setDeleteRecord(null);
+      setSelectedDate(null);
+      setSelectedRecords([]);
+      setSelectedDailyReport(null);
+      setDeleteReason('');
+
+      alert('打刻記録を削除しました');
+    } catch (error) {
+      console.error('削除エラー:', error);
+      alert(`削除に失敗しました: ${error instanceof Error ? error.message : ''}`);
+    }
   };
 
   // 勤務状況に応じた色を取得
@@ -420,8 +539,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
 
       {/* 打刻記録表示モーダル */}
       {selectedDate && selectedRecords.length > 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-96 overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setSelectedDate(null);
+            setSelectedRecords([]);
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-md w-full p-6 max-h-96 overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               {new Date(selectedDate).toLocaleDateString('ja-JP')} の打刻記録
             </h3>
@@ -439,13 +567,31 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                       </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">
-                      {formatTime(record.recorded_at)}
-                    </p>
-                    {record.note && (
-                      <p className="text-xs text-gray-500">{record.note}</p>
-                    )}
+                  <div className="flex items-center space-x-3">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">
+                        {formatTime(record.recorded_at)}
+                      </p>
+                      {record.note && (
+                        <p className="text-xs text-gray-500">{record.note}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleEditStart(record)}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        title="編集"
+                      >
+                        <Edit3 className="w-3 h-3 text-gray-600" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteStart(record)}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        title="削除"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-600" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -461,15 +607,219 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
               </div>
             </div>
 
+            {/* 日報情報 */}
+            {selectedDailyReport && (
+              <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">退勤報告</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">売上</span>
+                    <span className="text-sm font-medium text-green-700">
+                      ¥{selectedDailyReport.sales_amount.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">対応お客様数</span>
+                    <span className="text-sm font-medium text-green-700">
+                      {selectedDailyReport.customer_count}人
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">販売アイテム数</span>
+                    <span className="text-sm font-medium text-green-700">
+                      {selectedDailyReport.items_sold}個
+                    </span>
+                  </div>
+                  {selectedDailyReport.notes && (
+                    <div className="mt-2">
+                      <span className="text-xs text-gray-600">備考:</span>
+                      <p className="text-sm text-gray-700 mt-1">{selectedDailyReport.notes}</p>
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-500 mt-2">
+                    報告日時: {new Date(selectedDailyReport.created_at).toLocaleString('ja-JP')}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end mt-6">
               <button
                 onClick={() => {
                   setSelectedDate(null);
                   setSelectedRecords([]);
+                  setSelectedDailyReport(null);
                 }}
                 className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
               >
                 閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 編集モーダル */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-96 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">打刻記録の編集</h3>
+              <button
+                onClick={() => setEditingRecord(null)}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* 打刻種別 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  打刻種別
+                </label>
+                <select
+                  value={editForm.recordType}
+                  onChange={(e) => setEditForm({...editForm, recordType: e.target.value as RecordType})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="clock_in">出勤</option>
+                  <option value="clock_out">退勤</option>
+                  <option value="break_start">休憩開始</option>
+                  <option value="break_end">休憩終了</option>
+                </select>
+              </div>
+
+              {/* 打刻時刻 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  打刻時刻
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editForm.recordedAt}
+                  onChange={(e) => setEditForm({...editForm, recordedAt: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* 場所 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  場所
+                </label>
+                <input
+                  type="text"
+                  value={editForm.locationName}
+                  onChange={(e) => setEditForm({...editForm, locationName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="例: 本社"
+                />
+              </div>
+
+              {/* メモ */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  メモ
+                </label>
+                <input
+                  type="text"
+                  value={editForm.note}
+                  onChange={(e) => setEditForm({...editForm, note: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="メモがあれば入力"
+                />
+              </div>
+
+              {/* 変更理由 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  変更理由 <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={editForm.reason}
+                  onChange={(e) => setEditForm({...editForm, reason: e.target.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="変更理由を必ず入力してください"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setEditingRecord(null)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleEditSave}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 削除確認モーダル */}
+      {deleteRecord && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">打刻記録の削除</h3>
+              <button
+                onClick={() => setDeleteRecord(null)}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700 mb-2">以下の打刻記録を削除します：</p>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-2 mb-1">
+                  {deleteRecord.record_type === 'clock_in' && <LogIn className="w-4 h-4 text-green-600" />}
+                  {deleteRecord.record_type === 'clock_out' && <LogOut className="w-4 h-4 text-red-600" />}
+                  {(deleteRecord.record_type === 'break_start' || deleteRecord.record_type === 'break_end') && <Coffee className="w-4 h-4 text-orange-600" />}
+                  <span className="font-medium">{TimeRecordService.getRecordTypeLabel(deleteRecord.record_type)}</span>
+                </div>
+                <p className="text-sm text-gray-600">{formatTime(deleteRecord.recorded_at)}</p>
+                {deleteRecord.note && (
+                  <p className="text-xs text-gray-500 mt-1">{deleteRecord.note}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                削除理由 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="削除理由を必ず入力してください"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteRecord(null)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+              >
+                削除
               </button>
             </div>
           </div>

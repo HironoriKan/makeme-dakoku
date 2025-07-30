@@ -58,6 +58,75 @@ export type Database = {
           },
         ]
       }
+      time_record_changes: {
+        Row: {
+          change_type: Database["public"]["Enums"]["change_type"]
+          created_at: string
+          id: string
+          new_location_name: string | null
+          new_note: string | null
+          new_record_type: Database["public"]["Enums"]["record_type"] | null
+          new_recorded_at: string | null
+          original_location_name: string | null
+          original_note: string | null
+          original_record_type: Database["public"]["Enums"]["record_type"] | null
+          original_recorded_at: string | null
+          reason: string
+          time_record_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          change_type: Database["public"]["Enums"]["change_type"]
+          created_at?: string
+          id?: string
+          new_location_name?: string | null
+          new_note?: string | null
+          new_record_type?: Database["public"]["Enums"]["record_type"] | null
+          new_recorded_at?: string | null
+          original_location_name?: string | null
+          original_note?: string | null
+          original_record_type?: Database["public"]["Enums"]["record_type"] | null
+          original_recorded_at?: string | null
+          reason: string
+          time_record_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          change_type?: Database["public"]["Enums"]["change_type"]
+          created_at?: string
+          id?: string
+          new_location_name?: string | null
+          new_note?: string | null
+          new_record_type?: Database["public"]["Enums"]["record_type"] | null
+          new_recorded_at?: string | null
+          original_location_name?: string | null
+          original_note?: string | null
+          original_record_type?: Database["public"]["Enums"]["record_type"] | null
+          original_recorded_at?: string | null
+          reason?: string
+          time_record_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_record_changes_time_record_id_fkey"
+            columns: ["time_record_id"]
+            isOneToOne: false
+            referencedRelation: "time_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_record_changes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           created_at: string | null
@@ -193,6 +262,7 @@ export type Database = {
       }
     }
     Enums: {
+      change_type: "edit" | "delete"
       record_type: "clock_in" | "clock_out" | "break_start" | "break_end"
       shift_status: "adjusting" | "confirmed"
       shift_type: "early" | "late" | "normal" | "off"
@@ -323,6 +393,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      change_type: ["edit", "delete"],
       record_type: ["clock_in", "clock_out", "break_start", "break_end"],
       shift_status: ["adjusting", "confirmed"],
       shift_type: ["early", "late", "normal", "off"],
