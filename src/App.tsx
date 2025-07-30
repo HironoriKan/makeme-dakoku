@@ -21,6 +21,7 @@ const TimeTrackingApp: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState('本社');
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [dbRecords, setDbRecords] = useState<any[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -29,6 +30,53 @@ const TimeTrackingApp: React.FC = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // DBから今日の打刻記録を取得してローカル状態と同期
+  useEffect(() => {
+    const loadTodayRecords = async () => {
+      if (!user) return;
+
+      try {
+        const records = await TimeRecordService.getTodayTimeRecords(user);
+        setDbRecords(records);
+
+        // 最新の記録に基づいて勤務状態を更新
+        if (records.length > 0) {
+          const lastRecord = records[records.length - 1];
+          switch (lastRecord.record_type) {
+            case 'clock_in':
+              setWorkStatus('in');
+              break;
+            case 'clock_out':
+              setWorkStatus('out');
+              break;
+            case 'break_start':
+              setWorkStatus('break');
+              break;
+            case 'break_end':
+              setWorkStatus('in');
+              break;
+          }
+
+          // ローカルのtimeEntriesも同期
+          const localEntries: TimeEntry[] = records.map(record => ({
+            id: record.id,
+            type: record.record_type === 'clock_in' ? 'check-in' :
+                  record.record_type === 'clock_out' ? 'check-out' :
+                  record.record_type === 'break_start' ? 'break-start' : 'break-end',
+            timestamp: new Date(record.recorded_at),
+            location: record.note?.replace('からの打刻', '') || '不明'
+          })).reverse(); // 新しい順に並び替え
+
+          setTimeEntries(localEntries);
+        }
+      } catch (error) {
+        console.error('今日の記録取得エラー:', error);
+      }
+    };
+
+    loadTodayRecords();
+  }, [user]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('ja-JP', { 
@@ -65,29 +113,73 @@ const TimeTrackingApp: React.FC = () => {
     }
   };
 
-  const handleTimeAction = (action: 'check-in' | 'check-out' | 'break-start' | 'break-end') => {
-    const newEntry: TimeEntry = {
-      id: Date.now().toString(),
-      type: action,
-      timestamp: new Date(),
-      location: selectedLocation
-    };
+  const handleTimeAction = async (action: 'check-in' | 'check-out' | 'break-start' | 'break-end') => {
+    if (!user) {
+      alert('ユーザー情報が見つかりません');
+      return;
+    }
 
-    setTimeEntries(prev => [newEntry, ...prev]);
+    try {
+      // Supabaseに記録
+      const recordTypeMap = {
+        'check-in': 'clock_in' as const,
+        'check-out': 'clock_out' as const,
+        'break-start': 'break_start' as const,
+        'break-end': 'break_end' as const
+      };
 
-    switch (action) {
-      case 'check-in':
-        setWorkStatus('in');
-        break;
-      case 'check-out':
-        setWorkStatus('out');
-        break;
-      case 'break-start':
-        setWorkStatus('break');
-        break;
-      case 'break-end':
-        setWorkStatus('in');
-        break;
+      await TimeRecordService.createTimeRecord(user, {
+        recordType: recordTypeMap[action],
+        note: `${selectedLocation}からの打刻`
+      });
+
+      // ローカル状態も更新
+      const newEntry: TimeEntry = {
+        id: Date.now().toString(),
+        type: action,
+        timestamp: new Date(),
+        location: selectedLocation
+      };
+
+      setTimeEntries(prev => [newEntry, ...prev]);
+
+      switch (action) {
+        case 'check-in':
+          setWorkStatus('in');
+          break;
+        case 'check-out':
+          setWorkStatus('out');
+          break;
+        case 'break-start':
+          setWorkStatus('break');
+          break;
+        case 'break-end':
+          setWorkStatus('in');
+          break;
+      }
+
+      // 成功メッセージ
+      const actionLabels = {
+        'check-in': '出勤',
+        'check-out': '退勤',
+        'break-start': '休憩開始',
+        'break-end': '休憩終了'
+      };
+      
+      // 一時的な成功表示
+      const originalText = document.querySelector(`button[data-action="${action}"] span`)?.textContent;
+      const buttonSpan = document.querySelector(`button[data-action="${action}"] span`);
+      if (buttonSpan) {
+        buttonSpan.textContent = '✓ 記録済み';
+        setTimeout(() => {
+          if (buttonSpan) buttonSpan.textContent = originalText || actionLabels[action];
+        }, 2000);
+      }
+
+    } catch (error) {
+      console.error('打刻エラー:', error);
+      const message = error instanceof Error ? error.message : '打刻に失敗しました';
+      alert(`エラー: ${message}`);
     }
   };
 
@@ -246,6 +338,7 @@ const TimeTrackingApp: React.FC = () => {
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <button
+            data-action="check-in"
             onClick={() => handleTimeAction('check-in')}
             disabled={isButtonDisabled('check-in')}
             className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
@@ -275,6 +368,7 @@ const TimeTrackingApp: React.FC = () => {
           </button>
 
           <button
+            data-action="check-out"
             onClick={() => handleTimeAction('check-out')}
             disabled={isButtonDisabled('check-out')}
             className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
@@ -302,6 +396,7 @@ const TimeTrackingApp: React.FC = () => {
           </button>
 
           <button
+            data-action="break-start"
             onClick={() => handleTimeAction('break-start')}
             disabled={isButtonDisabled('break-start')}
             className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
@@ -329,6 +424,7 @@ const TimeTrackingApp: React.FC = () => {
           </button>
 
           <button
+            data-action="break-end"
             onClick={() => handleTimeAction('break-end')}
             disabled={isButtonDisabled('break-end')}
             className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${
@@ -356,80 +452,9 @@ const TimeTrackingApp: React.FC = () => {
           </button>
         </div>
 
-        {/* Action Buttons with DB Integration */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
-          <h3 className="text-sm font-medium text-gray-900 mb-3 text-center">Supabase連携打刻</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={async () => {
-                try {
-                  await TimeRecordService.createTimeRecord(user!, {
-                    recordType: 'clock_in'
-                  });
-                  alert('出勤を記録しました！');
-                } catch (error) {
-                  alert('エラー: ' + (error instanceof Error ? error.message : '打刻に失敗しました'));
-                }
-              }}
-              className="flex items-center justify-center px-3 py-2 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition-colors"
-            >
-              <LogIn className="w-4 h-4 mr-1" />
-              出勤
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await TimeRecordService.createTimeRecord(user!, {
-                    recordType: 'clock_out'
-                  });
-                  alert('退勤を記録しました！');
-                } catch (error) {
-                  alert('エラー: ' + (error instanceof Error ? error.message : '打刻に失敗しました'));
-                }
-              }}
-              className="flex items-center justify-center px-3 py-2 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition-colors"
-            >
-              <LogOut className="w-4 h-4 mr-1" />
-              退勤
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await TimeRecordService.createTimeRecord(user!, {
-                    recordType: 'break_start'
-                  });
-                  alert('休憩開始を記録しました！');
-                } catch (error) {
-                  alert('エラー: ' + (error instanceof Error ? error.message : '打刻に失敗しました'));
-                }
-              }}
-              className="flex items-center justify-center px-3 py-2 bg-yellow-500 text-white text-sm rounded-md hover:bg-yellow-600 transition-colors"
-            >
-              <Coffee className="w-4 h-4 mr-1" />
-              休憩開始
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await TimeRecordService.createTimeRecord(user!, {
-                    recordType: 'break_end'
-                  });
-                  alert('休憩終了を記録しました！');
-                } catch (error) {
-                  alert('エラー: ' + (error instanceof Error ? error.message : '打刻に失敗しました'));
-                }
-              }}
-              className="flex items-center justify-center px-3 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors"
-            >
-              <Coffee className="w-4 h-4 mr-1" />
-              休憩終了
-            </button>
-          </div>
-        </div>
-
         {/* Recent Entries */}
         {timeEntries.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-4">
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
             <h3 className="text-sm font-medium text-gray-900 mb-3">本日の打刻履歴</h3>
             <div className="space-y-2">
               {timeEntries.slice(0, 5).map((entry) => (
