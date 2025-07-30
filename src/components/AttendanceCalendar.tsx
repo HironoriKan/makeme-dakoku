@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Coffee, LogIn, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Coffee, LogIn, LogOut, BarChart3, MapPin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { TimeRecordService } from '../services/timeRecordService';
 import { Database } from '../types/supabase';
@@ -368,7 +368,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       <div className="space-y-4">
         {/* 全体統計 */}
         <div className="bg-white rounded-lg shadow-sm p-4">
-          <h4 className="text-md font-semibold text-gray-900 mb-3">📊 今月の勤怠統計</h4>
+          <div className="flex items-center space-x-2 mb-3">
+            <BarChart3 className="w-5 h-5 text-blue-600" />
+            <h4 className="text-md font-semibold text-gray-900">今月の勤怠統計</h4>
+          </div>
           <div className="bg-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="text-center">
@@ -386,7 +389,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         {/* 拠点別統計 */}
         {locationStats.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <h4 className="text-md font-semibold text-gray-900 mb-3">🏢 拠点別統計</h4>
+            <div className="flex items-center space-x-2 mb-3">
+              <MapPin className="w-5 h-5 text-gray-600" />
+              <h4 className="text-md font-semibold text-gray-900">拠点別統計</h4>
+            </div>
             <div className="space-y-3">
               {locationStats.map((stats, index) => (
                 <div key={stats.location} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
