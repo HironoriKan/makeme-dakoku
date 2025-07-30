@@ -24,6 +24,7 @@ const TimeTrackingApp: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [dbRecords, setDbRecords] = useState<any[]>([]);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -151,7 +152,8 @@ const TimeTrackingApp: React.FC = () => {
           break;
         case 'check-out':
           setWorkStatus('out');
-          // 退勤時にモーダルを表示
+          // 退勤時にモーダルを表示（退勤時刻を記録）
+          setCheckoutTime(new Date().toISOString());
           setShowCheckoutModal(true);
           break;
         case 'break-start':
@@ -481,7 +483,11 @@ const TimeTrackingApp: React.FC = () => {
         {/* Checkout Report Modal */}
         <CheckoutReportModal
           isOpen={showCheckoutModal}
-          onClose={() => setShowCheckoutModal(false)}
+          onClose={() => {
+            setShowCheckoutModal(false);
+            setCheckoutTime(null);
+          }}
+          checkoutTime={checkoutTime}
         />
 
         {/* Footer */}

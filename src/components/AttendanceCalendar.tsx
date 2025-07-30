@@ -415,6 +415,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     return `${hours}時間${minutes % 60}分`;
   };
 
+  // 日報の指標計算
+  const calculateCustomerUnitPrice = (sales: number, customerCount: number): number => {
+    if (customerCount === 0) return 0;
+    return Math.round(sales / customerCount);
+  };
+
+  const calculateItemsPerCustomer = (itemsSold: number, customerCount: number): number => {
+    if (customerCount === 0) return 0;
+    return Math.round((itemsSold / customerCount) * 10) / 10; // 小数点第1位まで
+  };
+
   return (
     <div className="space-y-4">
       {/* 実績カレンダー */}
@@ -610,8 +621,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             {/* 日報情報 */}
             {selectedDailyReport && (
               <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">退勤報告</h4>
-                <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">退勤報告</h4>
+                
+                {/* 基本情報 */}
+                <div className="space-y-2 mb-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-600">売上</span>
                     <span className="text-sm font-medium text-green-700">
@@ -619,7 +632,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600">対応お客様数</span>
+                    <span className="text-xs text-gray-600">購入お客様数</span>
                     <span className="text-sm font-medium text-green-700">
                       {selectedDailyReport.customer_count}人
                     </span>
@@ -630,13 +643,42 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                       {selectedDailyReport.items_sold}個
                     </span>
                   </div>
-                  {selectedDailyReport.notes && (
-                    <div className="mt-2">
-                      <span className="text-xs text-gray-600">備考:</span>
-                      <p className="text-sm text-gray-700 mt-1">{selectedDailyReport.notes}</p>
+                </div>
+
+                {/* 計算指標 */}
+                <div className="border-t border-green-200 pt-2 mb-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600">顧客単価</span>
+                      <span className="text-sm font-medium text-blue-700">
+                        ¥{(selectedDailyReport.customer_unit_price || calculateCustomerUnitPrice(selectedDailyReport.sales_amount, selectedDailyReport.customer_count)).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600">顧客販売個数</span>
+                      <span className="text-sm font-medium text-blue-700">
+                        {selectedDailyReport.items_per_customer || calculateItemsPerCustomer(selectedDailyReport.items_sold, selectedDailyReport.customer_count)}個/人
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 備考 */}
+                {selectedDailyReport.notes && (
+                  <div className="mb-2">
+                    <span className="text-xs text-gray-600">備考:</span>
+                    <p className="text-sm text-gray-700 mt-1">{selectedDailyReport.notes}</p>
+                  </div>
+                )}
+
+                {/* 報告日時 */}
+                <div className="text-xs text-gray-500 pt-2 border-t border-green-200 space-y-1">
+                  {selectedDailyReport.checkout_time && (
+                    <div>
+                      退勤時刻: {new Date(selectedDailyReport.checkout_time).toLocaleString('ja-JP')}
                     </div>
                   )}
-                  <div className="text-xs text-gray-500 mt-2">
+                  <div>
                     報告日時: {new Date(selectedDailyReport.created_at).toLocaleString('ja-JP')}
                   </div>
                 </div>

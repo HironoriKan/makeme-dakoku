@@ -6,6 +6,7 @@ export interface DailyReportData {
   customerCount: number
   itemsSold: number
   notes?: string
+  checkoutTime: string // 退勤時刻 (ISO string)
 }
 
 export interface DailyReport {
@@ -15,6 +16,9 @@ export interface DailyReport {
   sales_amount: number
   customer_count: number
   items_sold: number
+  customer_unit_price: number
+  items_per_customer: number
+  checkout_time: string | null
   notes: string | null
   created_at: string
   updated_at: string | null
@@ -52,6 +56,14 @@ export class DailyReportService {
     // 今日の日付を取得
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
 
+    // 計算指標を算出
+    const customerUnitPrice = reportData.customerCount > 0 
+      ? Math.round(reportData.salesAmount / reportData.customerCount) 
+      : 0
+    const itemsPerCustomer = reportData.customerCount > 0 
+      ? Math.round((reportData.itemsSold / reportData.customerCount) * 10) / 10 
+      : 0.0
+
     // 既存の今日の報告があるかチェック
     const { data: existingReport, error: findError } = await supabase
       .from('daily_reports')
@@ -70,6 +82,9 @@ export class DailyReportService {
       sales_amount: reportData.salesAmount,
       customer_count: reportData.customerCount,
       items_sold: reportData.itemsSold,
+      customer_unit_price: customerUnitPrice,
+      items_per_customer: itemsPerCustomer,
+      checkout_time: reportData.checkoutTime,
       notes: reportData.notes || null,
       updated_at: new Date().toISOString()
     }

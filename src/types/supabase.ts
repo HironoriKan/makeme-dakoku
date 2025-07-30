@@ -16,9 +16,12 @@ export type Database = {
     Tables: {
       daily_reports: {
         Row: {
+          checkout_time: string | null
           created_at: string | null
           customer_count: number
+          customer_unit_price: number
           id: string
+          items_per_customer: number
           items_sold: number
           notes: string | null
           report_date: string
@@ -27,9 +30,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          checkout_time?: string | null
           created_at?: string | null
           customer_count: number
+          customer_unit_price?: number
           id?: string
+          items_per_customer?: number
           items_sold: number
           notes?: string | null
           report_date: string
@@ -38,9 +44,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          checkout_time?: string | null
           created_at?: string | null
           customer_count?: number
+          customer_unit_price?: number
           id?: string
+          items_per_customer?: number
           items_sold?: number
           notes?: string | null
           report_date?: string

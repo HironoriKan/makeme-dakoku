@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface CheckoutReportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  checkoutTime: string | null;
 }
 
 interface ReportData {
@@ -15,7 +16,7 @@ interface ReportData {
   notes: string;
 }
 
-const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClose }) => {
+const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClose, checkoutTime }) => {
   const { user } = useAuth();
   const [reportData, setReportData] = useState<ReportData>({
     sales: '',
@@ -49,7 +50,8 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
         salesAmount: parseInt(reportData.sales) || 0,
         customerCount: parseInt(reportData.customerCount) || 0,
         itemsSold: parseInt(reportData.itemsSold) || 0,
-        notes: reportData.notes.trim() || undefined
+        notes: reportData.notes.trim() || undefined,
+        checkoutTime: checkoutTime || new Date().toISOString() // 退勤時刻を記録
       };
 
       // Supabaseに報告データを保存
@@ -120,11 +122,11 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                 <p className="text-xs text-gray-500 mt-1">本日の総売上金額を入力してください</p>
               </div>
 
-              {/* 対応お客様数 */}
+              {/* 購入お客様数 */}
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Users className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  対応お客様数（人）
+                  購入お客様数（人）
                 </label>
                 <input
                   type="number"
@@ -135,7 +137,7 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent"
                   placeholder="例: 25"
                 />
-                <p className="text-xs text-gray-500 mt-1">接客したお客様の人数を入力してください</p>
+                <p className="text-xs text-gray-500 mt-1">商品を購入されたお客様の人数を入力してください</p>
               </div>
 
               {/* 販売アイテム数 */}
