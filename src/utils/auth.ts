@@ -6,27 +6,9 @@ export const exchangeCodeForToken = async (code: string): Promise<{
   id_token: string;
 }> => {
   try {
-    // 開発環境での直接的なトークン交換（セキュリティリスクあり）
-    const isDevelopment = import.meta.env.DEV;
-  
-  if (!isDevelopment) {
-    // 本番環境では、バックエンドAPIを通してトークン交換を行う
-    const response = await fetch('/api/auth/line/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code }),
-    });
-
-    if (!response.ok) {
-      throw new Error('バックエンドでのトークン交換に失敗しました');
-    }
-
-    return response.json();
-  }
-
-  // 開発環境のみ：直接LINE APIでトークン交換
+    // ⚠️ セキュリティ注意: 
+    // 理想的には本番環境でバックエンドAPIを使用すべきですが、
+    // 静的サイトデプロイのため、直接LINE APIを呼び出します
   const channelSecret = import.meta.env.VITE_LINE_CHANNEL_SECRET;
   if (!channelSecret) {
     throw new Error('Channel Secretが設定されていません');

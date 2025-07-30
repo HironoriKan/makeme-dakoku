@@ -29,9 +29,17 @@ const AuthCallback: React.FC = () => {
         }
 
         const storedState = localStorage.getItem('line_login_state');
+        console.log('🔍 State検証:', {
+          received: state,
+          stored: storedState,
+          match: state === storedState
+        });
+        
         if (state !== storedState) {
           console.error('State パラメータが一致しません');
-          alert('セキュリティエラーが発生しました。もう一度お試しください。');
+          // 古いstateをクリアして再試行を促す
+          localStorage.removeItem('line_login_state');
+          alert('セキュリティエラーが発生しました。ブラウザを更新してもう一度お試しください。');
           window.location.href = '/';
           return;
         }
