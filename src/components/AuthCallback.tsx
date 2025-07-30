@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { exchangeCodeForToken, verifyIdToken, getUserProfile, refreshAuthSession } from '../utils/auth';
 import { LineUser } from '../types/auth';
-import { UserService } from '../services/userService';
+import { UserServiceSimple } from '../services/userServiceSimple';
 
 const AuthCallback: React.FC = () => {
   const { logout } = useAuth();
@@ -60,10 +60,11 @@ const AuthCallback: React.FC = () => {
 
         // Supabaseにユーザー情報を保存または更新
         try {
-          const dbUser = await UserService.findOrCreateUser(user);
-          console.log('DBユーザー情報:', dbUser);
+          console.log('📝 Supabaseにユーザー情報を保存開始');
+          const dbUser = await UserServiceSimple.findOrCreateUser(user);
+          console.log('✅ DBユーザー情報保存成功:', dbUser);
         } catch (dbError) {
-          console.error('DB操作エラー:', dbError);
+          console.error('❌ DB操作エラー:', dbError);
           // DBエラーでもログイン処理は継続（フォールバック）
         }
 

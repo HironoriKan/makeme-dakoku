@@ -41,7 +41,9 @@
       "mcp__supabase__generate_typescript_types",
       "mcp__supabase__get_project_url",
       "mcp__supabase__get_anon_key",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_logs"
     ],
     "deny": []
   }

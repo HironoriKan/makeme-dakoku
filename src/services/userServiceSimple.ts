@@ -6,42 +6,26 @@ type User = Database['public']['Tables']['users']['Row']
 type UserInsert = Database['public']['Tables']['users']['Insert']
 type UserUpdate = Database['public']['Tables']['users']['Update']
 
-export class UserService {
-  static async setUserContext(lineUserId: string) {
-    try {
-      const { data, error } = await supabase.rpc('set_config', {
-        setting_name: 'app.current_user_line_id',
-        new_value: lineUserId,
-        is_local: true
-      });
-      
-      if (error) {
-        console.error('set_config エラー:', error);
-        throw error;
-      }
-      
-      console.log('✅ User context set:', lineUserId);
-      return data;
-    } catch (error) {
-      console.error('❌ setUserContext エラー:', error);
-      throw error;
-    }
-  }
-
+export class UserServiceSimple {
   static async findOrCreateUser(lineUser: LineUser): Promise<User> {
-    await this.setUserContext(lineUser.userId)
-
+    console.log('🔍 ユーザー検索開始:', lineUser.userId);
+    
+    // 既存ユーザーを検索（RLS無効化済みなのでシンプルに）
     let { data: existingUser, error: findError } = await supabase
       .from('users')
       .select('*')
       .eq('line_user_id', lineUser.userId)
       .single()
 
+    console.log('🔍 検索結果:', { existingUser, findError });
+
     if (findError && findError.code !== 'PGRST116') {
+      console.error('❌ ユーザー検索エラー:', findError);
       throw new Error(`ユーザー検索エラー: ${findError.message}`)
     }
 
     if (existingUser) {
+      console.log('🔄 既存ユーザーを更新');
       const updateData: UserUpdate = {
         display_name: lineUser.displayName,
         picture_url: lineUser.pictureUrl,
@@ -57,11 +41,14 @@ export class UserService {
         .single()
 
       if (updateError) {
+        console.error('❌ ユーザー更新エラー:', updateError);
         throw new Error(`ユーザー更新エラー: ${updateError.message}`)
       }
 
+      console.log('✅ ユーザー更新成功:', updatedUser);
       return updatedUser
     } else {
+      console.log('➕ 新規ユーザーを作成');
       const insertData: UserInsert = {
         line_user_id: lineUser.userId,
         display_name: lineUser.displayName,
@@ -76,26 +63,12 @@ export class UserService {
         .single()
 
       if (insertError) {
+        console.error('❌ ユーザー作成エラー:', insertError);
         throw new Error(`ユーザー作成エラー: ${insertError.message}`)
       }
 
+      console.log('✅ ユーザー作成成功:', newUser);
       return newUser
     }
-  }
-
-  static async getUserByLineId(lineUserId: string): Promise<User | null> {
-    await this.setUserContext(lineUserId)
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('line_user_id', lineUserId)
-      .single()
-
-    if (error && error.code !== 'PGRST116') {
-      throw new Error(`ユーザー取得エラー: ${error.message}`)
-    }
-
-    return data
   }
 }
