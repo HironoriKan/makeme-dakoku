@@ -113,7 +113,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
           className="aspect-square flex items-center justify-center text-sm font-medium relative cursor-pointer hover:bg-gray-50 transition-colors"
           onClick={() => isCurrentMonth && handleDateClick(dateString, shift)}
         >
-          {shift && shift.shift_type !== 'off' ? (
+          {shift ? (
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
               style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
@@ -163,7 +163,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
       // 新規シフト作成
       setEditingShift({
         date: dateString,
-        shiftType: 'early',
+        shiftType: '',
         startTime: '09:00',
         endTime: '17:00',
         note: ''
@@ -285,6 +285,13 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
               />
               <span className="text-gray-600 text-xs">通常</span>
             </div>
+            <div className="flex items-center space-x-1">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('off') }}
+              />
+              <span className="text-gray-600 text-xs">休み希望</span>
+            </div>
           </div>
           <span className="text-gray-500">
             {isLoading ? '読み込み中...' : `シフト登録：${currentMonthShifts.length}日`}
@@ -348,6 +355,13 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
               />
               <span className="text-gray-600 text-xs">通常</span>
             </div>
+            <div className="flex items-center space-x-1">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('off') }}
+              />
+              <span className="text-gray-600 text-xs">休み希望</span>
+            </div>
           </div>
           <span className="text-gray-500">
             シフト登録：{nextMonthShifts.length}日
@@ -377,15 +391,16 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                   })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
+                  <option value="">シフト未設定</option>
                   <option value="early">早番(オープン)</option>
                   <option value="late">遅番(締め)</option>
                   <option value="normal">通常入店</option>
-                  <option value="off">休み</option>
+                  <option value="off">休み希望</option>
                 </select>
               </div>
 
               {/* 開始時間 */}
-              {editingShift.shiftType !== 'off' && (
+              {editingShift.shiftType && editingShift.shiftType !== 'off' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     開始時間
@@ -403,7 +418,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
               )}
 
               {/* 終了時間 */}
-              {editingShift.shiftType !== 'off' && (
+              {editingShift.shiftType && editingShift.shiftType !== 'off' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     終了時間

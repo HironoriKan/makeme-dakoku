@@ -10,7 +10,7 @@ type ShiftType = Database['public']['Enums']['shift_type']
 
 export interface ShiftData {
   date: string // YYYY-MM-DD format
-  shiftType: ShiftType
+  shiftType: ShiftType | ''  // 空文字列でnullを表現
   startTime?: string // HH:MM format
   endTime?: string // HH:MM format
   note?: string
@@ -43,10 +43,17 @@ export class ShiftService {
   static async createOrUpdateShift(
     lineUser: LineUser,
     shiftData: ShiftData
-  ): Promise<Shift> {
+  ): Promise<Shift | null> {
     console.log('📅 シフト作成/更新開始:', { lineUser: lineUser.userId, shiftData });
 
     await this.setUserContext(lineUser.userId);
+
+    // シフトタイプが空文字列の場合は削除処理
+    if (!shiftData.shiftType) {
+      console.log('🗑️ シフトタイプが空のため削除処理を実行');
+      await this.deleteShift(lineUser, shiftData.date);
+      return null;
+    }
 
     // まずユーザーIDを取得
     const { data: user, error: userError } = await supabase
@@ -199,7 +206,7 @@ export class ShiftService {
       early: '早番(オープン)',
       late: '遅番(締め)',
       normal: '通常入店',
-      off: '休み'
+      off: '休み希望'
     }
     return labels[shiftType] || shiftType
   }
@@ -209,7 +216,7 @@ export class ShiftService {
       early: '#059669', // emerald-600 - 早番(オープン)
       late: '#dc2626', // red-600 - 遅番(締め)
       normal: '#CB8585', // 通常入店
-      off: '#6b7280' // gray-500 - 休み
+      off: '#6b7280' // gray-500 - 休み希望
     }
     return colors[shiftType] || '#6b7280'
   }
