@@ -111,7 +111,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
         <div
           key={day}
           className="aspect-square flex items-center justify-center text-sm font-medium relative cursor-pointer hover:bg-gray-50 transition-colors"
-          onClick={() => isCurrentMonth && handleDateClick(dateString, shift)}
+          onClick={() => handleDateClick(dateString, shift)}
         >
           {shift ? (
             <div
@@ -124,8 +124,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
             <span className="text-gray-800 hover:text-gray-600">{day}</span>
           )}
           
-          {/* 編集可能な現在月にプラスアイコンを表示 */}
-          {isCurrentMonth && !shift && (
+          {/* 編集可能な日付にプラスアイコンを表示 */}
+          {!shift && (
             <div className="absolute top-0 right-0 w-3 h-3 bg-gray-300 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
               <Plus className="w-2 h-2 text-white" />
             </div>
@@ -140,6 +140,15 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
   // 日付クリック処理
   const handleDateClick = (dateString: string, existingShift?: Shift) => {
     if (!user) return;
+
+    // 次月の日付がクリックされた場合、カレンダーを次月に移動
+    const clickedDate = new Date(dateString);
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    if (clickedDate.getMonth() !== currentMonth || clickedDate.getFullYear() !== currentYear) {
+      setCurrentDate(new Date(clickedDate.getFullYear(), clickedDate.getMonth(), 1));
+    }
 
     setSelectedDate(dateString);
     
@@ -323,7 +332,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
 
         {/* カレンダーグリッド */}
         <div className="grid grid-cols-7 gap-1 mb-4 flex-1">
-          {generateCalendarDays(nextYear, adjustedNextMonth, nextMonthShifts)}
+          {generateCalendarDays(nextYear, adjustedNextMonth, nextMonthShifts, true)}
         </div>
 
         {/* 凡例 */}
@@ -471,7 +480,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
 
             <div className="flex justify-between items-center mt-6">
               <div>
-                {selectedDate && getShiftForDate(currentMonthShifts, selectedDate) && (editingShift.shiftStatus === 'adjusting' || !editingShift.shiftStatus) && (
+                {selectedDate && (getShiftForDate(currentMonthShifts, selectedDate) || getShiftForDate(nextMonthShifts, selectedDate)) && (editingShift.shiftStatus === 'adjusting' || !editingShift.shiftStatus) && (
                   <button
                     onClick={handleDeleteShift}
                     className="px-4 py-2 text-red-600 hover:text-red-800 transition-colors"
