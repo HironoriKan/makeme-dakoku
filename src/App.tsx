@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, MapPin, User, Coffee, LogIn, LogOut, Menu } from 'lucide-react';
 import CalendarTabs from './components/CalendarTabs';
+import CheckoutReportModal from './components/CheckoutReportModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LineLogin from './components/LineLogin';
 import AuthCallback from './components/AuthCallback';
@@ -21,6 +22,7 @@ const TimeTrackingApp: React.FC = () => {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [dbRecords, setDbRecords] = useState<any[]>([]);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -148,6 +150,8 @@ const TimeTrackingApp: React.FC = () => {
           break;
         case 'check-out':
           setWorkStatus('out');
+          // 退勤時にモーダルを表示
+          setShowCheckoutModal(true);
           break;
         case 'break-start':
           setWorkStatus('break');
@@ -472,6 +476,12 @@ const TimeTrackingApp: React.FC = () => {
         <div className="max-w-md mx-auto px-4 mt-8">
           <CalendarTabs />
         </div>
+
+        {/* Checkout Report Modal */}
+        <CheckoutReportModal
+          isOpen={showCheckoutModal}
+          onClose={() => setShowCheckoutModal(false)}
+        />
     </div>
   );
 };

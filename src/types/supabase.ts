@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_reports: {
+        Row: {
+          created_at: string | null
+          customer_count: number
+          id: string
+          items_sold: number
+          notes: string | null
+          report_date: string
+          sales_amount: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_count: number
+          id?: string
+          items_sold: number
+          notes?: string | null
+          report_date: string
+          sales_amount: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_count?: number
+          id?: string
+          items_sold?: number
+          notes?: string | null
+          report_date?: string
+          sales_amount?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_reports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shifts: {
         Row: {
           created_at: string | null

@@ -20,26 +20,9 @@ export interface ShiftData {
 
 export class ShiftService {
   static async setUserContext(lineUserId: string) {
-    try {
-      const { data, error } = await supabase.rpc('set_config', {
-        setting_name: 'app.current_user_line_id',
-        new_value: lineUserId,
-        is_local: true
-      });
-      
-      if (error) {
-        console.error('set_config エラー:', error);
-        // RLS無効化中はエラーを無視
-        console.warn('RLS無効化中のため、set_configエラーを無視');
-      }
-      
-      console.log('✅ User context set for shifts:', lineUserId);
-      return data;
-    } catch (error) {
-      console.error('❌ setUserContext エラー:', error);
-      // RLS無効化中はエラーを無視して続行
-      console.warn('RLS無効化中のため、setUserContextエラーを無視');
-    }
+    // RLS無効化中はset_configをスキップ
+    console.log('✅ User context (RLS無効化中のためスキップ):', lineUserId);
+    return true;
   }
 
   static async createOrUpdateShift(
@@ -71,17 +54,17 @@ export class ShiftService {
 
     console.log('✅ ユーザーID取得:', user.id);
 
-    // 既存のシフトを確認（RLS無効化中は直接クエリ）
+    // 既存のシフトを確認
     const { data: existingShift, error: findError } = await supabase
       .from('shifts')
       .select('*')
       .eq('user_id', user.id)
       .eq('shift_date', shiftData.date)
-      .maybeSingle() // singleの代わりにmaybeSingleを使用
+      .maybeSingle()
 
     if (findError) {
       console.error('❌ 既存シフト確認エラー:', findError);
-      console.log('既存シフト確認をスキップして新規作成します');
+      throw new Error(`既存シフト確認エラー: ${findError.message}`);
     }
 
     const shiftRecord = {
@@ -95,42 +78,23 @@ export class ShiftService {
       updated_at: new Date().toISOString()
     }
 
-    if (existingShift && !findError) {
-      // 更新
-      console.log('🔄 既存シフトを更新');
-      const { data: updatedShift, error: updateError } = await supabase
-        .from('shifts')
-        .update(shiftRecord)
-        .eq('id', existingShift.id)
-        .select('*')
-        .single()
+    // upsertを使用して新規作成または更新を一度に処理
+    console.log('💾 シフトをupsert処理');
+    const { data: upsertedShift, error: upsertError } = await supabase
+      .from('shifts')
+      .upsert(shiftRecord, {
+        onConflict: 'user_id,shift_date'
+      })
+      .select('*')
+      .single()
 
-      if (updateError) {
-        console.error('❌ シフト更新エラー:', updateError);
-        throw new Error(`シフト更新エラー: ${updateError.message}`)
-      }
-
-      console.log('✅ シフト更新成功:', updatedShift);
-      return updatedShift
-    } else {
-      // 新規作成またはupsert
-      console.log('➕ 新規シフトを作成');
-      const { data: newShift, error: insertError } = await supabase
-        .from('shifts')
-        .upsert(shiftRecord, {
-          onConflict: 'user_id,shift_date'
-        })
-        .select('*')
-        .single()
-
-      if (insertError) {
-        console.error('❌ シフト作成エラー:', insertError);
-        throw new Error(`シフト作成エラー: ${insertError.message}`)
-      }
-
-      console.log('✅ シフト作成成功:', newShift);
-      return newShift
+    if (upsertError) {
+      console.error('❌ シフトupsertエラー:', upsertError);
+      throw new Error(`シフト保存エラー: ${upsertError.message}`)
     }
+
+    console.log('✅ シフトupsert成功:', upsertedShift);
+    return upsertedShift
   }
 
   static async getMonthlyShifts(
