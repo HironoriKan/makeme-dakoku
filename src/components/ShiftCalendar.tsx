@@ -12,7 +12,7 @@ interface ShiftCalendarProps {
 }
 
 const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ 
-  availableDates = [4, 5, 7, 8, 10, 11, 12, 15, 17, 18, 19, 20, 22, 23, 24, 27, 28] 
+  availableDates = [] 
 }) => {
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -105,7 +105,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
     for (let day = 1; day <= daysInMonth; day++) {
       const dateString = `${targetYear}-${(targetMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
       const shift = getShiftForDate(shifts, dateString);
-      const isAvailable = availableDates.includes(day); // 従来の静的データも保持
+      // シフトデータのみでマークアップを決定
       
       days.push(
         <div
@@ -117,13 +117,6 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
               style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
-            >
-              {day}
-            </div>
-          ) : isAvailable ? (
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium"
-              style={{ backgroundColor: '#CB8585' }}
             >
               {day}
             </div>
