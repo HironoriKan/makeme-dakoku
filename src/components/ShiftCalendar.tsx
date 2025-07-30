@@ -114,16 +114,15 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
           onClick={() => isCurrentMonth && handleDateClick(dateString, shift)}
         >
           {shift ? (
-            <div className="relative w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-xs">
+            <div className="relative flex flex-col items-center">
               <div
-                className="absolute inset-0 rounded-full"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
                 style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
-              />
-              <span className="relative z-10">{day}</span>
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                <div className="text-xs font-medium text-gray-800 bg-white px-1 rounded shadow-sm whitespace-nowrap">
-                  {ShiftService.getShiftTypeLabel(shift.shift_type)}
-                </div>
+              >
+                {day}
+              </div>
+              <div className="absolute -bottom-2 text-xs font-medium text-gray-700 whitespace-nowrap">
+                {ShiftService.getShiftTypeLabel(shift.shift_type)}
               </div>
             </div>
           ) : isAvailable ? (
@@ -169,7 +168,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
       // 新規シフト作成
       setEditingShift({
         date: dateString,
-        shiftType: 'morning',
+        shiftType: 'early',
         startTime: '09:00',
         endTime: '17:00',
         note: ''
@@ -269,22 +268,27 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
 
         {/* 凡例 */}
         <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('early') }}
+              />
               <span className="text-gray-600 text-xs">早番</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('late') }}
+              />
               <span className="text-gray-600 text-xs">遅番</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-amber-500" />
-              <span className="text-gray-600 text-xs">夜番</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-violet-500" />
-              <span className="text-gray-600 text-xs">深夜</span>
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('normal') }}
+              />
+              <span className="text-gray-600 text-xs">通常</span>
             </div>
           </div>
           <span className="text-gray-500">
@@ -327,22 +331,27 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
 
         {/* 凡例 */}
         <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('early') }}
+              />
               <span className="text-gray-600 text-xs">早番</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('late') }}
+              />
               <span className="text-gray-600 text-xs">遅番</span>
             </div>
             <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-amber-500" />
-              <span className="text-gray-600 text-xs">夜番</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 rounded-full bg-violet-500" />
-              <span className="text-gray-600 text-xs">深夜</span>
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('normal') }}
+              />
+              <span className="text-gray-600 text-xs">通常</span>
             </div>
           </div>
           <span className="text-gray-500">
@@ -373,10 +382,9 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                   })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="morning">早番</option>
-                  <option value="afternoon">遅番</option>
-                  <option value="evening">夜番</option>
-                  <option value="night">深夜</option>
+                  <option value="early">早番(オープン)</option>
+                  <option value="late">遅番(締め)</option>
+                  <option value="normal">通常入店</option>
                   <option value="off">休み</option>
                 </select>
               </div>

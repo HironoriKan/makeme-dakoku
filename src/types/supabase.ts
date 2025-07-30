@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      shifts: {
+        Row: {
+          created_at: string | null
+          end_time: string | null
+          id: string
+          note: string | null
+          shift_date: string
+          shift_type: Database["public"]["Enums"]["shift_type"]
+          start_time: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_time?: string | null
+          id?: string
+          note?: string | null
+          shift_date: string
+          shift_type: Database["public"]["Enums"]["shift_type"]
+          start_time?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string | null
+          id?: string
+          note?: string | null
+          shift_date?: string
+          shift_type?: Database["public"]["Enums"]["shift_type"]
+          start_time?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_records: {
         Row: {
           created_at: string | null
@@ -96,10 +140,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      set_config: {
+        Args: { setting_name: string; new_value: string; is_local?: boolean }
+        Returns: string
+      }
     }
     Enums: {
       record_type: "clock_in" | "clock_out" | "break_start" | "break_end"
+      shift_type: "early" | "late" | "normal" | "off"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -228,6 +276,7 @@ export const Constants = {
   public: {
     Enums: {
       record_type: ["clock_in", "clock_out", "break_start", "break_end"],
+      shift_type: ["early", "late", "normal", "off"],
     },
   },
 } as const

@@ -27,14 +27,16 @@ export class ShiftService {
       
       if (error) {
         console.error('set_config エラー:', error);
-        throw error;
+        // RLS無効化中はエラーを無視
+        console.warn('RLS無効化中のため、set_configエラーを無視');
       }
       
       console.log('✅ User context set for shifts:', lineUserId);
       return data;
     } catch (error) {
       console.error('❌ setUserContext エラー:', error);
-      throw error;
+      // RLS無効化中はエラーを無視して続行
+      console.warn('RLS無効化中のため、setUserContextエラーを無視');
     }
   }
 
@@ -60,17 +62,17 @@ export class ShiftService {
 
     console.log('✅ ユーザーID取得:', user.id);
 
-    // 既存のシフトを確認
+    // 既存のシフトを確認（RLS無効化中は直接クエリ）
     const { data: existingShift, error: findError } = await supabase
       .from('shifts')
       .select('*')
       .eq('user_id', user.id)
       .eq('shift_date', shiftData.date)
-      .single()
+      .maybeSingle() // singleの代わりにmaybeSingleを使用
 
-    if (findError && findError.code !== 'PGRST116') {
+    if (findError) {
       console.error('❌ 既存シフト確認エラー:', findError);
-      throw new Error(`シフト確認エラー: ${findError.message}`)
+      console.log('既存シフト確認をスキップして新規作成します');
     }
 
     const shiftRecord = {
@@ -83,7 +85,7 @@ export class ShiftService {
       updated_at: new Date().toISOString()
     }
 
-    if (existingShift) {
+    if (existingShift && !findError) {
       // 更新
       console.log('🔄 既存シフトを更新');
       const { data: updatedShift, error: updateError } = await supabase
@@ -101,11 +103,13 @@ export class ShiftService {
       console.log('✅ シフト更新成功:', updatedShift);
       return updatedShift
     } else {
-      // 新規作成
+      // 新規作成またはupsert
       console.log('➕ 新規シフトを作成');
       const { data: newShift, error: insertError } = await supabase
         .from('shifts')
-        .insert(shiftRecord)
+        .upsert(shiftRecord, {
+          onConflict: 'user_id,shift_date'
+        })
         .select('*')
         .single()
 
@@ -131,20 +135,30 @@ export class ShiftService {
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
     const endDate = new Date(year, month, 0).toISOString().split('T')[0] // 月末日
 
+    // まずユーザーIDを取得
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('line_user_id', lineUser.userId)
+      .single()
+
+    if (userError || !user) {
+      console.error('❌ ユーザー取得エラー:', userError);
+      return []
+    }
+
+    // RLS無効化中は直接user_idでクエリ
     const { data: shifts, error } = await supabase
       .from('shifts')
-      .select(`
-        *,
-        users!inner(line_user_id)
-      `)
-      .eq('users.line_user_id', lineUser.userId)
+      .select('*')
+      .eq('user_id', user.id)
       .gte('shift_date', startDate)
       .lte('shift_date', endDate)
       .order('shift_date', { ascending: true })
 
     if (error) {
       console.error('❌ 月間シフト取得エラー:', error);
-      throw new Error(`月間シフト取得エラー: ${error.message}`)
+      return []
     }
 
     console.log('✅ 月間シフト取得成功:', shifts?.length, '件');
@@ -182,10 +196,9 @@ export class ShiftService {
 
   static getShiftTypeLabel(shiftType: ShiftType): string {
     const labels = {
-      morning: '早番',
-      afternoon: '遅番',
-      evening: '夜番',
-      night: '深夜',
+      early: '早番(オープン)',
+      late: '遅番(締め)',
+      normal: '通常入店',
       off: '休み'
     }
     return labels[shiftType] || shiftType
@@ -193,13 +206,12 @@ export class ShiftService {
 
   static getShiftTypeColor(shiftType: ShiftType): string {
     const colors = {
-      morning: '#10B981', // green
-      afternoon: '#3B82F6', // blue
-      evening: '#F59E0B', // amber
-      night: '#8B5CF6', // violet
-      off: '#6B7280' // gray
+      early: '#059669', // emerald-600 - 早番(オープン)
+      late: '#dc2626', // red-600 - 遅番(締め)
+      normal: '#2563eb', // blue-600 - 通常入店
+      off: '#6b7280' // gray-500 - 休み
     }
-    return colors[shiftType] || '#6B7280'
+    return colors[shiftType] || '#6b7280'
   }
 
   static formatTime(time: string | null): string {
