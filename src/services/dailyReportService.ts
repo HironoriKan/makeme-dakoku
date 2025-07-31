@@ -78,25 +78,20 @@ export class DailyReportService {
     }
 
     if (existingReport) {
-      // 既存の日報がある場合は重複登録を防止
-      console.log('⚠️ 既存の日報が見つかりました。重複登録を防止します:', existingReport.id)
+      // 既存の日報がある場合は上書き更新
+      console.log('⚠️ 既存の日報が見つかりました。データを上書き更新します:', existingReport.id)
       
-      // 既存の重要データを保護しつつ、必要に応じて一部のみ更新
+      // フォームから送信されたデータで完全に上書き更新
       const updateData = {
-        // 既存の売上データが0の場合のみ更新を許可
-        ...(existingReport.sales_amount === 0 && reportData.salesAmount > 0 && {
-          sales_amount: reportData.salesAmount,
-          customer_count: reportData.customerCount,
-          items_sold: reportData.itemsSold,
-          customer_unit_price: customerUnitPrice,
-          items_per_customer: itemsPerCustomer,
-        }),
-        // 退勤時刻は常に最新を記録（複数回退勤ボタンを押した場合に対応）
+        sales_amount: reportData.salesAmount,
+        customer_count: reportData.customerCount,
+        items_sold: reportData.itemsSold,
+        customer_unit_price: customerUnitPrice,
+        items_per_customer: itemsPerCustomer,
+        // 退勤時刻は常に最新を記録
         checkout_time: reportData.checkoutTime,
-        // 備考は追記形式で更新
-        notes: existingReport.notes 
-          ? `${existingReport.notes}\n[追記 ${new Date().toLocaleString()}] ${reportData.notes || ''}`
-          : reportData.notes || null,
+        // 備考は新しい内容で上書き（追記ではなく）
+        notes: reportData.notes || null,
         updated_at: new Date().toISOString()
       }
 

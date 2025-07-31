@@ -37,7 +37,21 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
         const todayReport = await DailyReportService.getTodayReport(user);
         if (todayReport) {
           setExistingReport(todayReport);
-          // 既存データがある場合は警告メッセージ用に保持
+          // 既存データをフォームの初期値として設定
+          setReportData({
+            sales: todayReport.sales_amount > 0 ? todayReport.sales_amount.toString() : '',
+            customerCount: todayReport.customer_count > 0 ? todayReport.customer_count.toString() : '',
+            itemsSold: todayReport.items_sold > 0 ? todayReport.items_sold.toString() : '',
+            notes: todayReport.notes ? todayReport.notes.split('\n[追記')[0] : '' // 追記部分を除いた元の備考のみ
+          });
+        } else {
+          // 既存データがない場合は空にリセット
+          setReportData({
+            sales: '',
+            customerCount: '',
+            itemsSold: '',
+            notes: ''
+          });
         }
       } catch (error) {
         console.error('既存日報チェックエラー:', error);
@@ -142,7 +156,7 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                         <strong>アイテム:</strong> {existingReport.items_sold || 0}個
                       </p>
                       <p className="mt-1 text-xs">
-                        ※ 既存の売上データが0の場合のみ上書きされます。備考は追記されます。
+                        ※ 入力欄に既存データが設定されています。編集して上書きできます。
                       </p>
                     </div>
                   </div>
