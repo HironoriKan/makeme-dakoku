@@ -8,6 +8,7 @@ import { RealtimeProvider, useRealtime } from './contexts/RealtimeContext';
 import LineLogin from './components/LineLogin';
 import AuthCallback from './components/AuthCallback';
 import { TimeRecordService } from './services/timeRecordService';
+import { LocationService, Location } from './services/locationService';
 
 interface TimeEntry {
   id: string;
@@ -21,7 +22,8 @@ const TimeTrackingApp: React.FC = () => {
   const { notifyTimeRecordUpdate, notifyAttendanceUpdate } = useRealtime();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workStatus, setWorkStatus] = useState<'out' | 'in' | 'break'>('out');
-  const [selectedLocation, setSelectedLocation] = useState('本社');
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [locations, setLocations] = useState<Location[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [dbRecords, setDbRecords] = useState<any[]>([]);
@@ -35,6 +37,28 @@ const TimeTrackingApp: React.FC = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  // 拠点一覧を取得
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const locationList = await LocationService.getActiveLocations();
+        setLocations(locationList);
+        
+        // デフォルト拠点を設定
+        if (locationList.length > 0 && !selectedLocation) {
+          const defaultLocation = await LocationService.getDefaultLocation();
+          setSelectedLocation(defaultLocation?.id || locationList[0].id);
+        }
+      } catch (error) {
+        console.error('拠点一覧取得エラー:', error);
+        // フォールバック: 従来の本社を設定
+        setSelectedLocation('HQ');
+      }
+    };
+
+    loadLocations();
+  }, [selectedLocation]);
 
   // DBから今日の打刻記録を取得してローカル状態と同期
   useEffect(() => {
@@ -133,9 +157,14 @@ const TimeTrackingApp: React.FC = () => {
         'break-end': 'break_end' as const
       };
 
+      // 選択された拠点の情報を取得
+      const selectedLocationInfo = locations.find(loc => loc.id === selectedLocation);
+      const locationName = selectedLocationInfo?.name || '不明';
+
       await TimeRecordService.createTimeRecord(user, {
         recordType: recordTypeMap[action],
-        note: `${selectedLocation}からの打刻`
+        locationId: selectedLocation,
+        note: `${locationName}からの打刻`
       });
 
       // ローカル状態も更新
@@ -143,7 +172,7 @@ const TimeTrackingApp: React.FC = () => {
         id: Date.now().toString(),
         type: action,
         timestamp: new Date(),
-        location: selectedLocation
+        location: locations.find(loc => loc.id === selectedLocation)?.name || '不明'
       };
 
       setTimeEntries(prev => [newEntry, ...prev]);
@@ -315,10 +344,17 @@ const TimeTrackingApp: React.FC = () => {
               onChange={(e) => setSelectedLocation(e.target.value)}
               className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:border-transparent"
               style={{'--tw-ring-color': '#CB8585'} as React.CSSProperties}
+              disabled={locations.length === 0}
             >
-              <option value="本社">本社</option>
-              <option value="支社">支社</option>
-              <option value="在宅">在宅</option>
+              {locations.length === 0 ? (
+                <option value="">読み込み中...</option>
+              ) : (
+                locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    {location.name}
+                  </option>
+                ))
+              )}
             </select>
           </div>
         </div>

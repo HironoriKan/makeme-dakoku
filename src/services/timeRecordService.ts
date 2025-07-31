@@ -14,6 +14,7 @@ export interface LocationData {
 
 export interface TimeRecordData {
   recordType: RecordType
+  locationId?: string
   location?: LocationData
   note?: string
 }
@@ -44,6 +45,7 @@ export class TimeRecordService {
       user_id: user.id,
       record_type: recordData.recordType,
       recorded_at: new Date().toISOString(),
+      location_id: recordData.locationId || null,
       location_lat: recordData.location?.latitude,
       location_lng: recordData.location?.longitude,
       location_name: recordData.location?.locationName,

@@ -1,76 +1,179 @@
-export interface LocationData {
-  latitude: number
-  longitude: number
-  locationName?: string
+import { supabase } from '../lib/supabase';
+import { LineUser } from '../types/auth';
+
+export interface Location {
+  id: string;
+  name: string;
+  code: string;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export class LocationService {
-  static async getCurrentLocation(): Promise<LocationData> {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('位置情報がサポートされていません'))
-        return
+  static async setUserContext(lineUserId: string) {
+    // RLS無効化中はset_configをスキップ
+    console.log('✅ User context (RLS無効化中のためスキップ):', lineUserId);
+    return true;
+  }
+
+  /**
+   * 有効な拠点一覧を取得（表示順序でソート）
+   */
+  static async getActiveLocations(): Promise<Location[]> {
+    console.log('📍 有効な拠点一覧を取得');
+
+    try {
+      const { data: locations, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        console.error('❌ 拠点一覧取得エラー:', error);
+        throw new Error(`拠点一覧取得エラー: ${error.message}`);
       }
 
-      console.log('📍 位置情報取得開始');
-
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords
-          console.log('✅ 位置情報取得成功:', { latitude, longitude });
-
-          try {
-            const locationName = await this.getLocationName(latitude, longitude)
-            resolve({
-              latitude,
-              longitude,
-              locationName
-            })
-          } catch (error) {
-            console.warn('⚠️ 住所取得失敗、位置情報のみ使用:', error);
-            resolve({
-              latitude,
-              longitude
-            })
-          }
-        },
-        (error) => {
-          console.error('❌ 位置情報取得エラー:', error);
-          let message = '位置情報の取得に失敗しました'
-          
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              message = '位置情報の使用が拒否されました'
-              break
-            case error.POSITION_UNAVAILABLE:
-              message = '位置情報が利用できません'
-              break
-            case error.TIMEOUT:
-              message = '位置情報の取得がタイムアウトしました'
-              break
-          }
-          
-          reject(new Error(message))
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000
-        }
-      )
-    })
-  }
-
-  private static async getLocationName(latitude: number, longitude: number): Promise<string> {
-    // Google Geocoding APIまたは他のリバースジオコーディングサービスを使用
-    // 今回は簡易版として座標のみ返す
-    return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-  }
-
-  static formatLocation(location: LocationData): string {
-    if (location.locationName) {
-      return location.locationName
+      console.log('✅ 拠点一覧取得成功:', locations?.length, '件');
+      return locations || [];
+    } catch (error) {
+      console.error('❌ 拠点一覧取得処理エラー:', error);
+      throw error;
     }
-    return `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
+  }
+
+  /**
+   * 拠点IDから拠点情報を取得
+   */
+  static async getLocationById(locationId: string): Promise<Location | null> {
+    console.log('📍 拠点情報取得:', locationId);
+
+    try {
+      const { data: location, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('id', locationId)
+        .single();
+
+      if (error) {
+        console.error('❌ 拠点情報取得エラー:', error);
+        return null;
+      }
+
+      console.log('✅ 拠点情報取得成功:', location?.name);
+      return location;
+    } catch (error) {
+      console.error('❌ 拠点情報取得処理エラー:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 拠点コードから拠点情報を取得
+   */
+  static async getLocationByCode(code: string): Promise<Location | null> {
+    console.log('📍 拠点情報取得（コード）:', code);
+
+    try {
+      const { data: location, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+      if (error) {
+        console.error('❌ 拠点情報取得エラー（コード）:', error);
+        return null;
+      }
+
+      console.log('✅ 拠点情報取得成功（コード）:', location?.name);
+      return location;
+    } catch (error) {
+      console.error('❌ 拠点情報取得処理エラー（コード）:', error);
+      return null;
+    }
+  }
+
+  /**
+   * デフォルト拠点を取得（表示順序が最小のもの）
+   */
+  static async getDefaultLocation(): Promise<Location | null> {
+    console.log('📍 デフォルト拠点取得');
+
+    try {
+      const { data: location, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.error('❌ デフォルト拠点取得エラー:', error);
+        return null;
+      }
+
+      console.log('✅ デフォルト拠点取得成功:', location?.name);
+      return location;
+    } catch (error) {
+      console.error('❌ デフォルト拠点取得処理エラー:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 拠点使用統計を取得（管理者用）
+   */
+  static async getLocationUsageStats(
+    lineUser: LineUser,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    location_id: string;
+    location_name: string;
+    usage_count: number;
+    last_used: string;
+  }[]> {
+    console.log('📊 拠点使用統計取得:', { startDate, endDate });
+
+    await this.setUserContext(lineUser.userId);
+
+    try {
+      let query = supabase
+        .from('time_records')
+        .select(`
+          location_id,
+          locations!inner(name),
+          count()
+        `)
+        .not('location_id', 'is', null);
+
+      if (startDate) {
+        query = query.gte('recorded_at', startDate);
+      }
+      if (endDate) {
+        query = query.lte('recorded_at', endDate);
+      }
+
+      const { data: stats, error } = await query;
+
+      if (error) {
+        console.error('❌ 拠点使用統計取得エラー:', error);
+        throw new Error(`拠点使用統計取得エラー: ${error.message}`);
+      }
+
+      console.log('✅ 拠点使用統計取得成功:', stats?.length, '件');
+      return stats || [];
+    } catch (error) {
+      console.error('❌ 拠点使用統計取得処理エラー:', error);
+      throw error;
+    }
   }
 }
