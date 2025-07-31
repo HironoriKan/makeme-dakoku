@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Clock, Coffee, LogIn, LogOut, BarChart3, MapPin, Edit3, Trash2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useRealtime } from '../contexts/RealtimeContext';
 import { TimeRecordService } from '../services/timeRecordService';
 import { TimeRecordChangeService, TimeRecordEditData, TimeRecordDeleteData } from '../services/timeRecordChangeService';
 import { DailyReportService, DailyReport } from '../services/dailyReportService';
@@ -31,6 +32,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   availableDates = [] 
 }) => {
   const { user } = useAuth();
+  const { onAttendanceUpdate, notifyTimeRecordUpdate, notifyAttendanceUpdate } = useRealtime();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [monthlyAttendance, setMonthlyAttendance] = useState<DayAttendance[]>([]);
   const [locationStats, setLocationStats] = useState<LocationStats[]>([]);
@@ -206,6 +208,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     loadMonthlyAttendance();
   }, [user, currentDate]);
 
+  // リアルタイム更新のリスナー設定
+  useEffect(() => {
+    const unsubscribe = onAttendanceUpdate(() => {
+      console.log('🔄 AttendanceCalendar: リアルタイム更新を受信');
+      loadMonthlyAttendance();
+    });
+
+    return unsubscribe;
+  }, [onAttendanceUpdate, loadMonthlyAttendance]);
+
   // 指定日の出勤データを取得
   const getAttendanceForDate = (dateString: string): DayAttendance | undefined => {
     return monthlyAttendance.find(attendance => attendance.date === dateString);
@@ -276,6 +288,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
 
       await TimeRecordChangeService.editTimeRecord(user, editingRecord.id, editData);
       
+      // リアルタイム更新を通知
+      notifyTimeRecordUpdate();
+      notifyAttendanceUpdate();
+      
       // リフレッシュ
       await loadMonthlyAttendance();
       
@@ -320,6 +336,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       };
 
       await TimeRecordChangeService.deleteTimeRecord(user, deleteRecord.id, deleteData);
+      
+      // リアルタイム更新を通知
+      notifyTimeRecordUpdate();
+      notifyAttendanceUpdate();
       
       // リフレッシュ
       await loadMonthlyAttendance();

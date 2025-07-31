@@ -26,6 +26,26 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingReport, setExistingReport] = useState<any>(null);
+
+  // モーダルが開かれた時に既存の日報をチェック
+  React.useEffect(() => {
+    const checkExistingReport = async () => {
+      if (!isOpen || !user) return;
+      
+      try {
+        const todayReport = await DailyReportService.getTodayReport(user);
+        if (todayReport) {
+          setExistingReport(todayReport);
+          // 既存データがある場合は警告メッセージ用に保持
+        }
+      } catch (error) {
+        console.error('既存日報チェックエラー:', error);
+      }
+    };
+
+    checkExistingReport();
+  }, [isOpen, user]);
 
   const handleInputChange = (field: keyof ReportData, value: string) => {
     setReportData(prev => ({
@@ -81,6 +101,7 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
     });
     setIsSubmitted(false);
     setIsSubmitting(false);
+    setExistingReport(null);
     onClose();
   };
 
@@ -101,6 +122,33 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
+
+            {/* 既存日報の警告メッセージ */}
+            {existingReport && (
+              <div className="mx-6 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800">既存の日報があります</h3>
+                    <div className="mt-2 text-sm text-yellow-700">
+                      <p>本日分の日報は既に登録済みです。</p>
+                      <p className="mt-1">
+                        <strong>売上:</strong> ¥{existingReport.sales_amount?.toLocaleString() || '0'}、
+                        <strong>お客様:</strong> {existingReport.customer_count || 0}人、
+                        <strong>アイテム:</strong> {existingReport.items_sold || 0}個
+                      </p>
+                      <p className="mt-1 text-xs">
+                        ※ 既存の売上データが0の場合のみ上書きされます。備考は追記されます。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* フォーム */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6">

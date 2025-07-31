@@ -4,6 +4,7 @@ import CalendarTabs from './components/CalendarTabs';
 import CheckoutReportModal from './components/CheckoutReportModal';
 import Footer from './components/Footer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { RealtimeProvider, useRealtime } from './contexts/RealtimeContext';
 import LineLogin from './components/LineLogin';
 import AuthCallback from './components/AuthCallback';
 import { TimeRecordService } from './services/timeRecordService';
@@ -17,6 +18,7 @@ interface TimeEntry {
 
 const TimeTrackingApp: React.FC = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { notifyTimeRecordUpdate, notifyAttendanceUpdate } = useRealtime();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workStatus, setWorkStatus] = useState<'out' | 'in' | 'break'>('out');
   const [selectedLocation, setSelectedLocation] = useState('本社');
@@ -172,6 +174,10 @@ const TimeTrackingApp: React.FC = () => {
         'break-end': '休憩終了'
       };
       
+      // リアルタイム更新を通知
+      notifyTimeRecordUpdate();
+      notifyAttendanceUpdate();
+
       // 一時的な成功表示
       const originalText = document.querySelector(`button[data-action="${action}"] span`)?.textContent;
       const buttonSpan = document.querySelector(`button[data-action="${action}"] span`);
@@ -499,7 +505,9 @@ const TimeTrackingApp: React.FC = () => {
 function App() {
   return (
     <AuthProvider>
-      <TimeTrackingApp />
+      <RealtimeProvider>
+        <TimeTrackingApp />
+      </RealtimeProvider>
     </AuthProvider>
   );
 }

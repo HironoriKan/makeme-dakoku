@@ -74,8 +74,49 @@ export class DailyReportService {
 
     if (findError) {
       console.error('❌ 既存報告確認エラー:', findError)
+      throw new Error(`既存報告確認エラー: ${findError.message}`)
     }
 
+    if (existingReport) {
+      // 既存の日報がある場合は重複登録を防止
+      console.log('⚠️ 既存の日報が見つかりました。重複登録を防止します:', existingReport.id)
+      
+      // 既存の重要データを保護しつつ、必要に応じて一部のみ更新
+      const updateData = {
+        // 既存の売上データが0の場合のみ更新を許可
+        ...(existingReport.sales_amount === 0 && reportData.salesAmount > 0 && {
+          sales_amount: reportData.salesAmount,
+          customer_count: reportData.customerCount,
+          items_sold: reportData.itemsSold,
+          customer_unit_price: customerUnitPrice,
+          items_per_customer: itemsPerCustomer,
+        }),
+        // 退勤時刻は常に最新を記録（複数回退勤ボタンを押した場合に対応）
+        checkout_time: reportData.checkoutTime,
+        // 備考は追記形式で更新
+        notes: existingReport.notes 
+          ? `${existingReport.notes}\n[追記 ${new Date().toLocaleString()}] ${reportData.notes || ''}`
+          : reportData.notes || null,
+        updated_at: new Date().toISOString()
+      }
+
+      const { data: updatedReport, error: updateError } = await supabase
+        .from('daily_reports')
+        .update(updateData)
+        .eq('id', existingReport.id)
+        .select('*')
+        .single()
+
+      if (updateError) {
+        console.error('❌ 日次報告更新エラー:', updateError)
+        throw new Error(`日次報告更新エラー: ${updateError.message}`)
+      }
+
+      console.log('✅ 既存日報を安全に更新:', updatedReport)
+      return updatedReport
+    }
+
+    // 新規作成の場合
     const reportRecord = {
       user_id: user.id,
       report_date: today,
@@ -86,26 +127,22 @@ export class DailyReportService {
       items_per_customer: itemsPerCustomer,
       checkout_time: reportData.checkoutTime,
       notes: reportData.notes || null,
-      updated_at: new Date().toISOString()
     }
 
-    // upsertを使用して新規作成または更新を一度に処理
-    console.log('💾 日次報告をupsert処理')
-    const { data: upsertedReport, error: upsertError } = await supabase
+    console.log('💾 新規日次報告を作成')
+    const { data: newReport, error: insertError } = await supabase
       .from('daily_reports')
-      .upsert(reportRecord, {
-        onConflict: 'user_id,report_date'
-      })
+      .insert(reportRecord)
       .select('*')
       .single()
 
-    if (upsertError) {
-      console.error('❌ 日次報告upsertエラー:', upsertError)
-      throw new Error(`日次報告保存エラー: ${upsertError.message}`)
+    if (insertError) {
+      console.error('❌ 日次報告作成エラー:', insertError)
+      throw new Error(`日次報告作成エラー: ${insertError.message}`)
     }
 
-    console.log('✅ 日次報告upsert成功:', upsertedReport)
-    return upsertedReport
+    console.log('✅ 日次報告新規作成成功:', newReport)
+    return newReport
   }
 
   static async getTodayReport(lineUser: LineUser): Promise<DailyReport | null> {

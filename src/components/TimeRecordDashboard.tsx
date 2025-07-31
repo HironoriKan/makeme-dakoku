@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useRealtime } from '../contexts/RealtimeContext';
 import { TimeRecordService } from '../services/timeRecordService';
 import TimeRecordButton from './TimeRecordButton';
 import TimeRecordHistory from './TimeRecordHistory';
@@ -10,6 +11,7 @@ type RecordType = Database['public']['Enums']['record_type'];
 
 const TimeRecordDashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const { onTimeRecordUpdate } = useRealtime();
   const [todayRecords, setTodayRecords] = useState<TimeRecord[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [notification, setNotification] = useState<{
@@ -34,6 +36,16 @@ const TimeRecordDashboard: React.FC = () => {
   useEffect(() => {
     loadTodayRecords();
   }, [user, refreshTrigger]);
+
+  // リアルタイム更新のリスナー設定
+  useEffect(() => {
+    const unsubscribe = onTimeRecordUpdate(() => {
+      console.log('🔄 TimeRecordDashboard: リアルタイム更新を受信');
+      loadTodayRecords();
+    });
+
+    return unsubscribe;
+  }, [onTimeRecordUpdate]);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
