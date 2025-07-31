@@ -127,30 +127,76 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     const totalBarsWidth = chartData.length * (minBarWidth + barSpacing);
     const chartWidth = Math.max(containerWidth, totalBarsWidth);
     const barWidth = Math.max(minBarWidth, (chartWidth - (chartData.length * barSpacing)) / chartData.length);
+    
+    // 縦軸ラベル用の設定
+    const yAxisWidth = 60; // 縦軸ラベル用の左マージン
+    const topMargin = 25; // 上部マージン（値ラベル用）
+    const bottomMargin = 25; // 下部マージン（日付ラベル用）
+    const svgHeight = chartHeight + topMargin + bottomMargin;
+    const svgWidth = chartWidth + yAxisWidth;
+    
+    // 縦軸の目盛り値を計算（5段階）
+    const getYAxisTicks = (maxVal: number) => {
+      if (maxVal === 0) return [0];
+      
+      // 最大値を基に適切な間隔を計算
+      const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
+      const normalized = maxVal / magnitude;
+      
+      let stepSize;
+      if (normalized <= 1) stepSize = 0.2 * magnitude;
+      else if (normalized <= 2) stepSize = 0.4 * magnitude;
+      else if (normalized <= 5) stepSize = magnitude;
+      else stepSize = 2 * magnitude;
+      
+      const ticks = [];
+      for (let i = 0; i <= Math.ceil(maxVal / stepSize); i++) {
+        ticks.push(i * stepSize);
+      }
+      return ticks;
+    };
+    
+    const yAxisTicks = getYAxisTicks(maxValue);
+    const adjustedMaxValue = Math.max(...yAxisTicks);
 
     return (
       <div className="relative overflow-x-auto">
-        <div style={{ width: `${Math.max(containerWidth, chartWidth)}px` }}>
-          <svg width={chartWidth} height={chartHeight + 30}>
-            {/* グリッドライン */}
-            {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-              <line
-                key={i}
-                x1="0"
-                y1={chartHeight * (1 - ratio)}
-                x2={chartWidth}
-                y2={chartHeight * (1 - ratio)}
-                stroke="#e5e7eb"
-                strokeWidth="1"
-                opacity="0.5"
-              />
-            ))}
+        <div style={{ width: `${Math.max(containerWidth + yAxisWidth, svgWidth)}px` }}>
+          <svg width={svgWidth} height={svgHeight}>
+            {/* 縦軸ラベル */}
+            {yAxisTicks.map((tick, i) => {
+              const y = topMargin + chartHeight * (1 - tick / adjustedMaxValue);
+              return (
+                <g key={i}>
+                  {/* グリッドライン */}
+                  <line
+                    x1={yAxisWidth}
+                    y1={y}
+                    x2={svgWidth}
+                    y2={y}
+                    stroke="#e5e7eb"
+                    strokeWidth="1"
+                    opacity="0.5"
+                  />
+                  {/* 縦軸の値ラベル */}
+                  <text
+                    x={yAxisWidth - 8}
+                    y={y + 3}
+                    textAnchor="end"
+                    fontSize="9"
+                    fill="#6b7280"
+                  >
+                    ¥{tick.toLocaleString()}
+                  </text>
+                </g>
+              );
+            })}
 
             {/* バーチャート */}
             {chartData.map((point, index) => {
-              const barHeight = maxValue > 0 ? (point.value / maxValue) * chartHeight : 0;
-              const x = index * (barWidth + barSpacing) + barSpacing / 2;
-              const y = chartHeight - barHeight;
+              const barHeight = adjustedMaxValue > 0 ? (point.value / adjustedMaxValue) * chartHeight : 0;
+              const x = yAxisWidth + index * (barWidth + barSpacing) + barSpacing / 2;
+              const y = topMargin + chartHeight - barHeight;
 
               return (
                 <g key={index}>
@@ -164,13 +210,13 @@ const SalesChart: React.FC<SalesChartProps> = () => {
                     rx="2"
                     opacity="0.8"
                   />
-                  {/* 値ラベル */}
+                  {/* 値ラベル（バーの上部） */}
                   {point.value > 0 && (
                     <text
                       x={x + barWidth / 2}
                       y={y - 5}
                       textAnchor="middle"
-                      fontSize="10"
+                      fontSize="9"
                       fill="#6b7280"
                     >
                       ¥{point.value.toLocaleString()}
@@ -179,7 +225,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
                   {/* 日付ラベル */}
                   <text
                     x={x + barWidth / 2}
-                    y={chartHeight + 15}
+                    y={topMargin + chartHeight + 18}
                     textAnchor="middle"
                     fontSize="10"
                     fill="#6b7280"
