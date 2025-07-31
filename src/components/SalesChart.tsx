@@ -90,8 +90,8 @@ const SalesChart: React.FC<SalesChartProps> = () => {
           });
         }
       } else if (selectedPeriod === 'month') {
-        // 過去36ヶ月（3年）のデータを取得
-        for (let i = 35; i >= 0; i--) {
+        // 過去12ヶ月（1年）のデータを取得
+        for (let i = 11; i >= 0; i--) {
           const monthDate = new Date(now);
           monthDate.setMonth(monthDate.getMonth() - i);
           
@@ -256,7 +256,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     switch (selectedPeriod) {
       case 'day': return '過去31日間';
       case 'week': return '過去3ヶ月（週単位）';
-      case 'month': return '過去3年';
+      case 'month': return '過去1年';
       default: return '';
     }
   };
