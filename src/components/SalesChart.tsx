@@ -51,8 +51,12 @@ const SalesChart: React.FC<SalesChartProps> = () => {
           });
         }
       } else if (selectedPeriod === 'week') {
-        // 過去12ヶ月のデータを取得
-        for (let i = 11; i >= 0; i--) {
+        // 過去3ヶ月分の週単位データを取得（約12-13週間）
+        const weeksToShow = 12; // 3ヶ月分の週数
+        
+        // 過去3ヶ月分の全データを取得
+        const allReports: any[] = [];
+        for (let i = 2; i >= 0; i--) {
           const monthDate = new Date(now);
           monthDate.setMonth(monthDate.getMonth() - i);
           
@@ -61,13 +65,28 @@ const SalesChart: React.FC<SalesChartProps> = () => {
             monthDate.getFullYear(), 
             monthDate.getMonth() + 1
           );
+          allReports.push(...monthReports);
+        }
+        
+        // 週単位でグループ化
+        for (let weekIndex = weeksToShow - 1; weekIndex >= 0; weekIndex--) {
+          const weekStart = new Date(now);
+          weekStart.setDate(weekStart.getDate() - (weekIndex * 7) - (now.getDay() || 7) + 1);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
           
-          const monthSales = monthReports.reduce((sum, r) => sum + r.sales_amount, 0);
-          
+          // その週の売上を集計
+          const weekSales = allReports
+            .filter(r => {
+              const reportDate = new Date(r.report_date);
+              return reportDate >= weekStart && reportDate <= weekEnd;
+            })
+            .reduce((sum, r) => sum + r.sales_amount, 0);
+
           data.push({
-            label: `${monthDate.getMonth() + 1}月`,
-            value: monthSales,
-            date: monthDate.toISOString().split('T')[0]
+            label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}`,
+            value: weekSales,
+            date: weekStart.toISOString().split('T')[0]
           });
         }
       } else if (selectedPeriod === 'month') {
@@ -130,8 +149,8 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     const chartWidth = Math.max(containerWidth, totalBarsWidth);
     const barWidth = Math.max(minBarWidth, (chartWidth - (chartData.length * barSpacing)) / chartData.length);
     
-    // 縦軸ラベル用の設定
-    const yAxisWidth = 60; // 縦軸ラベル用の左マージン
+    // マージン設定（縦軸ラベルは非表示）
+    const yAxisWidth = 0; // 縦軸ラベル非表示のため0に変更
     const topMargin = 25; // 上部マージン（値ラベル用）
     const bottomMargin = 25; // 下部マージン（日付ラベル用）
     const svgHeight = chartHeight + topMargin + bottomMargin;
@@ -163,16 +182,16 @@ const SalesChart: React.FC<SalesChartProps> = () => {
 
     return (
       <div className="relative overflow-x-auto">
-        <div style={{ width: `${Math.max(containerWidth + yAxisWidth, svgWidth)}px` }}>
+        <div style={{ width: `${Math.max(containerWidth, svgWidth)}px` }}>
           <svg width={svgWidth} height={svgHeight}>
-            {/* 縦軸ラベル */}
+            {/* グリッドライン（縦軸ラベルは非表示） */}
             {yAxisTicks.map((tick, i) => {
               const y = topMargin + chartHeight * (1 - tick / adjustedMaxValue);
               return (
                 <g key={i}>
                   {/* グリッドライン */}
                   <line
-                    x1={yAxisWidth}
+                    x1={0}
                     y1={y}
                     x2={svgWidth}
                     y2={y}
@@ -180,16 +199,6 @@ const SalesChart: React.FC<SalesChartProps> = () => {
                     strokeWidth="1"
                     opacity="0.5"
                   />
-                  {/* 縦軸の値ラベル */}
-                  <text
-                    x={yAxisWidth - 8}
-                    y={y + 3}
-                    textAnchor="end"
-                    fontSize="9"
-                    fill="#6b7280"
-                  >
-                    ¥{tick.toLocaleString()}
-                  </text>
                 </g>
               );
             })}
@@ -246,7 +255,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
       case 'day': return '過去31日間';
-      case 'week': return '過去12ヶ月';
+      case 'week': return '過去3ヶ月（週単位）';
       case 'month': return '過去3年';
       default: return '';
     }
@@ -284,22 +293,22 @@ const SalesChart: React.FC<SalesChartProps> = () => {
 
       {/* 統計情報 */}
       <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: '#FDF2F2' }}>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-gray-600">{getPeriodLabel()}の売上</p>
-            <p className="text-lg font-bold" style={{ color: '#CB8585' }}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600 flex-shrink-0">{getPeriodLabel()}の売上</p>
+            <p className="text-lg font-bold text-right" style={{ color: '#CB8585' }}>
               ¥{totalSales.toLocaleString()}
             </p>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">最大売上</p>
-            <p className="text-lg font-semibold" style={{ color: '#CB8585' }}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600 flex-shrink-0">最大売上</p>
+            <p className="text-lg font-semibold text-right" style={{ color: '#CB8585' }}>
               ¥{maxSales.toLocaleString()}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600">平均売上</p>
-            <p className="text-lg font-semibold" style={{ color: '#CB8585' }}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600 flex-shrink-0">平均売上</p>
+            <p className="text-lg font-semibold text-right" style={{ color: '#CB8585' }}>
               ¥{Math.round(avgSales).toLocaleString()}
             </p>
           </div>
