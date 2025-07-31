@@ -19,6 +19,8 @@ const SalesChart: React.FC<SalesChartProps> = () => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalSales, setTotalSales] = useState(0);
+  const [maxSales, setMaxSales] = useState(0);
+  const [avgSales, setAvgSales] = useState(0);
 
   // データ取得
   const fetchChartData = async () => {
@@ -30,16 +32,18 @@ const SalesChart: React.FC<SalesChartProps> = () => {
       let data: ChartDataPoint[] = [];
 
       if (selectedPeriod === 'day') {
-        // 過去7日間のデータを取得
-        const reports = await DailyReportService.getMonthlyReports(user, now.getFullYear(), now.getMonth() + 1);
+        // 過去31日間のデータを取得
+        const currentMonth = await DailyReportService.getMonthlyReports(user, now.getFullYear(), now.getMonth() + 1);
+        const previousMonth = await DailyReportService.getMonthlyReports(user, now.getFullYear(), now.getMonth());
+        const allReports = [...currentMonth, ...previousMonth];
         
-        // 過去7日分のデータを作成
-        for (let i = 6; i >= 0; i--) {
+        // 過去31日分のデータを作成
+        for (let i = 30; i >= 0; i--) {
           const date = new Date(now);
           date.setDate(date.getDate() - i);
           const dateString = date.toISOString().split('T')[0];
           
-          const dayReport = reports.find(r => r.report_date === dateString);
+          const dayReport = allReports.find(r => r.report_date === dateString);
           data.push({
             label: date.getDate().toString(),
             value: dayReport?.sales_amount || 0,
@@ -47,36 +51,8 @@ const SalesChart: React.FC<SalesChartProps> = () => {
           });
         }
       } else if (selectedPeriod === 'week') {
-        // 過去4週間のデータを取得
-        for (let i = 3; i >= 0; i--) {
-          const weekStart = new Date(now);
-          weekStart.setDate(weekStart.getDate() - (i * 7) - (now.getDay() || 7) + 1);
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-
-          // その週の売上を集計
-          const weekReports = await DailyReportService.getMonthlyReports(
-            user, 
-            weekStart.getFullYear(), 
-            weekStart.getMonth() + 1
-          );
-          
-          const weekSales = weekReports
-            .filter(r => {
-              const reportDate = new Date(r.report_date);
-              return reportDate >= weekStart && reportDate <= weekEnd;
-            })
-            .reduce((sum, r) => sum + r.sales_amount, 0);
-
-          data.push({
-            label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}`,
-            value: weekSales,
-            date: weekStart.toISOString().split('T')[0]
-          });
-        }
-      } else if (selectedPeriod === 'month') {
-        // 過去6ヶ月のデータを取得
-        for (let i = 5; i >= 0; i--) {
+        // 過去12ヶ月のデータを取得
+        for (let i = 11; i >= 0; i--) {
           const monthDate = new Date(now);
           monthDate.setMonth(monthDate.getMonth() - i);
           
@@ -94,10 +70,36 @@ const SalesChart: React.FC<SalesChartProps> = () => {
             date: monthDate.toISOString().split('T')[0]
           });
         }
+      } else if (selectedPeriod === 'month') {
+        // 過去36ヶ月（3年）のデータを取得
+        for (let i = 35; i >= 0; i--) {
+          const monthDate = new Date(now);
+          monthDate.setMonth(monthDate.getMonth() - i);
+          
+          const monthReports = await DailyReportService.getMonthlyReports(
+            user, 
+            monthDate.getFullYear(), 
+            monthDate.getMonth() + 1
+          );
+          
+          const monthSales = monthReports.reduce((sum, r) => sum + r.sales_amount, 0);
+          
+          data.push({
+            label: `${monthDate.getFullYear()}/${monthDate.getMonth() + 1}`,
+            value: monthSales,
+            date: monthDate.toISOString().split('T')[0]
+          });
+        }
       }
 
       setChartData(data);
-      setTotalSales(data.reduce((sum, d) => sum + d.value, 0));
+      const total = data.reduce((sum, d) => sum + d.value, 0);
+      const max = Math.max(...data.map(d => d.value));
+      const avg = data.length > 0 ? total / data.length : 0;
+      
+      setTotalSales(total);
+      setMaxSales(max);
+      setAvgSales(avg);
     } catch (error) {
       console.error('売上データ取得エラー:', error);
     } finally {
@@ -243,9 +245,9 @@ const SalesChart: React.FC<SalesChartProps> = () => {
 
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
-      case 'day': return '過去7日間';
-      case 'week': return '過去4週間';
-      case 'month': return '過去6ヶ月';
+      case 'day': return '過去31日間';
+      case 'week': return '過去12ヶ月';
+      case 'month': return '過去3年';
       default: return '';
     }
   };
@@ -282,17 +284,23 @@ const SalesChart: React.FC<SalesChartProps> = () => {
 
       {/* 統計情報 */}
       <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: '#FDF2F2' }}>
-        <div className="flex items-center justify-between">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-sm text-gray-600">{getPeriodLabel()}の売上</p>
-            <p className="text-xl font-bold" style={{ color: '#CB8585' }}>
+            <p className="text-lg font-bold" style={{ color: '#CB8585' }}>
               ¥{totalSales.toLocaleString()}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600">平均</p>
+          <div className="text-center">
+            <p className="text-sm text-gray-600">最大売上</p>
             <p className="text-lg font-semibold" style={{ color: '#CB8585' }}>
-              ¥{chartData.length > 0 ? Math.round(totalSales / chartData.length).toLocaleString() : '0'}
+              ¥{maxSales.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-600">平均売上</p>
+            <p className="text-lg font-semibold" style={{ color: '#CB8585' }}>
+              ¥{Math.round(avgSales).toLocaleString()}
             </p>
           </div>
         </div>
