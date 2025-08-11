@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables, Enums } from '../../types/supabase';
-import { Calendar, ChevronLeft, ChevronRight, Clock, Edit, Check, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Clock, Edit, Check, X, Plus } from 'lucide-react';
 
 type Shift = Tables<'shifts'>;
 type ShiftType = Enums<'shift_type'>;
@@ -10,11 +10,13 @@ type ShiftStatus = Enums<'shift_status'>;
 interface AdminShiftCalendarProps {
   selectedUserId: string | null;
   onShiftEdit: (shift: Shift) => void;
+  onAddShift?: (date: Date) => void;
 }
 
 const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
   selectedUserId,
-  onShiftEdit
+  onShiftEdit,
+  onAddShift
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -233,7 +235,7 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
               return (
                 <div
                   key={index}
-                  className={`min-h-[120px] border border-gray-200 p-2 ${
+                  className={`min-h-[120px] border border-gray-200 p-2 relative group ${
                     isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                   } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
                 >
@@ -247,7 +249,7 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
                     {date.getDate()}
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1">
                     {dayShifts.map((shift) => (
                       <div
                         key={shift.id}
@@ -303,6 +305,18 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Add Shift Button - Show when user is selected and for current month dates */}
+                    {selectedUserId && onAddShift && isCurrentMonth && (
+                      <button
+                        onClick={() => onAddShift(date)}
+                        className="w-full mt-1 p-1 text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center"
+                        title="シフトを追加"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        追加
+                      </button>
+                    )}
                   </div>
                 </div>
               );

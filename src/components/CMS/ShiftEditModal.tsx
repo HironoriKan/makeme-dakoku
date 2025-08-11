@@ -76,7 +76,8 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
     setError(null);
 
     try {
-      const updateData = {
+      const shiftData = {
+        user_id: shift.user_id,
         shift_date: formData.shift_date,
         shift_type: formData.shift_type,
         shift_status: formData.shift_status,
@@ -86,17 +87,30 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
         updated_at: new Date().toISOString()
       };
 
-      const { error: updateError } = await supabase
-        .from('shifts')
-        .update(updateData)
-        .eq('id', shift.id);
+      if (shift.id) {
+        // Update existing shift
+        const { error: updateError } = await supabase
+          .from('shifts')
+          .update(shiftData)
+          .eq('id', shift.id);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      } else {
+        // Create new shift
+        const { error: insertError } = await supabase
+          .from('shifts')
+          .insert([{
+            ...shiftData,
+            created_at: new Date().toISOString()
+          }]);
+
+        if (insertError) throw insertError;
+      }
 
       onSave();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'シフトの更新に失敗しました');
+      setError(err instanceof Error ? err.message : 'シフトの保存に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -185,7 +199,9 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           <div className="flex items-center space-x-3">
             <Calendar className="w-6 h-6 text-blue-600" />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">シフト編集</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                {shift?.id ? 'シフト編集' : '新規シフト追加'}
+              </h2>
               <p className="text-sm text-gray-600">{formatDate(shift.shift_date)}</p>
             </div>
           </div>
@@ -328,14 +344,16 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                   承認
                 </button>
               )}
-              <button
-                onClick={handleDelete}
-                disabled={loading}
-                className="flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                削除
-              </button>
+              {shift?.id && (
+                <button
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  削除
+                </button>
+              )}
             </div>
 
             <div className="flex space-x-3">
