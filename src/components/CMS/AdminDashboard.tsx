@@ -279,42 +279,22 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <h1 className="text-2xl font-bold text-gray-900">管理者ダッシュボード</h1>
-            <p className="text-gray-600">データベースの内容を確認できます</p>
+    <div className="min-h-screen bg-gray-100 flex">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="py-4">
+              <h1 className="text-2xl font-bold text-gray-900">管理者ダッシュボード</h1>
+              <p className="text-gray-600">データベースの内容を確認できます</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex">
-              {(Object.keys(tabLabels) as Array<TabType>).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                    activeTab === tab
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tabLabels[tab]}
-                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && (
-                    <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
-                      {data[tab as keyof TableData].length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' ? '' : 'p-6'}>
+        {/* Content */}
+        <div className="flex-1 p-4 sm:p-6 lg:p-8">
+          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
             {activeTab === 'dashboard' ? (
               <KPIDashboard />
             ) : activeTab === 'shift_management' ? (
@@ -352,6 +332,49 @@ const AdminDashboard: React.FC = () => {
                 )}
               </>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Sidebar Navigation */}
+      <div className="w-80 bg-white shadow-lg border-l border-gray-200 flex flex-col">
+        {/* Navigation Header */}
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
+          <p className="text-sm text-gray-600 mt-1">管理機能を選択してください</p>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 p-4">
+          <div className="space-y-2">
+            {(Object.keys(tabLabels) as Array<TabType>).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === tab
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 border'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{tabLabels[tab]}</span>
+                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && (
+                    <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
+                      {data[tab as keyof TableData].length}
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="text-xs text-gray-500">
+            <p>メイクミー勤怠 CMS</p>
+            <p>管理者ダッシュボード v1.0</p>
           </div>
         </div>
       </div>
