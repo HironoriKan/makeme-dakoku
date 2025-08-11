@@ -279,9 +279,9 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-gray-100 flex max-w-screen-2xl mx-auto">
       {/* Left Sidebar Navigation */}
-      <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col">
+      <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col flex-shrink-0">
         {/* Navigation Header */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
@@ -324,7 +324,7 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="bg-white shadow-sm border-b">
           <div className="px-4 sm:px-6 lg:px-8">
