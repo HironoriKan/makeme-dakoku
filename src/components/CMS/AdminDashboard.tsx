@@ -280,6 +280,49 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
+      {/* Left Sidebar Navigation */}
+      <div className="bg-white shadow-lg border-r border-gray-200 flex flex-col" style={{width: '640px'}}>
+        {/* Navigation Header */}
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
+          <p className="text-sm text-gray-600 mt-1">管理機能を選択してください</p>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 p-4">
+          <div className="space-y-2">
+            {(Object.keys(tabLabels) as Array<TabType>).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === tab
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 border'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{tabLabels[tab]}</span>
+                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && (
+                    <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
+                      {data[tab as keyof TableData].length}
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="text-xs text-gray-500">
+            <p>メイクミー勤怠 CMS</p>
+            <p>管理者ダッシュボード v1.0</p>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
@@ -332,49 +375,6 @@ const AdminDashboard: React.FC = () => {
                 )}
               </>
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* Right Sidebar Navigation */}
-      <div className="w-80 bg-white shadow-lg border-l border-gray-200 flex flex-col">
-        {/* Navigation Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
-          <p className="text-sm text-gray-600 mt-1">管理機能を選択してください</p>
-        </div>
-
-        {/* Navigation Items */}
-        <nav className="flex-1 p-4">
-          <div className="space-y-2">
-            {(Object.keys(tabLabels) as Array<TabType>).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === tab
-                    ? 'bg-blue-50 text-blue-700 border-blue-200 border'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span>{tabLabels[tab]}</span>
-                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && (
-                    <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
-                      {data[tab as keyof TableData].length}
-                    </span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500">
-            <p>メイクミー勤怠 CMS</p>
-            <p>管理者ダッシュボード v1.0</p>
           </div>
         </div>
       </div>
