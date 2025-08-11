@@ -10,7 +10,9 @@ import {
   Calendar, 
   CheckCircle,
   BarChart3,
-  Activity
+  Activity,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const KPIDashboard: React.FC = () => {
@@ -18,6 +20,7 @@ const KPIDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isActivityCollapsed, setIsActivityCollapsed] = useState(true);
 
   const fetchKPIData = async () => {
     setLoading(true);
@@ -224,42 +227,56 @@ const KPIDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center">
-            <Activity className="w-5 h-5 text-gray-500 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">最近のアクティビティ</h3>
-          </div>
-        </div>
-        <div className="p-6">
-          {kpiData?.recentActivity && kpiData.recentActivity.length > 0 ? (
-            <div className="space-y-4">
-              {kpiData.recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.user_display_name}
-                      </p>
-                      <p className="text-sm text-gray-500">{activity.action}</p>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {formatDateTime(activity.timestamp)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-4">最近のアクティビティがありません</p>
-          )}
-        </div>
-      </div>
-
       {/* Attendance Gantt Chart */}
       <AttendanceGanttChart />
+
+      {/* Recent Activity - Collapsible */}
+      <div className="bg-white rounded-lg shadow">
+        <div 
+          className="p-6 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
+          onClick={() => setIsActivityCollapsed(!isActivityCollapsed)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Activity className="w-5 h-5 text-gray-500 mr-2" />
+              <h3 className="text-lg font-semibold text-gray-900">最近のアクティビティ</h3>
+            </div>
+            <div className="flex items-center text-gray-400">
+              {isActivityCollapsed ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronUp className="w-5 h-5" />
+              )}
+            </div>
+          </div>
+        </div>
+        {!isActivityCollapsed && (
+          <div className="p-6">
+            {kpiData?.recentActivity && kpiData.recentActivity.length > 0 ? (
+              <div className="space-y-4">
+                {kpiData.recentActivity.map((activity, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {activity.user_display_name}
+                        </p>
+                        <p className="text-sm text-gray-500">{activity.action}</p>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {formatDateTime(activity.timestamp)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">最近のアクティビティがありません</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
