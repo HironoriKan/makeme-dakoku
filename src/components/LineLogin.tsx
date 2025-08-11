@@ -6,18 +6,10 @@ const LineLogin: React.FC = () => {
 
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center px-6"
-      style={{
-        backgroundImage: "url('/First-View/First_View.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center px-6">
       <div className="max-w-md w-full">
         {/* メインコンテンツカード */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
           
           {/* ヘッダー */}
           <div className="text-center mb-8">

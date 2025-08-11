@@ -1,0 +1,288 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Tables } from '../../types/supabase';
+
+type User = Tables<'users'>;
+type TimeRecord = Tables<'time_records'>;
+type Shift = Tables<'shifts'>;
+type DailyReport = Tables<'daily_reports'>;
+
+interface TableData {
+  users: User[];
+  time_records: TimeRecord[];
+  shifts: Shift[];
+  daily_reports: DailyReport[];
+}
+
+const AdminDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<keyof TableData>('users');
+  const [data, setData] = useState<TableData>({
+    users: [],
+    time_records: [],
+    shifts: [],
+    daily_reports: []
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async (table: keyof TableData) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { data: tableData, error: fetchError } = await supabase
+        .from(table)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (fetchError) throw fetchError;
+
+      setData(prev => ({
+        ...prev,
+        [table]: tableData || []
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData(activeTab);
+  }, [activeTab]);
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleString('ja-JP');
+  };
+
+  const renderUserTable = () => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full bg-white border border-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">表示名</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LINE ID</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">メール</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">作成日</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.users.map((user) => (
+            <tr key={user.id} className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-sm text-gray-900 font-mono">{user.id.slice(0, 8)}...</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{user.display_name}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{user.line_user_id}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{user.email || '-'}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{formatDateTime(user.created_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderTimeRecordTable = () => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full bg-white border border-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ユーザーID</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">記録タイプ</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">記録時間</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">場所</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">備考</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.time_records.map((record) => (
+            <tr key={record.id} className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-sm text-gray-900 font-mono">{record.user_id.slice(0, 8)}...</td>
+              <td className="px-4 py-2 text-sm text-gray-900">
+                <span className={`px-2 py-1 text-xs rounded-full ${
+                  record.record_type === 'clock_in' ? 'bg-green-100 text-green-800' :
+                  record.record_type === 'clock_out' ? 'bg-red-100 text-red-800' :
+                  'bg-blue-100 text-blue-800'
+                }`}>
+                  {record.record_type}
+                </span>
+              </td>
+              <td className="px-4 py-2 text-sm text-gray-900">{formatDateTime(record.recorded_at)}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{record.location_name || '-'}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{record.note || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderShiftTable = () => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full bg-white border border-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ユーザーID</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">シフト日</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">シフトタイプ</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ステータス</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">開始時間</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">終了時間</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.shifts.map((shift) => (
+            <tr key={shift.id} className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-sm text-gray-900 font-mono">{shift.user_id.slice(0, 8)}...</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{shift.shift_date}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">
+                <span className={`px-2 py-1 text-xs rounded-full ${
+                  shift.shift_type === 'normal' ? 'bg-blue-100 text-blue-800' :
+                  shift.shift_type === 'early' ? 'bg-yellow-100 text-yellow-800' :
+                  shift.shift_type === 'late' ? 'bg-purple-100 text-purple-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {shift.shift_type}
+                </span>
+              </td>
+              <td className="px-4 py-2 text-sm text-gray-900">
+                <span className={`px-2 py-1 text-xs rounded-full ${
+                  shift.shift_status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                  'bg-orange-100 text-orange-800'
+                }`}>
+                  {shift.shift_status}
+                </span>
+              </td>
+              <td className="px-4 py-2 text-sm text-gray-900">{shift.start_time || '-'}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{shift.end_time || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderDailyReportTable = () => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full bg-white border border-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ユーザーID</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">売上金額</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">客数</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">商品数</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">客単価</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.daily_reports.map((report) => (
+            <tr key={report.id} className="hover:bg-gray-50">
+              <td className="px-4 py-2 text-sm text-gray-900 font-mono">{report.user_id.slice(0, 8)}...</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{report.report_date}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">¥{report.sales_amount.toLocaleString()}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{report.customer_count}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">{report.items_sold}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">¥{report.customer_unit_price.toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderTable = () => {
+    switch (activeTab) {
+      case 'users':
+        return renderUserTable();
+      case 'time_records':
+        return renderTimeRecordTable();
+      case 'shifts':
+        return renderShiftTable();
+      case 'daily_reports':
+        return renderDailyReportTable();
+      default:
+        return null;
+    }
+  };
+
+  const tabLabels = {
+    users: 'ユーザー',
+    time_records: '打刻記録',
+    shifts: 'シフト',
+    daily_reports: '日報'
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4">
+            <h1 className="text-2xl font-bold text-gray-900">管理者ダッシュボード</h1>
+            <p className="text-gray-600">データベースの内容を確認できます</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white rounded-lg shadow">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex">
+              {(Object.keys(tabLabels) as Array<keyof TableData>).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                    activeTab === tab
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {tabLabels[tab]}
+                  <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
+                    {data[tab].length}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div className="p-6">
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+                <div className="text-sm text-red-700">{error}</div>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2 text-gray-600">読み込み中...</span>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-4 flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {tabLabels[activeTab]}一覧
+                  </h2>
+                  <button
+                    onClick={() => fetchData(activeTab)}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                  >
+                    更新
+                  </button>
+                </div>
+                {renderTable()}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;

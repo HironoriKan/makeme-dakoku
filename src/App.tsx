@@ -4,9 +4,11 @@ import CalendarTabs from './components/CalendarTabs';
 import CheckoutReportModal from './components/CheckoutReportModal';
 import Footer from './components/Footer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AdminProvider } from './contexts/AdminContext';
 import { RealtimeProvider, useRealtime } from './contexts/RealtimeContext';
 import LineLogin from './components/LineLogin';
 import AuthCallback from './components/AuthCallback';
+import AdminPage from './pages/AdminPage';
 import { TimeRecordService } from './services/timeRecordService';
 import { LocationService, Location } from './services/locationService';
 
@@ -242,6 +244,11 @@ const TimeTrackingApp: React.FC = () => {
   // 認証コールバックページの場合
   if (window.location.pathname === '/auth/callback') {
     return <AuthCallback />;
+  }
+
+  // 管理者ページの場合
+  if (window.location.pathname === '/admin') {
+    return <AdminPage />;
   }
 
   // ローディング中
@@ -541,9 +548,11 @@ const TimeTrackingApp: React.FC = () => {
 function App() {
   return (
     <AuthProvider>
-      <RealtimeProvider>
-        <TimeTrackingApp />
-      </RealtimeProvider>
+      <AdminProvider>
+        <RealtimeProvider>
+          <TimeTrackingApp />
+        </RealtimeProvider>
+      </AdminProvider>
     </AuthProvider>
   );
 }
