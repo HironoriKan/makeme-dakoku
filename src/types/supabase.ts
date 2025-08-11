@@ -17,11 +17,11 @@ export type Database = {
       daily_reports: {
         Row: {
           checkout_time: string | null
-          created_at: string | null
+          created_at: string
           customer_count: number
-          customer_unit_price: number
+          customer_unit_price: number | null
           id: string
-          items_per_customer: number
+          items_per_customer: number | null
           items_sold: number
           notes: string | null
           report_date: string
@@ -31,25 +31,25 @@ export type Database = {
         }
         Insert: {
           checkout_time?: string | null
-          created_at?: string | null
-          customer_count: number
-          customer_unit_price?: number
+          created_at?: string
+          customer_count?: number
+          customer_unit_price?: number | null
           id?: string
-          items_per_customer?: number
-          items_sold: number
+          items_per_customer?: number | null
+          items_sold?: number
           notes?: string | null
           report_date: string
-          sales_amount: number
+          sales_amount?: number
           updated_at?: string | null
           user_id: string
         }
         Update: {
           checkout_time?: string | null
-          created_at?: string | null
+          created_at?: string
           customer_count?: number
-          customer_unit_price?: number
+          customer_unit_price?: number | null
           id?: string
-          items_per_customer?: number
+          items_per_customer?: number | null
           items_sold?: number
           notes?: string | null
           report_date?: string
@@ -67,74 +67,53 @@ export type Database = {
           },
         ]
       }
-      time_record_changes: {
+      locations: {
         Row: {
-          change_type: Database["public"]["Enums"]["change_type"]
-          created_at: string
+          address: string | null
+          brand_name: string | null
+          code: string
+          created_at: string | null
+          display_order: number | null
           id: string
-          new_location_name: string | null
-          new_note: string | null
-          new_record_type: Database["public"]["Enums"]["record_type"] | null
-          new_recorded_at: string | null
-          original_location_name: string | null
-          original_note: string | null
-          original_record_type: Database["public"]["Enums"]["record_type"] | null
-          original_recorded_at: string | null
-          reason: string
-          time_record_id: string | null
+          is_active: boolean | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          prefecture: string | null
+          store_name: string | null
           updated_at: string | null
-          user_id: string
         }
         Insert: {
-          change_type: Database["public"]["Enums"]["change_type"]
-          created_at?: string
+          address?: string | null
+          brand_name?: string | null
+          code: string
+          created_at?: string | null
+          display_order?: number | null
           id?: string
-          new_location_name?: string | null
-          new_note?: string | null
-          new_record_type?: Database["public"]["Enums"]["record_type"] | null
-          new_recorded_at?: string | null
-          original_location_name?: string | null
-          original_note?: string | null
-          original_record_type?: Database["public"]["Enums"]["record_type"] | null
-          original_recorded_at?: string | null
-          reason: string
-          time_record_id?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          prefecture?: string | null
+          store_name?: string | null
           updated_at?: string | null
-          user_id: string
         }
         Update: {
-          change_type?: Database["public"]["Enums"]["change_type"]
-          created_at?: string
+          address?: string | null
+          brand_name?: string | null
+          code?: string
+          created_at?: string | null
+          display_order?: number | null
           id?: string
-          new_location_name?: string | null
-          new_note?: string | null
-          new_record_type?: Database["public"]["Enums"]["record_type"] | null
-          new_recorded_at?: string | null
-          original_location_name?: string | null
-          original_note?: string | null
-          original_record_type?: Database["public"]["Enums"]["record_type"] | null
-          original_recorded_at?: string | null
-          reason?: string
-          time_record_id?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          prefecture?: string | null
+          store_name?: string | null
           updated_at?: string | null
-          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "time_record_changes_time_record_id_fkey"
-            columns: ["time_record_id"]
-            isOneToOne: false
-            referencedRelation: "time_records"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "time_record_changes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       shifts: {
         Row: {
@@ -183,10 +162,86 @@ export type Database = {
           },
         ]
       }
+      time_record_changes: {
+        Row: {
+          change_type: Database["public"]["Enums"]["change_type"]
+          created_at: string
+          id: string
+          new_location_name: string | null
+          new_note: string | null
+          new_record_type: Database["public"]["Enums"]["record_type"] | null
+          new_recorded_at: string | null
+          original_location_name: string | null
+          original_note: string | null
+          original_record_type:
+            | Database["public"]["Enums"]["record_type"]
+            | null
+          original_recorded_at: string | null
+          reason: string
+          time_record_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          change_type: Database["public"]["Enums"]["change_type"]
+          created_at?: string
+          id?: string
+          new_location_name?: string | null
+          new_note?: string | null
+          new_record_type?: Database["public"]["Enums"]["record_type"] | null
+          new_recorded_at?: string | null
+          original_location_name?: string | null
+          original_note?: string | null
+          original_record_type?:
+            | Database["public"]["Enums"]["record_type"]
+            | null
+          original_recorded_at?: string | null
+          reason: string
+          time_record_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          change_type?: Database["public"]["Enums"]["change_type"]
+          created_at?: string
+          id?: string
+          new_location_name?: string | null
+          new_note?: string | null
+          new_record_type?: Database["public"]["Enums"]["record_type"] | null
+          new_recorded_at?: string | null
+          original_location_name?: string | null
+          original_note?: string | null
+          original_record_type?:
+            | Database["public"]["Enums"]["record_type"]
+            | null
+          original_recorded_at?: string | null
+          reason?: string
+          time_record_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_record_changes_time_record_id_fkey"
+            columns: ["time_record_id"]
+            isOneToOne: false
+            referencedRelation: "time_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_record_changes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_records: {
         Row: {
           created_at: string | null
           id: string
+          location_id: string | null
           location_lat: number | null
           location_lng: number | null
           location_name: string | null
@@ -199,6 +254,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          location_id?: string | null
           location_lat?: number | null
           location_lng?: number | null
           location_name?: string | null
@@ -211,6 +267,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          location_id?: string | null
           location_lat?: number | null
           location_lng?: number | null
           location_name?: string | null
@@ -222,7 +279,53 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "time_records_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "time_records_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_location_access: {
+        Row: {
+          created_at: string | null
+          id: string
+          location_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          location_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          location_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_location_access_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_location_access_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -232,30 +335,42 @@ export type Database = {
       }
       users: {
         Row: {
+          address: string | null
+          career: string | null
           created_at: string | null
           display_name: string
           email: string | null
+          employee_number: number | null
           id: string
           line_user_id: string
           picture_url: string | null
+          self_pr: string | null
           updated_at: string | null
         }
         Insert: {
+          address?: string | null
+          career?: string | null
           created_at?: string | null
           display_name: string
           email?: string | null
+          employee_number?: number | null
           id?: string
           line_user_id: string
           picture_url?: string | null
+          self_pr?: string | null
           updated_at?: string | null
         }
         Update: {
+          address?: string | null
+          career?: string | null
           created_at?: string | null
           display_name?: string
           email?: string | null
+          employee_number?: number | null
           id?: string
           line_user_id?: string
           picture_url?: string | null
+          self_pr?: string | null
           updated_at?: string | null
         }
         Relationships: []

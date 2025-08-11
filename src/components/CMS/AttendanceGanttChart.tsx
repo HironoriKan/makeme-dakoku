@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { LocationService, Location } from '../../services/locationService';
 import { Tables } from '../../types/supabase';
 import { Users, MapPin, Calendar, Clock } from 'lucide-react';
+import { sanitizeUserName } from '../../utils/textUtils';
 
 type User = Tables<'users'>;
 type TimeRecord = Tables<'time_records'>;
@@ -388,7 +389,7 @@ const AttendanceGanttChart: React.FC = () => {
                         {userAttendance.user.picture_url ? (
                           <img
                             src={userAttendance.user.picture_url}
-                            alt={userAttendance.user.display_name}
+                            alt={sanitizeUserName(userAttendance.user.display_name)}
                             className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm"
                           />
                         ) : (
@@ -404,7 +405,7 @@ const AttendanceGanttChart: React.FC = () => {
                               #{userAttendance.user.employee_number || '---'}
                             </span>
                             <div className="text-sm font-medium text-gray-900 truncate">
-                              {userAttendance.user.display_name}
+                              {sanitizeUserName(userAttendance.user.display_name)}
                             </div>
                           </div>
                         </div>

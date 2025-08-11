@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables, Enums } from '../../types/supabase';
 import { Calendar, ChevronLeft, ChevronRight, Clock, Edit, Check, X, Plus } from 'lucide-react';
+import { truncateUserName } from '../../utils/textUtils';
 
 type Shift = Tables<'shifts'>;
 type ShiftType = Enums<'shift_type'>;
@@ -265,7 +266,7 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
                             <span className="truncate">
                               {!selectedUserId && (shift.users as any)?.display_name && (
                                 <span className="font-medium">
-                                  {(shift.users as any).display_name.slice(0, 4)}
+                                  {truncateUserName((shift.users as any).display_name, 4)}
                                 </span>
                               )}
                             </span>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables } from '../../types/supabase';
 import { User, ChevronDown } from 'lucide-react';
+import { sanitizeUserName } from '../../utils/textUtils';
 
 type UserType = Tables<'users'>;
 
@@ -83,7 +84,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
         <div className="flex items-center">
           <User className="w-4 h-4 text-gray-400 mr-3" />
           <span className={selectedUser ? 'text-gray-900' : 'text-gray-500'}>
-            {selectedUser ? selectedUser.display_name : placeholder}
+            {selectedUser ? sanitizeUserName(selectedUser.display_name) : placeholder}
           </span>
         </div>
         <ChevronDown 
@@ -131,7 +132,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
                 {user.picture_url ? (
                   <img
                     src={user.picture_url}
-                    alt={user.display_name}
+                    alt={sanitizeUserName(user.display_name)}
                     className="w-8 h-8 rounded-full mr-3 object-cover"
                   />
                 ) : (
@@ -140,7 +141,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{user.display_name}</div>
+                  <div className="font-medium truncate">{sanitizeUserName(user.display_name)}</div>
                   <div className="text-sm text-gray-500 truncate">
                     ID: {user.id.slice(0, 8)}...
                   </div>

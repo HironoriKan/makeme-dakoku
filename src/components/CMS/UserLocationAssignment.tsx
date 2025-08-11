@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { LocationService, Location } from '../../services/locationService';
 import { Tables } from '../../types/supabase';
 import { Users, MapPin, Save, X, Check } from 'lucide-react';
+import { sanitizeUserName } from '../../utils/textUtils';
 
 type User = Tables<'users'>;
 
@@ -208,7 +209,7 @@ const UserLocationAssignment: React.FC<UserLocationAssignmentProps> = ({
                         {user.picture_url ? (
                           <img
                             src={user.picture_url}
-                            alt={user.display_name}
+                            alt={sanitizeUserName(user.display_name)}
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
@@ -217,7 +218,7 @@ const UserLocationAssignment: React.FC<UserLocationAssignmentProps> = ({
                           </div>
                         )}
                         <div>
-                          <div className="font-medium text-gray-900">{user.display_name}</div>
+                          <div className="font-medium text-gray-900">{sanitizeUserName(user.display_name)}</div>
                           <div className="text-xs text-gray-500">
                             ID: {user.id.slice(0, 8)}...
                           </div>
@@ -237,7 +238,7 @@ const UserLocationAssignment: React.FC<UserLocationAssignmentProps> = ({
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900">
-                    {getSelectedUser()?.display_name}の拠点アクセス
+                    {sanitizeUserName(getSelectedUser()?.display_name)}の拠点アクセス
                   </h3>
                   {selectedUser && (
                     <div className="flex space-x-2">

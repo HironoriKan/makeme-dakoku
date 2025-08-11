@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables, Enums } from '../../types/supabase';
 import { X, Calendar, Clock, User, Save, Trash2 } from 'lucide-react';
+import { sanitizeUserName } from '../../utils/textUtils';
 
 type Shift = Tables<'shifts'>;
 type ShiftType = Enums<'shift_type'>;
@@ -221,7 +222,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                 {userInfo.picture_url ? (
                   <img
                     src={userInfo.picture_url}
-                    alt={userInfo.display_name}
+                    alt={sanitizeUserName(userInfo.display_name)}
                     className="w-10 h-10 rounded-full object-cover"
                   />
                 ) : (
@@ -230,7 +231,7 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
                   </div>
                 )}
                 <div>
-                  <h3 className="font-medium text-gray-900">{userInfo.display_name}</h3>
+                  <h3 className="font-medium text-gray-900">{sanitizeUserName(userInfo.display_name)}</h3>
                   <p className="text-sm text-gray-600">ユーザー ID: {shift.user_id.slice(0, 8)}...</p>
                 </div>
               </div>
