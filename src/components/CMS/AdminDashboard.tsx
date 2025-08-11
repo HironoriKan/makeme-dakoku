@@ -281,7 +281,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Left Sidebar Navigation */}
-      <div className="bg-white shadow-lg border-r border-gray-200 flex flex-col" style={{width: '640px'}}>
+      <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col">
         {/* Navigation Header */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
