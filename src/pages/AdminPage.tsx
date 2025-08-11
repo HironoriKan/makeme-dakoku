@@ -10,21 +10,7 @@ const AdminPage: React.FC = () => {
     return <AdminLogin onLogin={login} />;
   }
 
-  return (
-    <div className="relative">
-      {/* Logout button */}
-      <div className="absolute top-4 right-4 z-10">
-        <button
-          onClick={logout}
-          className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors"
-        >
-          ログアウト
-        </button>
-      </div>
-      
-      <AdminDashboard />
-    </div>
-  );
+  return <AdminDashboard onLogout={logout} />;
 };
 
 export default AdminPage;

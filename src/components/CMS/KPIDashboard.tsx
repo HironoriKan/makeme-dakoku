@@ -89,26 +89,28 @@ const KPIDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">KPI ダッシュボード</h2>
-          <p className="text-gray-600">
-            最終更新: {formatTime(lastUpdated)}
-          </p>
+      <div className="mb-8">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">KPI ダッシュボード</h1>
+            <p className="text-gray-600">
+              最終更新: {formatTime(lastUpdated)}
+            </p>
+          </div>
+          <button
+            onClick={fetchKPIData}
+            disabled={loading}
+            className={`px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors ${
+              loading
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {loading ? '更新中...' : '更新'}
+          </button>
         </div>
-        <button
-          onClick={fetchKPIData}
-          disabled={loading}
-          className={`px-4 py-2 text-white text-sm font-medium rounded-md transition-colors ${
-            loading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-        >
-          {loading ? '更新中...' : '更新'}
-        </button>
       </div>
 
       {/* KPI Cards Grid */}

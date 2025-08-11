@@ -5,7 +5,7 @@ import KPIDashboard from './KPIDashboard';
 import ShiftManagement from './ShiftManagement';
 import LocationManagement from './LocationManagement';
 import TimeRecordEditModal from './TimeRecordEditModal';
-import { Users } from 'lucide-react';
+import { Users, LogOut } from 'lucide-react';
 
 type User = Tables<'users'>;
 type TimeRecord = Tables<'time_records'>;
@@ -21,7 +21,11 @@ interface TableData {
 
 type TabType = 'dashboard' | 'shift_management' | 'location_management' | keyof TableData;
 
-const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onLogout?: () => void;
+}
+
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [data, setData] = useState<TableData>({
     users: [],
@@ -315,8 +319,20 @@ const AdminDashboard: React.FC = () => {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500">
+        <div className="p-4 border-t border-gray-200 space-y-4">
+          {/* Logout Button */}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              ログアウト
+            </button>
+          )}
+          
+          {/* Version Info */}
+          <div className="text-xs text-gray-500 text-center">
             <p>メイクミー勤怠 CMS</p>
             <p>管理者ダッシュボード v1.0</p>
           </div>

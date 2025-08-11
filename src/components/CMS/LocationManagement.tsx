@@ -150,31 +150,33 @@ const LocationManagement: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <MapPin className="w-6 h-6 text-gray-500" />
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">拠点管理</h1>
+            <div className="flex items-center space-x-3 mb-2">
+              <MapPin className="w-6 h-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">拠点管理</h1>
+            </div>
             <p className="text-gray-600">打刻拠点の追加・編集・管理ができます</p>
           </div>
-        </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => setIsAssignmentModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            ユーザー割り当て
-          </button>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            新規拠点追加
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setIsAssignmentModalOpen(true)}
+              className="flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              ユーザー割り当て
+            </button>
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              新規拠点追加
+            </button>
+          </div>
         </div>
       </div>
 

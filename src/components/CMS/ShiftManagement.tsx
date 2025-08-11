@@ -35,16 +35,14 @@ const ShiftManagement: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Settings className="w-6 h-6 text-gray-500" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">シフト管理</h1>
-            <p className="text-gray-600">ユーザーのシフトを確認・編集・承認できます</p>
-          </div>
+      <div className="mb-8">
+        <div className="flex items-center space-x-3 mb-2">
+          <Settings className="w-6 h-6 text-blue-600" />
+          <h1 className="text-2xl font-bold text-gray-900">シフト管理</h1>
         </div>
+        <p className="text-gray-600">ユーザーのシフトを確認・編集・承認できます</p>
       </div>
 
       {/* User Selection */}
