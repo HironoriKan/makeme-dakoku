@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { KPIService, KPIData } from '../../services/kpiService';
+import AttendanceGanttChart from './AttendanceGanttChart';
 import { 
   Users, 
   UserCheck, 
@@ -257,6 +258,8 @@ const KPIDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Attendance Gantt Chart */}
+      <AttendanceGanttChart />
     </div>
   );
 };
