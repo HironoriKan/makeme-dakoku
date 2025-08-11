@@ -4,6 +4,7 @@ import { Tables } from '../../types/supabase';
 import KPIDashboard from './KPIDashboard';
 import ShiftManagement from './ShiftManagement';
 import LocationManagement from './LocationManagement';
+import TimeRecordEditModal from './TimeRecordEditModal';
 
 type User = Tables<'users'>;
 type TimeRecord = Tables<'time_records'>;
@@ -29,6 +30,8 @@ const AdminDashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isTimeRecordEditOpen, setIsTimeRecordEditOpen] = useState(false);
+  const [selectedTimeRecord, setSelectedTimeRecord] = useState<TimeRecord | null>(null);
 
   const fetchData = async (table: keyof TableData) => {
     setLoading(true);
@@ -59,6 +62,23 @@ const AdminDashboard: React.FC = () => {
       fetchData(activeTab);
     }
   }, [activeTab]);
+
+  const handleTimeRecordEdit = (record: TimeRecord) => {
+    setSelectedTimeRecord(record);
+    setIsTimeRecordEditOpen(true);
+  };
+
+  const handleTimeRecordModalClose = () => {
+    setIsTimeRecordEditOpen(false);
+    setSelectedTimeRecord(null);
+  };
+
+  const handleTimeRecordSave = () => {
+    // Refresh time records data
+    if (activeTab === 'time_records') {
+      fetchData('time_records');
+    }
+  };
 
   const formatDateTime = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -102,6 +122,7 @@ const AdminDashboard: React.FC = () => {
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">記録時間</th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">場所</th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">備考</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -120,6 +141,14 @@ const AdminDashboard: React.FC = () => {
               <td className="px-4 py-2 text-sm text-gray-900">{formatDateTime(record.recorded_at)}</td>
               <td className="px-4 py-2 text-sm text-gray-900">{record.location_name || '-'}</td>
               <td className="px-4 py-2 text-sm text-gray-900">{record.note || '-'}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">
+                <button
+                  onClick={() => handleTimeRecordEdit(record)}
+                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  編集
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -303,6 +332,14 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Time Record Edit Modal */}
+      <TimeRecordEditModal
+        isOpen={isTimeRecordEditOpen}
+        onClose={handleTimeRecordModalClose}
+        record={selectedTimeRecord}
+        onSave={handleTimeRecordSave}
+      />
     </div>
   );
 };
