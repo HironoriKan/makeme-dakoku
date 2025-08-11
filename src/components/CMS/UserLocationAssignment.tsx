@@ -12,9 +12,11 @@ interface UserLocationAssignmentProps {
 }
 
 interface UserLocationAccess {
+  id: string;
   user_id: string;
   location_id: string;
   created_at: string;
+  updated_at: string;
 }
 
 const UserLocationAssignment: React.FC<UserLocationAssignmentProps> = ({
@@ -52,19 +54,25 @@ const UserLocationAssignment: React.FC<UserLocationAssignmentProps> = ({
       // Fetch locations
       const locationsData = await LocationService.getActiveLocations();
 
-      // Fetch user location access (we'll create this table if it doesn't exist)
-      // For now, we'll simulate it with default access for all users to all locations
-      const accessData: UserLocationAccess[] = [];
+      // Fetch user location access from DB
+      const { data: accessData, error: accessError } = await supabase
+        .from('user_location_access')
+        .select('*');
+
+      if (accessError) {
+        console.warn('ユーザー拠点アクセス権取得エラー:', accessError);
+      }
       
       // Initialize temp assignments with current data
       const assignments: Record<string, string[]> = {};
       usersData?.forEach(user => {
-        assignments[user.id] = locationsData.map(loc => loc.id); // Default: access to all
+        const userAccess = (accessData || []).filter(access => access.user_id === user.id);
+        assignments[user.id] = userAccess.map(access => access.location_id);
       });
 
       setUsers(usersData || []);
       setLocations(locationsData);
-      setUserLocationAccess(accessData);
+      setUserLocationAccess(accessData || []);
       setTempAssignments(assignments);
 
       if (usersData && usersData.length > 0) {
@@ -96,12 +104,28 @@ const UserLocationAssignment: React.FC<UserLocationAssignmentProps> = ({
     setError(null);
 
     try {
-      // In a real implementation, this would save to a user_location_access table
-      // For now, we'll simulate the save
-      console.log('Saving user location assignments:', tempAssignments);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 全ユーザーの拠点アクセス権を更新
+      for (const [userId, locationIds] of Object.entries(tempAssignments)) {
+        // 既存のアクセス権を削除
+        await supabase
+          .from('user_location_access')
+          .delete()
+          .eq('user_id', userId);
+
+        // 新しいアクセス権を挿入
+        if (locationIds.length > 0) {
+          const insertData = locationIds.map(locationId => ({
+            user_id: userId,
+            location_id: locationId
+          }));
+
+          const { error } = await supabase
+            .from('user_location_access')
+            .insert(insertData);
+
+          if (error) throw error;
+        }
+      }
       
       // Show success message
       alert('拠点割り当てを保存しました');
@@ -259,9 +283,14 @@ const UserLocationAssignment: React.FC<UserLocationAssignmentProps> = ({
                           isAssigned ? 'text-green-600' : 'text-gray-400'
                         }`} />
                         <div>
-                          <div className="font-medium text-gray-900">{location.name}</div>
+                          <div className="font-medium text-gray-900">
+                            {location.brand_name && location.store_name 
+                              ? `${location.brand_name} ${location.store_name}` 
+                              : location.name}
+                          </div>
                           <div className="text-sm text-gray-500">
                             コード: {location.code}
+                            {location.prefecture && ` • ${location.prefecture}`}
                             {location.address && ` • ${location.address}`}
                           </div>
                         </div>

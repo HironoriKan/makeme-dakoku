@@ -16,6 +16,9 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
   const [formData, setFormData] = useState({
     name: '',
     code: '',
+    prefecture: '',
+    brand_name: '',
+    store_name: '',
     address: '',
     latitude: '',
     longitude: '',
@@ -91,6 +94,9 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       await LocationService.createLocation({
         name: formData.name.trim(),
         code: formData.code.trim(),
+        prefecture: formData.prefecture.trim() || undefined,
+        brand_name: formData.brand_name.trim() || undefined,
+        store_name: formData.store_name.trim() || undefined,
         address: formData.address.trim() || undefined,
         latitude: formData.latitude ? Number(formData.latitude) : undefined,
         longitude: formData.longitude ? Number(formData.longitude) : undefined,
@@ -102,6 +108,9 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       setFormData({
         name: '',
         code: '',
+        prefecture: '',
+        brand_name: '',
+        store_name: '',
         address: '',
         latitude: '',
         longitude: '',
@@ -123,6 +132,9 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       setFormData({
         name: '',
         code: '',
+        prefecture: '',
+        brand_name: '',
+        store_name: '',
         address: '',
         latitude: '',
         longitude: '',
@@ -211,6 +223,57 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
               {validationErrors.code && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.code}</p>
               )}
+            </div>
+
+            {/* Prefecture */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                都道府県
+              </label>
+              <input
+                type="text"
+                value={formData.prefecture}
+                onChange={(e) => handleInputChange('prefecture', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="例: 東京都"
+                maxLength={50}
+              />
+            </div>
+
+            {/* Brand Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ブランド名
+              </label>
+              <input
+                type="text"
+                value={formData.brand_name}
+                onChange={(e) => handleInputChange('brand_name', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="例: メイクミー"
+                maxLength={100}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                ユーザー側に表示されます
+              </p>
+            </div>
+
+            {/* Store Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                店舗名
+              </label>
+              <input
+                type="text"
+                value={formData.store_name}
+                onChange={(e) => handleInputChange('store_name', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="例: 渋谷店"
+                maxLength={100}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                ユーザー側に表示されます
+              </p>
             </div>
 
             {/* Address */}

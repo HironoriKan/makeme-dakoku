@@ -76,35 +76,6 @@ const ShiftManagement: React.FC = () => {
         onShiftEdit={handleShiftEdit}
       />
 
-      {/* Information Panel */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-900 mb-2">カレンダーの使い方</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• シフトをクリックして編集</li>
-            <li>• 承認待ちのシフトは承認可能</li>
-            <li>• 月を変更して過去/未来を確認</li>
-          </ul>
-        </div>
-
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <h3 className="font-semibold text-green-900 mb-2">シフトの状態</h3>
-          <ul className="text-sm text-green-800 space-y-1">
-            <li>• 🟠 調整中: 承認待ち</li>
-            <li>• 🟢 確定: 承認済み</li>
-            <li>• ✏️ 編集可能</li>
-          </ul>
-        </div>
-
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <h3 className="font-semibold text-purple-900 mb-2">管理者権限</h3>
-          <ul className="text-sm text-purple-800 space-y-1">
-            <li>• シフトの編集・削除</li>
-            <li>• シフトの承認</li>
-            <li>• 時間の変更</li>
-          </ul>
-        </div>
-      </div>
 
       {/* Edit Modal */}
       <ShiftEditModal

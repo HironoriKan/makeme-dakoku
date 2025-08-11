@@ -36,6 +36,9 @@ const LocationManagement: React.FC = () => {
     setEditedData({
       name: location.name,
       code: location.code,
+      prefecture: location.prefecture || '',
+      brand_name: location.brand_name || '',
+      store_name: location.store_name || '',
       address: location.address || '',
       latitude: location.latitude,
       longitude: location.longitude,
@@ -192,6 +195,15 @@ const LocationManagement: React.FC = () => {
                     拠点コード
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    都道府県
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ブランド名
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    店舗名
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     住所
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -230,7 +242,11 @@ const LocationManagement: React.FC = () => {
                           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                         />
                       ) : (
-                        <div className="text-sm font-medium text-gray-900">{location.name}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {location.brand_name && location.store_name 
+                            ? `${location.brand_name} ${location.store_name}` 
+                            : location.name}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -245,6 +261,45 @@ const LocationManagement: React.FC = () => {
                         <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
                           {location.code}
                         </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {editingLocation?.id === location.id ? (
+                        <input
+                          type="text"
+                          value={editedData.prefecture || ''}
+                          onChange={(e) => handleInputChange('prefecture', e.target.value)}
+                          className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                          placeholder="都道府県"
+                        />
+                      ) : (
+                        location.prefecture || '-'
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {editingLocation?.id === location.id ? (
+                        <input
+                          type="text"
+                          value={editedData.brand_name || ''}
+                          onChange={(e) => handleInputChange('brand_name', e.target.value)}
+                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                          placeholder="ブランド名"
+                        />
+                      ) : (
+                        location.brand_name || '-'
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {editingLocation?.id === location.id ? (
+                        <input
+                          type="text"
+                          value={editedData.store_name || ''}
+                          onChange={(e) => handleInputChange('store_name', e.target.value)}
+                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                          placeholder="店舗名"
+                        />
+                      ) : (
+                        location.store_name || '-'
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
@@ -330,35 +385,6 @@ const LocationManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Information Panel */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-900 mb-2">拠点の管理</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• 拠点の追加・編集・削除</li>
-            <li>• 有効/無効の切り替え</li>
-            <li>• 表示順序の変更</li>
-          </ul>
-        </div>
-
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <h3 className="font-semibold text-green-900 mb-2">拠点コード</h3>
-          <ul className="text-sm text-green-800 space-y-1">
-            <li>• 英数字で設定（重複不可）</li>
-            <li>• 打刻時の識別に使用</li>
-            <li>• 短くて覚えやすいものを推奨</li>
-          </ul>
-        </div>
-
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <h3 className="font-semibold text-purple-900 mb-2">表示順序</h3>
-          <ul className="text-sm text-purple-800 space-y-1">
-            <li>• 数値が小さい順に表示</li>
-            <li>• ユーザー画面の選択順序</li>
-            <li>• よく使う拠点は小さい値に</li>
-          </ul>
-        </div>
-      </div>
 
       {/* Add Location Modal */}
       <AddLocationModal

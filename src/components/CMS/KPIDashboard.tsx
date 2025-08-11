@@ -257,26 +257,6 @@ const KPIDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
-          <h3 className="text-lg font-semibold mb-2">勤怠状況</h3>
-          <p className="text-3xl font-bold">{kpiData?.currentlyWorking}</p>
-          <p className="text-blue-100">人が現在勤務中</p>
-        </div>
-
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
-          <h3 className="text-lg font-semibold mb-2">売上状況</h3>
-          <p className="text-3xl font-bold">{formatCurrency(kpiData?.todaySales || 0)}</p>
-          <p className="text-green-100">本日の売上合計</p>
-        </div>
-
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
-          <h3 className="text-lg font-semibold mb-2">出勤率</h3>
-          <p className="text-3xl font-bold">{kpiData?.monthlyAttendanceRate}%</p>
-          <p className="text-purple-100">今月の出勤率</p>
-        </div>
-      </div>
     </div>
   );
 };

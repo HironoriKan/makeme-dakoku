@@ -5,6 +5,9 @@ export interface Location {
   id: string;
   name: string;
   code: string;
+  prefecture: string | null;
+  brand_name: string | null;
+  store_name: string | null;
   latitude: number | null;
   longitude: number | null;
   address: string | null;
@@ -52,6 +55,9 @@ export class LocationService {
   static async createLocation(locationData: {
     name: string;
     code: string;
+    prefecture?: string;
+    brand_name?: string;
+    store_name?: string;
     address?: string;
     latitude?: number;
     longitude?: number;
@@ -104,6 +110,9 @@ export class LocationService {
     updateData: Partial<{
       name: string;
       code: string;
+      prefecture: string;
+      brand_name: string;
+      store_name: string;
       address: string;
       latitude: number;
       longitude: number;
