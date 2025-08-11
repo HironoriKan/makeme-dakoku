@@ -5,6 +5,7 @@ import KPIDashboard from './KPIDashboard';
 import ShiftManagement from './ShiftManagement';
 import LocationManagement from './LocationManagement';
 import TimeRecordEditModal from './TimeRecordEditModal';
+import { Users } from 'lucide-react';
 
 type User = Tables<'users'>;
 type TimeRecord = Tables<'time_records'>;
@@ -90,8 +91,8 @@ const AdminDashboard: React.FC = () => {
       <table className="min-w-full bg-white border border-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">表示名</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">従業員番号</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ユーザー情報</th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LINE ID</th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">メール</th>
             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">作成日</th>
@@ -100,8 +101,30 @@ const AdminDashboard: React.FC = () => {
         <tbody className="bg-white divide-y divide-gray-200">
           {data.users.map((user) => (
             <tr key={user.id} className="hover:bg-gray-50">
-              <td className="px-4 py-2 text-sm text-gray-900 font-mono">{user.id.slice(0, 8)}...</td>
-              <td className="px-4 py-2 text-sm text-gray-900">{user.display_name}</td>
+              <td className="px-4 py-2 text-sm text-gray-900">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  #{user.employee_number || '---'}
+                </span>
+              </td>
+              <td className="px-4 py-2 text-sm text-gray-900">
+                <div className="flex items-center space-x-3">
+                  {user.picture_url ? (
+                    <img
+                      src={user.picture_url}
+                      alt={user.display_name}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                      <Users className="w-4 h-4 text-gray-500" />
+                    </div>
+                  )}
+                  <div>
+                    <div className="font-medium text-gray-900">{user.display_name}</div>
+                    <div className="text-xs text-gray-500">ID: {user.id.slice(0, 8)}...</div>
+                  </div>
+                </div>
+              </td>
               <td className="px-4 py-2 text-sm text-gray-900">{user.line_user_id}</td>
               <td className="px-4 py-2 text-sm text-gray-900">{user.email || '-'}</td>
               <td className="px-4 py-2 text-sm text-gray-900">{formatDateTime(user.created_at)}</td>

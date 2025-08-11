@@ -366,51 +366,84 @@ const AttendanceGanttChart: React.FC = () => {
           </div>
         ) : (
           <div className="relative">
-            {/* Time Header */}
-            <div className="flex items-center mb-4 pl-32">
-              <div className="flex overflow-x-auto" style={{ width: `${TOTAL_HOURS * 96 + 96}px` }}>
-                {generateTimeHeaders()}
-              </div>
-            </div>
-
-            {/* Chart Area */}
-            <div className="relative overflow-x-auto">
+            {/* Synchronized Scroll Container */}
+            <div className="relative overflow-x-auto border border-gray-200 rounded-lg">
               <div className="flex">
-                {/* User Names */}
-                <div className="flex-none w-32">
+                {/* User Names (Fixed) */}
+                <div className="flex-none w-48 bg-gray-50 border-r border-gray-200">
+                  {/* Time Header Spacer */}
+                  <div className="h-10 border-b border-gray-200 bg-gray-100 flex items-center px-4">
+                    <Clock className="w-4 h-4 text-gray-500 mr-2" />
+                    <span className="text-sm font-medium text-gray-700">時間軸</span>
+                  </div>
+                  
+                  {/* User List */}
                   {attendanceData.map((userAttendance, index) => (
                     <div
                       key={userAttendance.user.id}
-                      className="h-12 flex items-center px-4 border-b border-gray-100 bg-gray-50"
+                      className="h-12 flex items-center px-4 border-b border-gray-100"
                     >
-                      <div className="text-sm font-medium text-gray-900 truncate">
-                        {userAttendance.user.display_name}
+                      <div className="flex items-center space-x-3 min-w-0">
+                        {/* LINE Icon */}
+                        {userAttendance.user.picture_url ? (
+                          <img
+                            src={userAttendance.user.picture_url}
+                            alt={userAttendance.user.display_name}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Users className="w-4 h-4 text-gray-500" />
+                          </div>
+                        )}
+                        
+                        {/* Employee Number and Name */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full flex-shrink-0">
+                              #{userAttendance.user.employee_number || '---'}
+                            </span>
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {userAttendance.user.display_name}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Timeline */}
-                <div 
-                  className="relative bg-white border-l border-gray-200"
-                  style={{ width: `${TOTAL_HOURS * 96 + 96}px`, height: `${attendanceData.length * 48}px` }}
-                >
-                  {/* Grid Lines */}
-                  {generateTimeGrid()}
-
-                  {/* User Rows */}
-                  {attendanceData.map((userAttendance, index) => (
-                    <div key={userAttendance.user.id}>
-                      <div
-                        className="absolute left-0 right-0 h-px bg-gray-100"
-                        style={{ top: `${(index + 1) * 48}px` }}
-                      />
-                      {/* Work Periods */}
-                      {userAttendance.workPeriods.map((period) =>
-                        renderWorkPeriod(period, index)
-                      )}
+                {/* Scrollable Timeline Area */}
+                <div className="flex-1 overflow-x-auto">
+                  <div style={{ width: `${TOTAL_HOURS * 96 + 96}px` }}>
+                    {/* Time Header */}
+                    <div className="h-10 border-b border-gray-200 bg-gray-50 flex">
+                      {generateTimeHeaders()}
                     </div>
-                  ))}
+
+                    {/* Gantt Chart */}
+                    <div 
+                      className="relative bg-white"
+                      style={{ height: `${attendanceData.length * 48}px` }}
+                    >
+                      {/* Grid Lines */}
+                      {generateTimeGrid()}
+
+                      {/* User Rows */}
+                      {attendanceData.map((userAttendance, index) => (
+                        <div key={userAttendance.user.id}>
+                          <div
+                            className="absolute left-0 right-0 h-px bg-gray-100"
+                            style={{ top: `${(index + 1) * 48}px` }}
+                          />
+                          {/* Work Periods */}
+                          {userAttendance.workPeriods.map((period) =>
+                            renderWorkPeriod(period, index)
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
