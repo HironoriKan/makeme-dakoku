@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Tables } from '../../types/supabase';
 import KPIDashboard from './KPIDashboard';
 import ShiftManagement from './ShiftManagement';
+import LocationManagement from './LocationManagement';
 
 type User = Tables<'users'>;
 type TimeRecord = Tables<'time_records'>;
@@ -16,7 +17,7 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
-type TabType = 'dashboard' | 'shift_management' | keyof TableData;
+type TabType = 'dashboard' | 'shift_management' | 'location_management' | keyof TableData;
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -54,7 +55,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeTab !== 'dashboard' && activeTab !== 'shift_management') {
+    if (activeTab !== 'dashboard' && activeTab !== 'shift_management' && activeTab !== 'location_management') {
       fetchData(activeTab);
     }
   }, [activeTab]);
@@ -218,6 +219,7 @@ const AdminDashboard: React.FC = () => {
   const tabLabels = {
     dashboard: 'ダッシュボード',
     shift_management: 'シフト管理',
+    location_management: '拠点管理',
     users: 'ユーザー',
     time_records: '打刻記録',
     shifts: 'シフト',
@@ -250,7 +252,7 @@ const AdminDashboard: React.FC = () => {
                   }`}
                 >
                   {tabLabels[tab]}
-                  {tab !== 'dashboard' && tab !== 'shift_management' && (
+                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && (
                     <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
                       {data[tab as keyof TableData].length}
                     </span>
@@ -260,11 +262,13 @@ const AdminDashboard: React.FC = () => {
             </nav>
           </div>
 
-          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' ? '' : 'p-6'}>
+          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' ? '' : 'p-6'}>
             {activeTab === 'dashboard' ? (
               <KPIDashboard />
             ) : activeTab === 'shift_management' ? (
               <ShiftManagement />
+            ) : activeTab === 'location_management' ? (
+              <LocationManagement />
             ) : (
               <>
                 {error && (
