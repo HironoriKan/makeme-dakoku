@@ -325,16 +325,6 @@ const AdminDashboard: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="py-4">
-              <h1 className="text-2xl font-bold text-gray-900">管理者ダッシュボード</h1>
-              <p className="text-gray-600">データベースの内容を確認できます</p>
-            </div>
-          </div>
-        </div>
-
         {/* Content */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
           <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
@@ -359,6 +349,17 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 ) : (
                   <div>
+                    <div className="mb-6">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                        {tabLabels[activeTab]}管理
+                      </h1>
+                      <p className="text-gray-600">
+                        {activeTab === 'users' && 'ユーザーの情報を確認・管理できます'}
+                        {activeTab === 'time_records' && '打刻記録の確認・編集ができます'}
+                        {activeTab === 'shifts' && 'シフトの確認・管理ができます'}
+                        {activeTab === 'daily_reports' && '日報データを確認できます'}
+                      </p>
+                    </div>
                     <div className="mb-4 flex justify-between items-center">
                       <h2 className="text-lg font-semibold text-gray-900">
                         {tabLabels[activeTab]}一覧
