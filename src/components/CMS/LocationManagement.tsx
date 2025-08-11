@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { LocationService, Location } from '../../services/locationService';
 import AddLocationModal from './AddLocationModal';
 import UserLocationAssignment from './UserLocationAssignment';
-import { MapPin, Plus, Edit3, Trash2, Eye, EyeOff, Save, X, Users } from 'lucide-react';
+import { MapPin, Plus, Edit3, Trash2, Eye, EyeOff, Save, X, Users, GripVertical } from 'lucide-react';
 
 const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
@@ -40,11 +41,40 @@ const LocationManagement: React.FC = () => {
       brand_name: location.brand_name || '',
       store_name: location.store_name || '',
       address: location.address || '',
-      latitude: location.latitude,
-      longitude: location.longitude,
       is_active: location.is_active,
       display_order: location.display_order
     });
+  };
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(locations);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Update display_order for all items
+    const updatedItems = items.map((item, index) => ({
+      ...item,
+      display_order: index + 1
+    }));
+
+    setLocations(updatedItems);
+
+    // Save new order to database
+    try {
+      await Promise.all(
+        updatedItems.map((location) =>
+          LocationService.updateLocation(location.id, {
+            display_order: location.display_order
+          })
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '順序の更新に失敗しました');
+      // Revert on error
+      fetchLocations();
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -182,205 +212,227 @@ const LocationManagement: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    順序
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    拠点名
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    拠点コード
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    都道府県
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ブランド名
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    店舗名
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    住所
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ステータス
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    作成日
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {locations.map((location) => (
-                  <tr key={location.id} className={`hover:bg-gray-50 ${!location.is_active ? 'opacity-60' : ''}`}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {editingLocation?.id === location.id ? (
-                        <input
-                          type="number"
-                          value={editedData.display_order || 0}
-                          onChange={(e) => handleInputChange('display_order', parseInt(e.target.value))}
-                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
-                          min="0"
-                        />
-                      ) : (
-                        location.display_order
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingLocation?.id === location.id ? (
-                        <input
-                          type="text"
-                          value={editedData.name || ''}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
-                      ) : (
-                        <div className="text-sm font-medium text-gray-900">
-                          {location.brand_name && location.store_name 
-                            ? `${location.brand_name} ${location.store_name}` 
-                            : location.name}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {editingLocation?.id === location.id ? (
-                        <input
-                          type="text"
-                          value={editedData.code || ''}
-                          onChange={(e) => handleInputChange('code', e.target.value)}
-                          className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
-                        />
-                      ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-                          {location.code}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {editingLocation?.id === location.id ? (
-                        <input
-                          type="text"
-                          value={editedData.prefecture || ''}
-                          onChange={(e) => handleInputChange('prefecture', e.target.value)}
-                          className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
-                          placeholder="都道府県"
-                        />
-                      ) : (
-                        location.prefecture || '-'
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {editingLocation?.id === location.id ? (
-                        <input
-                          type="text"
-                          value={editedData.brand_name || ''}
-                          onChange={(e) => handleInputChange('brand_name', e.target.value)}
-                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
-                          placeholder="ブランド名"
-                        />
-                      ) : (
-                        location.brand_name || '-'
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {editingLocation?.id === location.id ? (
-                        <input
-                          type="text"
-                          value={editedData.store_name || ''}
-                          onChange={(e) => handleInputChange('store_name', e.target.value)}
-                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
-                          placeholder="店舗名"
-                        />
-                      ) : (
-                        location.store_name || '-'
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {editingLocation?.id === location.id ? (
-                        <input
-                          type="text"
-                          value={editedData.address || ''}
-                          onChange={(e) => handleInputChange('address', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          placeholder="住所（任意）"
-                        />
-                      ) : (
-                        location.address || '-'
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          location.is_active 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {location.is_active ? '有効' : '無効'}
-                        </span>
-                        <button
-                          onClick={() => handleToggleActive(location.id, location.is_active)}
-                          className="p-1 hover:bg-gray-100 rounded transition-colors"
-                          title={location.is_active ? '無効にする' : '有効にする'}
-                        >
-                          {location.is_active ? (
-                            <EyeOff className="w-4 h-4 text-gray-500" />
-                          ) : (
-                            <Eye className="w-4 h-4 text-gray-500" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDateTime(location.created_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {editingLocation?.id === location.id ? (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={handleSaveEdit}
-                            className="p-1 text-green-600 hover:text-green-800 transition-colors"
-                            title="保存"
-                          >
-                            <Save className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
-                            title="キャンセル"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleEdit(location)}
-                            className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
-                            title="編集"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(location.id, location.name)}
-                            className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                            title="削除"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      順序
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      拠点名
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      拠点コード
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      都道府県
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ブランド名
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      店舗名
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      住所
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ステータス
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      作成日
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      操作
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <Droppable droppableId="locations">
+                  {(provided) => (
+                    <tbody 
+                      className="bg-white divide-y divide-gray-200"
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                    >
+                      {locations.map((location, index) => (
+                        <Draggable key={location.id} draggableId={location.id} index={index}>
+                          {(provided, snapshot) => (
+                            <tr 
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`hover:bg-gray-50 ${!location.is_active ? 'opacity-60' : ''} ${
+                                snapshot.isDragging ? 'shadow-lg bg-blue-50' : ''
+                              }`}
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <div className="flex items-center space-x-2">
+                                  <div 
+                                    {...provided.dragHandleProps}
+                                    className="cursor-grab hover:bg-gray-100 p-1 rounded"
+                                    title="ドラッグして順序を変更"
+                                  >
+                                    <GripVertical className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                  <span className="text-sm font-medium text-blue-600">
+                                    {index + 1}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {editingLocation?.id === location.id ? (
+                                  <input
+                                    type="text"
+                                    value={editedData.name || ''}
+                                    onChange={(e) => handleInputChange('name', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                  />
+                                ) : (
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {location.brand_name && location.store_name 
+                                      ? `${location.brand_name} ${location.store_name}` 
+                                      : location.name}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {editingLocation?.id === location.id ? (
+                                  <input
+                                    type="text"
+                                    value={editedData.code || ''}
+                                    onChange={(e) => handleInputChange('code', e.target.value)}
+                                    className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                ) : (
+                                  <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
+                                    {location.code}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {editingLocation?.id === location.id ? (
+                                  <input
+                                    type="text"
+                                    value={editedData.prefecture || ''}
+                                    onChange={(e) => handleInputChange('prefecture', e.target.value)}
+                                    className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                    placeholder="都道府県"
+                                  />
+                                ) : (
+                                  location.prefecture || '-'
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {editingLocation?.id === location.id ? (
+                                  <input
+                                    type="text"
+                                    value={editedData.brand_name || ''}
+                                    onChange={(e) => handleInputChange('brand_name', e.target.value)}
+                                    className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                                    placeholder="ブランド名"
+                                  />
+                                ) : (
+                                  location.brand_name || '-'
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {editingLocation?.id === location.id ? (
+                                  <input
+                                    type="text"
+                                    value={editedData.store_name || ''}
+                                    onChange={(e) => handleInputChange('store_name', e.target.value)}
+                                    className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                                    placeholder="店舗名"
+                                  />
+                                ) : (
+                                  location.store_name || '-'
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900">
+                                {editingLocation?.id === location.id ? (
+                                  <input
+                                    type="text"
+                                    value={editedData.address || ''}
+                                    onChange={(e) => handleInputChange('address', e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                    placeholder="住所（任意）"
+                                  />
+                                ) : (
+                                  location.address || '-'
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center space-x-2">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                    location.is_active 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {location.is_active ? '有効' : '無効'}
+                                  </span>
+                                  <button
+                                    onClick={() => handleToggleActive(location.id, location.is_active)}
+                                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                    title={location.is_active ? '無効にする' : '有効にする'}
+                                  >
+                                    {location.is_active ? (
+                                      <EyeOff className="w-4 h-4 text-gray-500" />
+                                    ) : (
+                                      <Eye className="w-4 h-4 text-gray-500" />
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {formatDateTime(location.created_at)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {editingLocation?.id === location.id ? (
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={handleSaveEdit}
+                                      className="p-1 text-green-600 hover:text-green-800 transition-colors"
+                                      title="保存"
+                                    >
+                                      <Save className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
+                                      title="キャンセル"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center space-x-2">
+                                    <button
+                                      onClick={() => handleEdit(location)}
+                                      className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                                      title="編集"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(location.id, location.name)}
+                                      className="p-1 text-red-600 hover:text-red-800 transition-colors"
+                                      title="削除"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </tbody>
+                  )}
+                </Droppable>
+              </table>
+            </DragDropContext>
           </div>
         )}
       </div>

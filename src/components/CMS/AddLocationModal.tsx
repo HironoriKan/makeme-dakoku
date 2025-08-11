@@ -20,10 +20,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
     brand_name: '',
     store_name: '',
     address: '',
-    latitude: '',
-    longitude: '',
-    is_active: true,
-    display_order: ''
+    is_active: true
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,17 +52,6 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       errors.code = '拠点コードは英数字、ハイフン、アンダースコアのみ使用可能です';
     }
 
-    if (formData.latitude && isNaN(Number(formData.latitude))) {
-      errors.latitude = '緯度は数値で入力してください';
-    }
-
-    if (formData.longitude && isNaN(Number(formData.longitude))) {
-      errors.longitude = '経度は数値で入力してください';
-    }
-
-    if (formData.display_order && isNaN(Number(formData.display_order))) {
-      errors.display_order = '表示順序は数値で入力してください';
-    }
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -98,10 +84,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         brand_name: formData.brand_name.trim() || undefined,
         store_name: formData.store_name.trim() || undefined,
         address: formData.address.trim() || undefined,
-        latitude: formData.latitude ? Number(formData.latitude) : undefined,
-        longitude: formData.longitude ? Number(formData.longitude) : undefined,
-        is_active: formData.is_active,
-        display_order: formData.display_order ? Number(formData.display_order) : undefined
+        is_active: formData.is_active
       });
 
       // Reset form
@@ -112,10 +95,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         brand_name: '',
         store_name: '',
         address: '',
-        latitude: '',
-        longitude: '',
-        is_active: true,
-        display_order: ''
+        is_active: true
       });
 
       onSuccess();
@@ -136,10 +116,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         brand_name: '',
         store_name: '',
         address: '',
-        latitude: '',
-        longitude: '',
-        is_active: true,
-        display_order: ''
+        is_active: true
       });
       setError(null);
       setValidationErrors({});
@@ -292,105 +269,36 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
             </div>
           </div>
 
-          {/* Location Coordinates */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">位置情報（任意）</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              {/* Latitude */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  緯度
-                </label>
-                <input
-                  type="text"
-                  value={formData.latitude}
-                  onChange={(e) => handleInputChange('latitude', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    validationErrors.latitude ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="例: 35.6762"
-                />
-                {validationErrors.latitude && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.latitude}</p>
-                )}
-              </div>
-
-              {/* Longitude */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  経度
-                </label>
-                <input
-                  type="text"
-                  value={formData.longitude}
-                  onChange={(e) => handleInputChange('longitude', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    validationErrors.longitude ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="例: 139.6503"
-                />
-                {validationErrors.longitude && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.longitude}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* Settings */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">設定</h3>
             
-            <div className="grid grid-cols-2 gap-4">
-              {/* Display Order */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  表示順序
+            {/* Active Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ステータス
+              </label>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="is_active"
+                    checked={formData.is_active === true}
+                    onChange={() => handleInputChange('is_active', true)}
+                    className="mr-2 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">有効</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.display_order}
-                  onChange={(e) => handleInputChange('display_order', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    validationErrors.display_order ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="例: 1"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  空欄の場合、自動で最後の順序になります
-                </p>
-                {validationErrors.display_order && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.display_order}</p>
-                )}
-              </div>
-
-              {/* Active Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ステータス
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="is_active"
+                    checked={formData.is_active === false}
+                    onChange={() => handleInputChange('is_active', false)}
+                    className="mr-2 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">無効</span>
                 </label>
-                <div className="flex items-center space-x-4 mt-3">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="is_active"
-                      checked={formData.is_active === true}
-                      onChange={() => handleInputChange('is_active', true)}
-                      className="mr-2 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-700">有効</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="is_active"
-                      checked={formData.is_active === false}
-                      onChange={() => handleInputChange('is_active', false)}
-                      className="mr-2 text-blue-600"
-                    />
-                    <span className="text-sm text-gray-700">無効</span>
-                  </label>
-                </div>
               </div>
             </div>
           </div>
