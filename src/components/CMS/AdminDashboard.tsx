@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables } from '../../types/supabase';
+import KPIDashboard from './KPIDashboard';
 
 type User = Tables<'users'>;
 type TimeRecord = Tables<'time_records'>;
@@ -14,8 +15,10 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
+type TabType = 'dashboard' | keyof TableData;
+
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<keyof TableData>('users');
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [data, setData] = useState<TableData>({
     users: [],
     time_records: [],
@@ -50,7 +53,9 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData(activeTab);
+    if (activeTab !== 'dashboard') {
+      fetchData(activeTab);
+    }
   }, [activeTab]);
 
   const formatDateTime = (dateString: string | null) => {
@@ -210,6 +215,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const tabLabels = {
+    dashboard: 'ダッシュボード',
     users: 'ユーザー',
     time_records: '打刻記録',
     shifts: 'シフト',
@@ -231,7 +237,7 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex">
-              {(Object.keys(tabLabels) as Array<keyof TableData>).map((tab) => (
+              {(Object.keys(tabLabels) as Array<TabType>).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -242,41 +248,49 @@ const AdminDashboard: React.FC = () => {
                   }`}
                 >
                   {tabLabels[tab]}
-                  <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
-                    {data[tab].length}
-                  </span>
+                  {tab !== 'dashboard' && (
+                    <span className="ml-2 bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
+                      {data[tab as keyof TableData].length}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
           </div>
 
-          <div className="p-6">
-            {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="text-sm text-red-700">{error}</div>
-              </div>
-            )}
-
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-2 text-gray-600">読み込み中...</span>
-              </div>
+          <div className={activeTab === 'dashboard' ? '' : 'p-6'}>
+            {activeTab === 'dashboard' ? (
+              <KPIDashboard />
             ) : (
-              <div>
-                <div className="mb-4 flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {tabLabels[activeTab]}一覧
-                  </h2>
-                  <button
-                    onClick={() => fetchData(activeTab)}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
-                  >
-                    更新
-                  </button>
-                </div>
-                {renderTable()}
-              </div>
+              <>
+                {error && (
+                  <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+                    <div className="text-sm text-red-700">{error}</div>
+                  </div>
+                )}
+
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-gray-600">読み込み中...</span>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="mb-4 flex justify-between items-center">
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {tabLabels[activeTab]}一覧
+                      </h2>
+                      <button
+                        onClick={() => fetchData(activeTab as keyof TableData)}
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                      >
+                        更新
+                      </button>
+                    </div>
+                    {renderTable()}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
