@@ -1,21 +1,77 @@
-# ログファイル
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production
+dist/
+build/
+
+# Environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
 logs/
 *.log
 *.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# 一時ファイル
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Temporary folders
 tmp/
+temp/
 *.tmp
 *_done.txt
 
-# OS固有
-.DS_Store
-Thumbs.db
-
-# エディタ
-*.swp
-*.swo
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 *~
-.vscode/
-.idea/ 
-node_modules
+
+# Vercel
+.vercel
+
+# System analysis reports (local memo files)
+SYSTEM_ANALYSIS_REPORT.md
+*_REPORT.md
+*_MEMO.md
+
+# Claude Code memories
+.serena/
