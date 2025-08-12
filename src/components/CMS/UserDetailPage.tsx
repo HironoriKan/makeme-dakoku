@@ -14,7 +14,9 @@ import {
   TrendingUp,
   DollarSign,
   Users as UsersIcon,
-  BarChart3
+  BarChart3,
+  ShoppingCart,
+  Target
 } from 'lucide-react';
 import { sanitizeUserName, sanitizeDisplayText } from '../../utils/textUtils';
 
@@ -32,12 +34,17 @@ interface UserStats {
   avgSales: number;
   totalCustomers: number;
   avgCustomers: number;
+  totalItemsSold: number;
+  avgItemsSold: number;
+  avgUnitPrice: number;
 }
 
 interface DailyReportGraphData {
   date: string;
   sales: number;
   customers: number;
+  unitPrice: number;
+  itemsSold: number;
   formattedDate: string;
 }
 
@@ -53,7 +60,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<Partial<User>>({});
-  const [graphMode, setGraphMode] = useState<'sales' | 'customers'>('sales');
+  const [graphMode, setGraphMode] = useState<'sales' | 'customers' | 'unitPrice' | 'itemsSold'>('sales');
 
   useEffect(() => {
     if (userId) {
@@ -107,13 +114,18 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       if (data && data.length > 0) {
         const totalSales = data.reduce((sum, report) => sum + report.sales_amount, 0);
         const totalCustomers = data.reduce((sum, report) => sum + report.customer_count, 0);
+        const totalItemsSold = data.reduce((sum, report) => sum + report.items_sold, 0);
+        const totalUnitPrice = data.reduce((sum, report) => sum + (report.customer_unit_price || 0), 0);
         
         setUserStats({
           totalReports: data.length,
           totalSales,
           avgSales: totalSales / data.length,
           totalCustomers,
-          avgCustomers: totalCustomers / data.length
+          avgCustomers: totalCustomers / data.length,
+          totalItemsSold,
+          avgItemsSold: totalItemsSold / data.length,
+          avgUnitPrice: totalUnitPrice / data.length
         });
       } else {
         setUserStats({
@@ -121,7 +133,10 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           totalSales: 0,
           avgSales: 0,
           totalCustomers: 0,
-          avgCustomers: 0
+          avgCustomers: 0,
+          totalItemsSold: 0,
+          avgItemsSold: 0,
+          avgUnitPrice: 0
         });
       }
     } catch (err) {
@@ -149,6 +164,8 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           date: report.report_date,
           sales: report.sales_amount,
           customers: report.customer_count,
+          unitPrice: report.customer_unit_price || 0,
+          itemsSold: report.items_sold,
           formattedDate: new Date(report.report_date).toLocaleDateString('ja-JP', {
             month: 'short',
             day: 'numeric'
@@ -209,28 +226,46 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   const HealthKitStyleGraph = () => {
     if (graphData.length === 0) return null;
 
-    const maxValue = Math.max(...graphData.map(d => graphMode === 'sales' ? d.sales : d.customers));
-    const minValue = Math.min(...graphData.map(d => graphMode === 'sales' ? d.sales : d.customers));
+    const getCurrentValue = (d: DailyReportGraphData) => {
+      switch (graphMode) {
+        case 'sales': return d.sales;
+        case 'customers': return d.customers;
+        case 'unitPrice': return d.unitPrice;
+        case 'itemsSold': return d.itemsSold;
+        default: return d.sales;
+      }
+    };
+
+    const maxValue = Math.max(...graphData.map(getCurrentValue));
+    const minValue = Math.min(...graphData.map(getCurrentValue));
     const range = maxValue - minValue || 1;
 
     return (
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-full ${graphMode === 'sales' ? 'bg-blue-100' : 'bg-green-100'}`}>
-              {graphMode === 'sales' ? 
-                <DollarSign className={`w-5 h-5 ${graphMode === 'sales' ? 'text-blue-600' : 'text-green-600'}`} /> :
-                <UsersIcon className={`w-5 h-5 ${graphMode === 'sales' ? 'text-blue-600' : 'text-green-600'}`} />
-              }
+            <div className={`p-2 rounded-full ${
+              graphMode === 'sales' ? 'bg-blue-100' :
+              graphMode === 'customers' ? 'bg-green-100' :
+              graphMode === 'unitPrice' ? 'bg-purple-100' :
+              'bg-orange-100'
+            }`}>
+              {graphMode === 'sales' && <DollarSign className="w-5 h-5 text-blue-600" />}
+              {graphMode === 'customers' && <UsersIcon className="w-5 h-5 text-green-600" />}
+              {graphMode === 'unitPrice' && <Target className="w-5 h-5 text-purple-600" />}
+              {graphMode === 'itemsSold' && <ShoppingCart className="w-5 h-5 text-orange-600" />}
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                {graphMode === 'sales' ? '売上推移' : '客数推移'}
+                {graphMode === 'sales' && '売上推移'}
+                {graphMode === 'customers' && '客数推移'}
+                {graphMode === 'unitPrice' && '客単価推移'}
+                {graphMode === 'itemsSold' && '販売個数推移'}
               </h3>
               <p className="text-sm text-gray-600">過去30日間</p>
             </div>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setGraphMode('sales')}
               className={`px-3 py-1 text-sm rounded-full transition-colors ${
@@ -251,6 +286,26 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
             >
               客数
             </button>
+            <button
+              onClick={() => setGraphMode('unitPrice')}
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                graphMode === 'unitPrice' 
+                  ? 'bg-purple-100 text-purple-700' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              客単価
+            </button>
+            <button
+              onClick={() => setGraphMode('itemsSold')}
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                graphMode === 'itemsSold' 
+                  ? 'bg-orange-100 text-orange-700' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              販売個数
+            </button>
           </div>
         </div>
 
@@ -258,9 +313,13 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
         <div className="h-64 relative">
           <div className="absolute inset-0 flex items-end space-x-1">
             {graphData.map((data, index) => {
-              const value = graphMode === 'sales' ? data.sales : data.customers;
+              const value = getCurrentValue(data);
               const height = ((value - minValue) / range) * 100;
-              const barColor = graphMode === 'sales' ? 'bg-blue-500' : 'bg-green-500';
+              const barColor = 
+                graphMode === 'sales' ? 'bg-blue-500' :
+                graphMode === 'customers' ? 'bg-green-500' :
+                graphMode === 'unitPrice' ? 'bg-purple-500' :
+                'bg-orange-500';
               
               return (
                 <div key={index} className="flex-1 flex flex-col items-center">
@@ -272,7 +331,10 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                       {/* ツールチップ */}
                       <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                          {graphMode === 'sales' ? formatCurrency(data.sales) : `${data.customers}人`}
+                          {graphMode === 'sales' && formatCurrency(data.sales)}
+                          {graphMode === 'customers' && `${data.customers}人`}
+                          {graphMode === 'unitPrice' && formatCurrency(data.unitPrice)}
+                          {graphMode === 'itemsSold' && `${data.itemsSold}個`}
                         </div>
                       </div>
                     </div>
@@ -289,26 +351,44 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
         {/* 統計サマリー */}
         <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-100">
           <div className="text-center">
-            <div className={`text-2xl font-bold ${graphMode === 'sales' ? 'text-blue-600' : 'text-green-600'}`}>
-              {graphMode === 'sales' ? 
-                formatCurrency(graphData.reduce((sum, d) => sum + d.sales, 0)) :
-                `${graphData.reduce((sum, d) => sum + d.customers, 0)}人`
-              }
+            <div className={`text-2xl font-bold ${
+              graphMode === 'sales' ? 'text-blue-600' :
+              graphMode === 'customers' ? 'text-green-600' :
+              graphMode === 'unitPrice' ? 'text-purple-600' :
+              'text-orange-600'
+            }`}>
+              {graphMode === 'sales' && formatCurrency(graphData.reduce((sum, d) => sum + d.sales, 0))}
+              {graphMode === 'customers' && `${graphData.reduce((sum, d) => sum + d.customers, 0)}人`}
+              {graphMode === 'unitPrice' && formatCurrency(graphData.reduce((sum, d) => sum + d.unitPrice, 0))}
+              {graphMode === 'itemsSold' && `${graphData.reduce((sum, d) => sum + d.itemsSold, 0)}個`}
             </div>
             <div className="text-sm text-gray-600">合計</div>
           </div>
           <div className="text-center">
-            <div className={`text-2xl font-bold ${graphMode === 'sales' ? 'text-blue-600' : 'text-green-600'}`}>
-              {graphMode === 'sales' ? 
-                formatCurrency(Math.round(graphData.reduce((sum, d) => sum + d.sales, 0) / graphData.length)) :
-                `${Math.round(graphData.reduce((sum, d) => sum + d.customers, 0) / graphData.length)}人`
-              }
+            <div className={`text-2xl font-bold ${
+              graphMode === 'sales' ? 'text-blue-600' :
+              graphMode === 'customers' ? 'text-green-600' :
+              graphMode === 'unitPrice' ? 'text-purple-600' :
+              'text-orange-600'
+            }`}>
+              {graphMode === 'sales' && formatCurrency(Math.round(graphData.reduce((sum, d) => sum + d.sales, 0) / graphData.length))}
+              {graphMode === 'customers' && `${Math.round(graphData.reduce((sum, d) => sum + d.customers, 0) / graphData.length)}人`}
+              {graphMode === 'unitPrice' && formatCurrency(Math.round(graphData.reduce((sum, d) => sum + d.unitPrice, 0) / graphData.length))}
+              {graphMode === 'itemsSold' && `${Math.round(graphData.reduce((sum, d) => sum + d.itemsSold, 0) / graphData.length)}個`}
             </div>
             <div className="text-sm text-gray-600">平均</div>
           </div>
           <div className="text-center">
-            <div className={`text-2xl font-bold ${graphMode === 'sales' ? 'text-blue-600' : 'text-green-600'}`}>
-              {graphMode === 'sales' ? formatCurrency(maxValue) : `${maxValue}人`}
+            <div className={`text-2xl font-bold ${
+              graphMode === 'sales' ? 'text-blue-600' :
+              graphMode === 'customers' ? 'text-green-600' :
+              graphMode === 'unitPrice' ? 'text-purple-600' :
+              'text-orange-600'
+            }`}>
+              {graphMode === 'sales' && formatCurrency(maxValue)}
+              {graphMode === 'customers' && `${maxValue}人`}
+              {graphMode === 'unitPrice' && formatCurrency(maxValue)}
+              {graphMode === 'itemsSold' && `${maxValue}個`}
             </div>
             <div className="text-sm text-gray-600">最大</div>
           </div>
@@ -541,7 +621,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
             {userStats && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">実績サマリー</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="text-center">
                     <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg mx-auto mb-2">
                       <Calendar className="w-5 h-5 text-blue-600" />
@@ -558,17 +638,17 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                   </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-lg mx-auto mb-2">
-                      <TrendingUp className="w-5 h-5 text-purple-600" />
+                      <Target className="w-5 h-5 text-purple-600" />
                     </div>
-                    <div className="text-xl font-bold text-gray-900">{formatCurrency(Math.round(userStats.avgSales))}</div>
-                    <div className="text-xs text-gray-600">平均売上</div>
+                    <div className="text-xl font-bold text-gray-900">{formatCurrency(Math.round(userStats.avgUnitPrice))}</div>
+                    <div className="text-xs text-gray-600">平均客単価</div>
                   </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg mx-auto mb-2">
-                      <UsersIcon className="w-5 h-5 text-orange-600" />
+                      <ShoppingCart className="w-5 h-5 text-orange-600" />
                     </div>
-                    <div className="text-xl font-bold text-gray-900">{Math.round(userStats.avgCustomers)}</div>
-                    <div className="text-xs text-gray-600">平均客数</div>
+                    <div className="text-xl font-bold text-gray-900">{Math.round(userStats.avgItemsSold)}</div>
+                    <div className="text-xs text-gray-600">平均販売個数</div>
                   </div>
                 </div>
               </div>
@@ -600,6 +680,9 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           客単価
                         </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          販売個数
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -616,6 +699,9 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-900">
                             {formatCurrency(report.customer_unit_price || 0)}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900">
+                            {report.items_sold}個
                           </td>
                         </tr>
                       ))}

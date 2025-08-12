@@ -13,6 +13,9 @@ export interface Location {
   address: string | null;
   is_active: boolean;
   display_order: number;
+  location_type: 'permanent' | 'popup' | null;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +66,9 @@ export class LocationService {
     longitude?: number;
     is_active?: boolean;
     display_order?: number;
+    location_type?: 'permanent' | 'popup';
+    start_date?: string;
+    end_date?: string;
   }): Promise<Location> {
     console.log('📍 新規拠点作成:', locationData.name);
 
@@ -118,6 +124,9 @@ export class LocationService {
       longitude: number;
       is_active: boolean;
       display_order: number;
+      location_type: 'permanent' | 'popup';
+      start_date: string;
+      end_date: string;
     }>
   ): Promise<Location> {
     console.log('📍 拠点更新:', locationId);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LocationService } from '../../services/locationService';
-import { X, Save, MapPin } from 'lucide-react';
+import { X, Save, MapPin, Store, Calendar } from 'lucide-react';
 
 interface AddLocationModalProps {
   isOpen: boolean;
@@ -20,7 +20,10 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
     brand_name: '',
     store_name: '',
     address: '',
-    is_active: true
+    is_active: true,
+    location_type: 'permanent' as 'permanent' | 'popup',
+    start_date: '',
+    end_date: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +55,18 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       errors.code = '拠点コードは英数字、ハイフン、アンダースコアのみ使用可能です';
     }
 
+    // POP-UP events require start and end dates
+    if (formData.location_type === 'popup') {
+      if (!formData.start_date) {
+        errors.start_date = 'POP-UPイベントには開始日が必須です';
+      }
+      if (!formData.end_date) {
+        errors.end_date = 'POP-UPイベントには終了日が必須です';
+      }
+      if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
+        errors.end_date = '終了日は開始日以降の日付を指定してください';
+      }
+    }
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -84,7 +99,10 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         brand_name: formData.brand_name.trim() || undefined,
         store_name: formData.store_name.trim() || undefined,
         address: formData.address.trim() || undefined,
-        is_active: formData.is_active
+        is_active: formData.is_active,
+        location_type: formData.location_type,
+        start_date: formData.location_type === 'popup' && formData.start_date ? formData.start_date : undefined,
+        end_date: formData.location_type === 'popup' && formData.end_date ? formData.end_date : undefined
       });
 
       // Reset form
@@ -95,7 +113,10 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         brand_name: '',
         store_name: '',
         address: '',
-        is_active: true
+        is_active: true,
+        location_type: 'permanent',
+        start_date: '',
+        end_date: ''
       });
 
       onSuccess();
@@ -116,7 +137,10 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         brand_name: '',
         store_name: '',
         address: '',
-        is_active: true
+        is_active: true,
+        location_type: 'permanent',
+        start_date: '',
+        end_date: ''
       });
       setError(null);
       setValidationErrors({});
@@ -267,6 +291,83 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                 maxLength={255}
               />
             </div>
+
+            {/* Location Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                拠点タイプ <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="location_type"
+                    value="permanent"
+                    checked={formData.location_type === 'permanent'}
+                    onChange={(e) => handleInputChange('location_type', e.target.value)}
+                    className="mr-3 text-blue-600"
+                  />
+                  <Store className="w-5 h-5 text-blue-600 mr-2" />
+                  <div>
+                    <div className="font-medium text-gray-900">常設展</div>
+                    <div className="text-sm text-gray-600">継続的な展示・販売</div>
+                  </div>
+                </label>
+                <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="location_type"
+                    value="popup"
+                    checked={formData.location_type === 'popup'}
+                    onChange={(e) => handleInputChange('location_type', e.target.value)}
+                    className="mr-3 text-purple-600"
+                  />
+                  <Calendar className="w-5 h-5 text-purple-600 mr-2" />
+                  <div>
+                    <div className="font-medium text-gray-900">POP-UP</div>
+                    <div className="text-sm text-gray-600">期間限定イベント</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* POP-UP Date Fields */}
+            {formData.location_type === 'popup' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    開始日 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => handleInputChange('start_date', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      validationErrors.start_date ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {validationErrors.start_date && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.start_date}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    終了日 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.end_date}
+                    onChange={(e) => handleInputChange('end_date', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      validationErrors.end_date ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {validationErrors.end_date && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.end_date}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Settings */}
