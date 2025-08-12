@@ -142,7 +142,17 @@ const LocationManagement: React.FC = () => {
   };
 
   const handleInputChange = (field: keyof Location, value: string | number | boolean) => {
-    setEditedData(prev => ({ ...prev, [field]: value }));
+    setEditedData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // location_typeが'permanent'に変更された場合、日付フィールドをクリア
+      if (field === 'location_type' && value === 'permanent') {
+        newData.start_date = '';
+        newData.end_date = '';
+      }
+      
+      return newData;
+    });
   };
 
   const getFilteredLocations = () => {

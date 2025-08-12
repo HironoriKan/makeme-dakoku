@@ -1,6 +1,13 @@
 import { supabase } from '../lib/supabase';
 import { LineUser } from '../types/auth';
 
+// TimeRecordButtonで使用される位置情報インターフェース
+export interface LocationData {
+  latitude: number;
+  longitude: number;
+  locationName?: string;
+}
+
 export interface Location {
   id: string;
   name: string;
@@ -83,12 +90,21 @@ export class LocationService {
 
       const nextDisplayOrder = (maxOrderData?.display_order || 0) + 1;
 
+      // 空文字列の日付フィールドをnullに変換
+      const processedData = { ...locationData };
+      if (processedData.start_date === '') {
+        processedData.start_date = undefined;
+      }
+      if (processedData.end_date === '') {
+        processedData.end_date = undefined;
+      }
+
       const { data: location, error } = await supabase
         .from('locations')
         .insert([{
-          ...locationData,
-          is_active: locationData.is_active ?? true,
-          display_order: locationData.display_order ?? nextDisplayOrder,
+          ...processedData,
+          is_active: processedData.is_active ?? true,
+          display_order: processedData.display_order ?? nextDisplayOrder,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }])
@@ -132,10 +148,19 @@ export class LocationService {
     console.log('📍 拠点更新:', locationId);
 
     try {
+      // 空文字列の日付フィールドをnullに変換
+      const processedData = { ...updateData };
+      if (processedData.start_date === '') {
+        processedData.start_date = null;
+      }
+      if (processedData.end_date === '') {
+        processedData.end_date = null;
+      }
+
       const { data: location, error } = await supabase
         .from('locations')
         .update({
-          ...updateData,
+          ...processedData,
           updated_at: new Date().toISOString()
         })
         .eq('id', locationId)
@@ -368,5 +393,42 @@ export class LocationService {
       console.error('❌ 拠点使用統計取得処理エラー:', error);
       throw error;
     }
+  }
+
+  /**
+   * 現在の位置情報を取得（TimeRecordButton用の互換性メソッド）
+   * 将来的には拠点選択に置き換える予定
+   */
+  static async getCurrentLocation(): Promise<LocationData> {
+    console.log('📍 位置情報取得開始');
+
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        console.error('❌ Geolocation API not supported');
+        reject(new Error('位置情報がサポートされていません'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const locationData: LocationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            locationName: '現在地'
+          };
+          console.log('✅ 位置情報取得成功:', locationData);
+          resolve(locationData);
+        },
+        (error) => {
+          console.error('❌ 位置情報取得エラー:', error);
+          reject(new Error('位置情報の取得に失敗しました'));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5分間キャッシュ
+        }
+      );
+    });
   }
 }

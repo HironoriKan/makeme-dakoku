@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { TimeRecordService, TimeRecordData } from '../services/timeRecordService';
-import { LocationService, LocationData } from '../services/locationService';
+import { LocationService, LocationData, Location } from '../services/locationService';
 import { useAuth } from '../contexts/AuthContext';
 import { Database } from '../types/supabase';
+import LocationSelector from './LocationSelector';
 
 type RecordType = Database['public']['Enums']['record_type'];
 
@@ -22,6 +23,8 @@ const TimeRecordButton: React.FC<TimeRecordButtonProps> = ({
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [useLocation, setUseLocation] = useState(true);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
 
   const getButtonColor = (type: RecordType) => {
     switch (type) {
@@ -75,12 +78,36 @@ const TimeRecordButton: React.FC<TimeRecordButtonProps> = ({
       return;
     }
 
+    // 拠点が選択されていない場合のバリデーション
+    if (!selectedLocationId && !useLocation) {
+      onError?.('拠点を選択するか、位置情報を有効にしてください');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       let location: LocationData | undefined;
+      let locationId: string | undefined;
 
-      if (useLocation) {
+      if (selectedLocationId && selectedLocation) {
+        // 選択された拠点を使用
+        locationId = selectedLocationId;
+        
+        // 拠点の座標情報があれば使用
+        if (selectedLocation.latitude && selectedLocation.longitude) {
+          location = {
+            latitude: selectedLocation.latitude,
+            longitude: selectedLocation.longitude,
+            locationName: selectedLocation.brand_name && selectedLocation.store_name 
+              ? `${selectedLocation.brand_name} ${selectedLocation.store_name}`
+              : selectedLocation.name
+          };
+        }
+        
+        console.log('📍 選択された拠点:', selectedLocation.name, locationId);
+      } else if (useLocation) {
+        // 位置情報を取得
         try {
           location = await LocationService.getCurrentLocation();
           console.log('📍 位置情報取得成功:', location);
@@ -92,6 +119,7 @@ const TimeRecordButton: React.FC<TimeRecordButtonProps> = ({
 
       const recordData: TimeRecordData = {
         recordType,
+        locationId,
         location
       };
 
@@ -110,20 +138,36 @@ const TimeRecordButton: React.FC<TimeRecordButtonProps> = ({
 
   const label = TimeRecordService.getRecordTypeLabel(recordType);
 
+  const handleLocationSelect = (locationId: string | null, location: Location | null) => {
+    setSelectedLocationId(locationId);
+    setSelectedLocation(location);
+  };
+
   return (
-    <div className="space-y-3">
-      {/* 位置情報使用の選択 */}
-      <div className="flex items-center space-x-2 text-sm text-gray-600">
-        <input
-          type="checkbox"
-          id={`location-${recordType}`}
-          checked={useLocation}
-          onChange={(e) => setUseLocation(e.target.checked)}
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label htmlFor={`location-${recordType}`}>
-          位置情報を記録する
-        </label>
+    <div className="space-y-4">
+      {/* 拠点選択 */}
+      <LocationSelector
+        selectedLocationId={selectedLocationId}
+        onLocationSelect={handleLocationSelect}
+      />
+
+      {/* 位置情報オプション */}
+      <div className="border-t pt-3">
+        <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            id={`location-${recordType}`}
+            checked={useLocation}
+            onChange={(e) => setUseLocation(e.target.checked)}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor={`location-${recordType}`}>
+            GPS位置情報も記録する
+          </label>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          拠点選択に加えてGPS位置情報も記録します
+        </p>
       </div>
 
       {/* 打刻ボタン */}
