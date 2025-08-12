@@ -29,7 +29,7 @@ const LocationManagement: React.FC = () => {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editedData, setEditedData] = useState<Partial<Location>>({});
-  const [activeTab, setActiveTab] = useState<LocationType>('makeme');
+  const [activeTab, setActiveTab] = useState<LocationType>('permanent');
 
   useEffect(() => {
     fetchLocations();
@@ -60,7 +60,7 @@ const LocationManagement: React.FC = () => {
       address: location.address || '',
       is_active: location.is_active,
       display_order: location.display_order,
-      location_type: location.location_type || 'makeme',
+      location_type: location.location_type || 'permanent',
       start_date: location.start_date || '',
       end_date: location.end_date || ''
     });
@@ -158,7 +158,7 @@ const LocationManagement: React.FC = () => {
 
   const getFilteredLocations = () => {
     return locations.filter(location => 
-      (location.location_type || 'makeme') === activeTab
+      (location.location_type || 'permanent') === activeTab
     );
   };
 
@@ -181,7 +181,7 @@ const LocationManagement: React.FC = () => {
   };
 
   const getLocationTypeBadge = (type: LocationType | null) => {
-    const actualType = type || 'makeme';
+    const actualType = type || 'permanent';
     const label = getLocationTypeLabel(actualType);
     const colorClass = actualType === 'makeme' 
       ? 'bg-pink-100 text-pink-800'
@@ -257,10 +257,10 @@ const LocationManagement: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
-            {(['makeme', 'permanent', 'event'] as LocationType[]).map((tab) => {
+            {(['permanent', 'event', 'makeme'] as LocationType[]).map((tab) => {
               const Icon = getLocationTypeIcon(tab);
               const isActive = activeTab === tab;
-              const count = locations.filter(l => (l.location_type || 'makeme') === tab).length;
+              const count = locations.filter(l => (l.location_type || 'permanent') === tab).length;
               
               return (
                 <button
@@ -418,13 +418,13 @@ const LocationManagement: React.FC = () => {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   {editingLocation?.id === location.id ? (
                                     <select
-                                      value={editedData.location_type || 'makeme'}
+                                      value={editedData.location_type || 'permanent'}
                                       onChange={(e) => handleInputChange('location_type', e.target.value as LocationType)}
                                       className="px-2 py-1 border border-gray-300 rounded text-sm"
                                     >
-                                      <option value="makeme">メイクミー</option>
                                       <option value="permanent">常設展</option>
                                       <option value="event">イベント</option>
+                                      <option value="makeme">メイクミー</option>
                                     </select>
                                   ) : (
                                     getLocationTypeBadge(location.location_type)

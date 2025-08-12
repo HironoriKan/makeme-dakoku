@@ -4,6 +4,7 @@ import { Tables } from '../../types/supabase';
 import KPIDashboard from './KPIDashboard';
 import ShiftManagement from './ShiftManagement';
 import LocationManagement from './LocationManagement';
+import MonthlyTimeRecords from './MonthlyTimeRecords';
 import TimeRecordEditModal from './TimeRecordEditModal';
 import UserDetailPage from './UserDetailPage';
 import { Users, LogOut } from 'lucide-react';
@@ -21,7 +22,7 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
-type TabType = 'dashboard' | 'shift_management' | 'location_management' | keyof TableData;
+type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | keyof TableData;
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -67,7 +68,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   useEffect(() => {
-    if (activeTab !== 'dashboard' && activeTab !== 'shift_management' && activeTab !== 'location_management') {
+    if (activeTab !== 'dashboard' && activeTab !== 'shift_management' && activeTab !== 'location_management' && activeTab !== 'monthly_time_records') {
       fetchData(activeTab);
     }
   }, [activeTab]);
@@ -290,8 +291,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     dashboard: 'ダッシュボード',
     shift_management: 'シフト管理',
     location_management: '拠点管理',
+    monthly_time_records: '打刻記録',
     users: 'ユーザー',
-    time_records: '打刻記録',
+    time_records: '旧打刻記録',
     shifts: 'シフト',
     daily_reports: '日報'
   };
@@ -321,7 +323,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               >
                 <div className="flex items-center justify-between">
                   <span>{tabLabels[tab]}</span>
-                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && (
+                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && tab !== 'monthly_time_records' && (
                     <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
                       {data[tab as keyof TableData].length}
                     </span>
@@ -357,13 +359,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
         {/* Content */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
+          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' ? '' : 'bg-white rounded-lg shadow p-6'}>
             {activeTab === 'dashboard' ? (
               <KPIDashboard />
             ) : activeTab === 'shift_management' ? (
               <ShiftManagement />
             ) : activeTab === 'location_management' ? (
               <LocationManagement />
+            ) : activeTab === 'monthly_time_records' ? (
+              <MonthlyTimeRecords />
             ) : (
               <>
                 {error && (

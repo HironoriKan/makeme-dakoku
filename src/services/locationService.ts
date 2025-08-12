@@ -35,6 +35,24 @@ export class LocationService {
   }
 
   /**
+   * メイクミー拠点を識別する
+   */
+  private static identifyMakemeLocation(location: any): boolean {
+    // 拠点名、ブランド名、店舗名にメイクミーが含まれている場合
+    const makemeKeywords = ['メイクミー', 'makeme', 'MAKEME'];
+    const searchText = [
+      location.name,
+      location.brand_name,
+      location.store_name,
+      location.code
+    ].filter(Boolean).join(' ').toLowerCase();
+    
+    return makemeKeywords.some(keyword => 
+      searchText.includes(keyword.toLowerCase())
+    );
+  }
+
+  /**
    * 全ての拠点一覧を取得（管理者用）
    */
   static async getAllLocations(): Promise<Location[]> {
@@ -52,7 +70,14 @@ export class LocationService {
       }
 
       console.log('✅ 全拠点一覧取得成功:', locations?.length, '件');
-      return locations || [];
+      
+      // データベースのenum制約に対応：メイクミー拠点を識別
+      const processedLocations = (locations || []).map(location => ({
+        ...location,
+        location_type: this.identifyMakemeLocation(location) ? 'makeme' : location.location_type
+      }));
+      
+      return processedLocations;
     } catch (error) {
       console.error('❌ 全拠点一覧取得処理エラー:', error);
       throw error;
@@ -97,6 +122,16 @@ export class LocationService {
       }
       if (processedData.end_date === '') {
         processedData.end_date = undefined;
+      }
+      
+      // データベースのenum制約に対応：makemeをpermanentにマッピング
+      if (processedData.location_type === 'makeme') {
+        processedData.location_type = 'permanent';
+        // メイクミー拠点として識別できるようにブランド名を設定
+        if (!processedData.brand_name || !processedData.brand_name.includes('メイクミー')) {
+          processedData.brand_name = processedData.brand_name ? 
+            `メイクミー ${processedData.brand_name}` : 'メイクミー';
+        }
       }
 
       const { data: location, error } = await supabase
@@ -155,6 +190,16 @@ export class LocationService {
       }
       if (processedData.end_date === '') {
         processedData.end_date = null;
+      }
+      
+      // データベースのenum制約に対応：makemeをpermanentにマッピング
+      if (processedData.location_type === 'makeme') {
+        processedData.location_type = 'permanent';
+        // メイクミー拠点として識別できるようにブランド名を設定
+        if (!processedData.brand_name || !processedData.brand_name.includes('メイクミー')) {
+          processedData.brand_name = processedData.brand_name ? 
+            `メイクミー ${processedData.brand_name}` : 'メイクミー';
+        }
       }
 
       const { data: location, error } = await supabase
@@ -258,7 +303,14 @@ export class LocationService {
       }
 
       console.log('✅ 拠点一覧取得成功:', locations?.length, '件');
-      return locations || [];
+      
+      // データベースのenum制約に対応：メイクミー拠点を識別
+      const processedLocations = (locations || []).map(location => ({
+        ...location,
+        location_type: this.identifyMakemeLocation(location) ? 'makeme' : location.location_type
+      }));
+      
+      return processedLocations;
     } catch (error) {
       console.error('❌ 拠点一覧取得処理エラー:', error);
       throw error;

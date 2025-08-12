@@ -21,7 +21,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
     store_name: '',
     address: '',
     is_active: true,
-    location_type: 'makeme' as 'makeme' | 'permanent' | 'event',
+    location_type: 'permanent' as 'makeme' | 'permanent' | 'event',
     start_date: '',
     end_date: ''
   });
@@ -114,7 +114,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         store_name: '',
         address: '',
         is_active: true,
-        location_type: 'makeme',
+        location_type: 'permanent',
         start_date: '',
         end_date: ''
       });
@@ -138,7 +138,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         store_name: '',
         address: '',
         is_active: true,
-        location_type: 'makeme',
+        location_type: 'permanent',
         start_date: '',
         end_date: ''
       });
@@ -302,21 +302,6 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                   <input
                     type="radio"
                     name="location_type"
-                    value="makeme"
-                    checked={formData.location_type === 'makeme'}
-                    onChange={(e) => handleInputChange('location_type', e.target.value)}
-                    className="mr-3 text-pink-600"
-                  />
-                  <Heart className="w-5 h-5 text-pink-600 mr-2" />
-                  <div>
-                    <div className="font-medium text-gray-900">メイクミー</div>
-                    <div className="text-sm text-gray-600">メイクミー拠点</div>
-                  </div>
-                </label>
-                <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <input
-                    type="radio"
-                    name="location_type"
                     value="permanent"
                     checked={formData.location_type === 'permanent'}
                     onChange={(e) => handleInputChange('location_type', e.target.value)}
@@ -341,6 +326,21 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                   <div>
                     <div className="font-medium text-gray-900">イベント</div>
                     <div className="text-sm text-gray-600">期間限定イベント</div>
+                  </div>
+                </label>
+                <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="location_type"
+                    value="makeme"
+                    checked={formData.location_type === 'makeme'}
+                    onChange={(e) => handleInputChange('location_type', e.target.value)}
+                    className="mr-3 text-pink-600"
+                  />
+                  <Heart className="w-5 h-5 text-pink-600 mr-2" />
+                  <div>
+                    <div className="font-medium text-gray-900">メイクミー</div>
+                    <div className="text-sm text-gray-600">メイクミー拠点</div>
                   </div>
                 </label>
               </div>

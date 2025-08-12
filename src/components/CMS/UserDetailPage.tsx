@@ -617,42 +617,6 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
               </div>
             </div>
 
-            {/* 実績サマリー */}
-            {userStats && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">実績サマリー</h3>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg mx-auto mb-2">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="text-xl font-bold text-gray-900">{userStats.totalReports}</div>
-                    <div className="text-xs text-gray-600">日報投稿数</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg mx-auto mb-2">
-                      <DollarSign className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div className="text-xl font-bold text-gray-900">{formatCurrency(userStats.totalSales)}</div>
-                    <div className="text-xs text-gray-600">累計売上</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-lg mx-auto mb-2">
-                      <Target className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div className="text-xl font-bold text-gray-900">{formatCurrency(Math.round(userStats.avgUnitPrice))}</div>
-                    <div className="text-xs text-gray-600">平均客単価</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg mx-auto mb-2">
-                      <ShoppingCart className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div className="text-xl font-bold text-gray-900">{Math.round(userStats.avgItemsSold)}</div>
-                    <div className="text-xs text-gray-600">平均販売個数</div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* 右カラム: グラフと日報 */}
