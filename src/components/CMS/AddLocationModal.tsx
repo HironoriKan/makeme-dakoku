@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LocationService } from '../../services/locationService';
-import { X, Save, MapPin, Store, Calendar } from 'lucide-react';
+import { X, Save, MapPin, Store, Calendar, Heart } from 'lucide-react';
 
 interface AddLocationModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
     store_name: '',
     address: '',
     is_active: true,
-    location_type: 'permanent' as 'permanent' | 'popup',
+    location_type: 'makeme' as 'makeme' | 'permanent' | 'event',
     start_date: '',
     end_date: ''
   });
@@ -55,13 +55,13 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
       errors.code = '拠点コードは英数字、ハイフン、アンダースコアのみ使用可能です';
     }
 
-    // POP-UP events require start and end dates
-    if (formData.location_type === 'popup') {
+    // イベントには開始日と終了日が必要
+    if (formData.location_type === 'event') {
       if (!formData.start_date) {
-        errors.start_date = 'POP-UPイベントには開始日が必須です';
+        errors.start_date = 'イベントには開始日が必須です';
       }
       if (!formData.end_date) {
-        errors.end_date = 'POP-UPイベントには終了日が必須です';
+        errors.end_date = 'イベントには終了日が必須です';
       }
       if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
         errors.end_date = '終了日は開始日以降の日付を指定してください';
@@ -101,8 +101,8 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         address: formData.address.trim() || undefined,
         is_active: formData.is_active,
         location_type: formData.location_type,
-        start_date: formData.location_type === 'popup' && formData.start_date ? formData.start_date : undefined,
-        end_date: formData.location_type === 'popup' && formData.end_date ? formData.end_date : undefined
+        start_date: formData.location_type === 'event' && formData.start_date ? formData.start_date : undefined,
+        end_date: formData.location_type === 'event' && formData.end_date ? formData.end_date : undefined
       });
 
       // Reset form
@@ -114,7 +114,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         store_name: '',
         address: '',
         is_active: true,
-        location_type: 'permanent',
+        location_type: 'makeme',
         start_date: '',
         end_date: ''
       });
@@ -138,7 +138,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
         store_name: '',
         address: '',
         is_active: true,
-        location_type: 'permanent',
+        location_type: 'makeme',
         start_date: '',
         end_date: ''
       });
@@ -297,7 +297,22 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 拠点タイプ <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
+                <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="radio"
+                    name="location_type"
+                    value="makeme"
+                    checked={formData.location_type === 'makeme'}
+                    onChange={(e) => handleInputChange('location_type', e.target.value)}
+                    className="mr-3 text-pink-600"
+                  />
+                  <Heart className="w-5 h-5 text-pink-600 mr-2" />
+                  <div>
+                    <div className="font-medium text-gray-900">メイクミー</div>
+                    <div className="text-sm text-gray-600">メイクミー拠点</div>
+                  </div>
+                </label>
                 <label className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                   <input
                     type="radio"
@@ -317,22 +332,22 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                   <input
                     type="radio"
                     name="location_type"
-                    value="popup"
-                    checked={formData.location_type === 'popup'}
+                    value="event"
+                    checked={formData.location_type === 'event'}
                     onChange={(e) => handleInputChange('location_type', e.target.value)}
                     className="mr-3 text-purple-600"
                   />
                   <Calendar className="w-5 h-5 text-purple-600 mr-2" />
                   <div>
-                    <div className="font-medium text-gray-900">POP-UP</div>
+                    <div className="font-medium text-gray-900">イベント</div>
                     <div className="text-sm text-gray-600">期間限定イベント</div>
                   </div>
                 </label>
               </div>
             </div>
 
-            {/* POP-UP Date Fields */}
-            {formData.location_type === 'popup' && (
+            {/* イベント Date Fields */}
+            {formData.location_type === 'event' && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

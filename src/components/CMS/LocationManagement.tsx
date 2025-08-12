@@ -15,10 +15,11 @@ import {
   Users, 
   GripVertical, 
   Store, 
-  Calendar 
+  Calendar,
+  Heart
 } from 'lucide-react';
 
-type LocationType = 'permanent' | 'popup';
+type LocationType = 'makeme' | 'permanent' | 'event';
 
 const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
@@ -28,7 +29,7 @@ const LocationManagement: React.FC = () => {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editedData, setEditedData] = useState<Partial<Location>>({});
-  const [activeTab, setActiveTab] = useState<LocationType>('permanent');
+  const [activeTab, setActiveTab] = useState<LocationType>('makeme');
 
   useEffect(() => {
     fetchLocations();
@@ -59,7 +60,7 @@ const LocationManagement: React.FC = () => {
       address: location.address || '',
       is_active: location.is_active,
       display_order: location.display_order,
-      location_type: location.location_type || 'permanent',
+      location_type: location.location_type || 'makeme',
       start_date: location.start_date || '',
       end_date: location.end_date || ''
     });
@@ -145,8 +146,8 @@ const LocationManagement: React.FC = () => {
     setEditedData(prev => {
       const newData = { ...prev, [field]: value };
       
-      // location_typeが'permanent'に変更された場合、日付フィールドをクリア
-      if (field === 'location_type' && value === 'permanent') {
+      // location_typeが'makeme'または'permanent'に変更された場合、日付フィールドをクリア
+      if (field === 'location_type' && (value === 'makeme' || value === 'permanent')) {
         newData.start_date = '';
         newData.end_date = '';
       }
@@ -157,22 +158,34 @@ const LocationManagement: React.FC = () => {
 
   const getFilteredLocations = () => {
     return locations.filter(location => 
-      (location.location_type || 'permanent') === activeTab
+      (location.location_type || 'makeme') === activeTab
     );
   };
 
   const getLocationTypeLabel = (type: LocationType) => {
-    return type === 'permanent' ? '常設展' : 'POP-UP';
+    switch (type) {
+      case 'makeme': return 'メイクミー';
+      case 'permanent': return '常設展';
+      case 'event': return 'イベント';
+      default: return 'メイクミー';
+    }
   };
 
   const getLocationTypeIcon = (type: LocationType) => {
-    return type === 'permanent' ? Store : Calendar;
+    switch (type) {
+      case 'makeme': return Heart;
+      case 'permanent': return Store;
+      case 'event': return Calendar;
+      default: return Heart;
+    }
   };
 
   const getLocationTypeBadge = (type: LocationType | null) => {
-    const actualType = type || 'permanent';
+    const actualType = type || 'makeme';
     const label = getLocationTypeLabel(actualType);
-    const colorClass = actualType === 'permanent' 
+    const colorClass = actualType === 'makeme' 
+      ? 'bg-pink-100 text-pink-800'
+      : actualType === 'permanent' 
       ? 'bg-blue-100 text-blue-800' 
       : 'bg-purple-100 text-purple-800';
     
@@ -244,10 +257,10 @@ const LocationManagement: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
-            {(['permanent', 'popup'] as LocationType[]).map((tab) => {
+            {(['makeme', 'permanent', 'event'] as LocationType[]).map((tab) => {
               const Icon = getLocationTypeIcon(tab);
               const isActive = activeTab === tab;
-              const count = locations.filter(l => (l.location_type || 'permanent') === tab).length;
+              const count = locations.filter(l => (l.location_type || 'makeme') === tab).length;
               
               return (
                 <button
@@ -320,7 +333,7 @@ const LocationManagement: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         都道府県
                       </th>
-                      {activeTab === 'popup' && (
+                      {activeTab === 'event' && (
                         <>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             開始日
@@ -405,12 +418,13 @@ const LocationManagement: React.FC = () => {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   {editingLocation?.id === location.id ? (
                                     <select
-                                      value={editedData.location_type || 'permanent'}
+                                      value={editedData.location_type || 'makeme'}
                                       onChange={(e) => handleInputChange('location_type', e.target.value as LocationType)}
                                       className="px-2 py-1 border border-gray-300 rounded text-sm"
                                     >
+                                      <option value="makeme">メイクミー</option>
                                       <option value="permanent">常設展</option>
-                                      <option value="popup">POP-UP</option>
+                                      <option value="event">イベント</option>
                                     </select>
                                   ) : (
                                     getLocationTypeBadge(location.location_type)
@@ -429,7 +443,7 @@ const LocationManagement: React.FC = () => {
                                     location.prefecture || '-'
                                   )}
                                 </td>
-                                {activeTab === 'popup' && (
+                                {activeTab === 'event' && (
                                   <>
                                     <td className="px-6 py-4 text-sm text-gray-900">
                                       {editingLocation?.id === location.id ? (

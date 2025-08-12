@@ -20,7 +20,7 @@ export interface Location {
   address: string | null;
   is_active: boolean;
   display_order: number;
-  location_type: 'permanent' | 'popup' | null;
+  location_type: 'makeme' | 'permanent' | 'event' | null;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
@@ -73,7 +73,7 @@ export class LocationService {
     longitude?: number;
     is_active?: boolean;
     display_order?: number;
-    location_type?: 'permanent' | 'popup';
+    location_type?: 'makeme' | 'permanent' | 'event';
     start_date?: string;
     end_date?: string;
   }): Promise<Location> {
@@ -140,7 +140,7 @@ export class LocationService {
       longitude: number;
       is_active: boolean;
       display_order: number;
-      location_type: 'permanent' | 'popup';
+      location_type: 'makeme' | 'permanent' | 'event';
       start_date: string;
       end_date: string;
     }>

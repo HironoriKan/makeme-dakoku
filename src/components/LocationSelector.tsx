@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LocationService, Location } from '../services/locationService';
-import { MapPin, Store, Calendar, ChevronDown } from 'lucide-react';
+import { MapPin, Store, Calendar, ChevronDown, Heart } from 'lucide-react';
 
 interface LocationSelectorProps {
   selectedLocationId: string | null;
@@ -45,16 +45,26 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     return location.name;
   };
 
-  const getLocationTypeIcon = (locationType: 'permanent' | 'popup' | null) => {
-    return locationType === 'popup' ? Calendar : Store;
+  const getLocationTypeIcon = (locationType: 'makeme' | 'permanent' | 'event' | null) => {
+    switch (locationType) {
+      case 'makeme': return Heart;
+      case 'permanent': return Store;
+      case 'event': return Calendar;
+      default: return Heart;
+    }
   };
 
-  const getLocationTypeColor = (locationType: 'permanent' | 'popup' | null) => {
-    return locationType === 'popup' ? 'text-purple-600' : 'text-blue-600';
+  const getLocationTypeColor = (locationType: 'makeme' | 'permanent' | 'event' | null) => {
+    switch (locationType) {
+      case 'makeme': return 'text-pink-600';
+      case 'permanent': return 'text-blue-600';
+      case 'event': return 'text-purple-600';
+      default: return 'text-pink-600';
+    }
   };
 
   const isLocationAvailable = (location: Location) => {
-    if (location.location_type !== 'popup') return true;
+    if (location.location_type !== 'event') return true;
     
     if (!location.start_date || !location.end_date) return true;
     
@@ -173,13 +183,16 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                     <span>{location.prefecture}</span>
                     <span>•</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      location.location_type === 'popup'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
+                      location.location_type === 'makeme'
+                        ? 'bg-pink-100 text-pink-800'
+                        : location.location_type === 'permanent'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-purple-100 text-purple-800'
                     }`}>
-                      {location.location_type === 'popup' ? 'POP-UP' : '常設展'}
+                      {location.location_type === 'makeme' ? 'メイクミー' :
+                       location.location_type === 'permanent' ? '常設展' : 'イベント'}
                     </span>
-                    {location.location_type === 'popup' && location.start_date && location.end_date && (
+                    {location.location_type === 'event' && location.start_date && location.end_date && (
                       <>
                         <span>•</span>
                         <span className="text-xs">
