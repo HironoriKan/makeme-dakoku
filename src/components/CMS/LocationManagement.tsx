@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { LocationService, Location } from '../../services/locationService';
 import AddLocationModal from './AddLocationModal';
 import UserLocationAssignment from './UserLocationAssignment';
-import { MapPin, Plus, Edit3, Trash2, Eye, EyeOff, Save, X, Users, GripVertical } from 'lucide-react';
+import { MapPin, Plus, Edit3, Trash2, Eye, EyeOff, Save, X, Users, GripVertical, Store, Calendar } from 'lucide-react';
 
 const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
@@ -13,6 +13,7 @@ const LocationManagement: React.FC = () => {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editedData, setEditedData] = useState<Partial<Location>>({});
+  const [activeTab, setActiveTab] = useState<'permanent' | 'popup'>('permanent');
 
   useEffect(() => {
     fetchLocations();
@@ -42,7 +43,10 @@ const LocationManagement: React.FC = () => {
       store_name: location.store_name || '',
       address: location.address || '',
       is_active: location.is_active,
-      display_order: location.display_order
+      display_order: location.display_order,
+      location_type: location.location_type || 'permanent',
+      start_date: location.start_date || '',
+      end_date: location.end_date || ''
     });
   };
 

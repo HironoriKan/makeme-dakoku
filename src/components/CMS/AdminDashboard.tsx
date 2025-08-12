@@ -5,7 +5,7 @@ import KPIDashboard from './KPIDashboard';
 import ShiftManagement from './ShiftManagement';
 import LocationManagement from './LocationManagement';
 import TimeRecordEditModal from './TimeRecordEditModal';
-import UserDetail from './UserDetail';
+import UserDetailPage from './UserDetailPage';
 import { Users, LogOut } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
 
@@ -39,7 +39,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [error, setError] = useState<string | null>(null);
   const [isTimeRecordEditOpen, setIsTimeRecordEditOpen] = useState(false);
   const [selectedTimeRecord, setSelectedTimeRecord] = useState<TimeRecord | null>(null);
-  const [isUserDetailOpen, setIsUserDetailOpen] = useState(false);
+  const [showUserDetail, setShowUserDetail] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const fetchData = async (table: keyof TableData) => {
@@ -91,11 +91,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const handleUserClick = (userId: string) => {
     setSelectedUserId(userId);
-    setIsUserDetailOpen(true);
+    setShowUserDetail(true);
   };
 
-  const handleUserDetailClose = () => {
-    setIsUserDetailOpen(false);
+  const handleUserDetailBack = () => {
+    setShowUserDetail(false);
     setSelectedUserId(null);
   };
 
@@ -418,12 +418,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         onSave={handleTimeRecordSave}
       />
 
-      {/* User Detail Modal */}
-      <UserDetail
-        isOpen={isUserDetailOpen}
-        onClose={handleUserDetailClose}
-        userId={selectedUserId}
-      />
+      {/* User Detail Page */}
+      {showUserDetail && selectedUserId && (
+        <div className="fixed inset-0 bg-white z-50">
+          <UserDetailPage
+            userId={selectedUserId}
+            onBack={handleUserDetailBack}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -74,12 +74,15 @@ export type Database = {
           code: string
           created_at: string | null
           display_order: number | null
+          end_date: string | null
           id: string
           is_active: boolean | null
           latitude: number | null
+          location_type: Database["public"]["Enums"]["location_type"] | null
           longitude: number | null
           name: string
           prefecture: string | null
+          start_date: string | null
           store_name: string | null
           updated_at: string | null
         }
@@ -89,12 +92,15 @@ export type Database = {
           code: string
           created_at?: string | null
           display_order?: number | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           latitude?: number | null
+          location_type?: Database["public"]["Enums"]["location_type"] | null
           longitude?: number | null
           name: string
           prefecture?: string | null
+          start_date?: string | null
           store_name?: string | null
           updated_at?: string | null
         }
@@ -104,12 +110,15 @@ export type Database = {
           code?: string
           created_at?: string | null
           display_order?: number | null
+          end_date?: string | null
           id?: string
           is_active?: boolean | null
           latitude?: number | null
+          location_type?: Database["public"]["Enums"]["location_type"] | null
           longitude?: number | null
           name?: string
           prefecture?: string | null
+          start_date?: string | null
           store_name?: string | null
           updated_at?: string | null
         }
@@ -387,6 +396,7 @@ export type Database = {
     }
     Enums: {
       change_type: "edit" | "delete"
+      location_type: "permanent" | "popup"
       record_type: "clock_in" | "clock_out" | "break_start" | "break_end"
       shift_status: "adjusting" | "confirmed"
       shift_type: "early" | "late" | "normal" | "off"
@@ -518,6 +528,7 @@ export const Constants = {
   public: {
     Enums: {
       change_type: ["edit", "delete"],
+      location_type: ["permanent", "popup"],
       record_type: ["clock_in", "clock_out", "break_start", "break_end"],
       shift_status: ["adjusting", "confirmed"],
       shift_type: ["early", "late", "normal", "off"],
