@@ -61,46 +61,47 @@ const ShiftManagement: React.FC = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <Settings className="w-6 h-6 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">シフト管理</h1>
-        </div>
-        <p className="text-gray-600">ユーザーのシフトを確認・編集・承認できます</p>
-      </div>
-
-      {/* User Selection */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Users className="w-5 h-5 text-gray-500" />
-          <h2 className="text-lg font-semibold text-gray-900">ユーザー選択</h2>
-        </div>
-        
-        <div className="max-w-md">
-          <UserSelector
-            selectedUserId={selectedUserId}
-            onUserSelect={handleUserSelect}
-            placeholder="表示するユーザーを選択（全ユーザー表示も可能）"
-          />
-        </div>
-
-        {selectedUserId && (
-          <div className="mt-3 text-sm text-gray-600">
-            選択中のユーザーのシフトのみ表示されます。全ユーザーを表示する場合は「全ユーザー」を選択してください。
+    <div className="h-screen flex flex-col overflow-hidden">
+      {/* Compact Header with User Selection */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Left: Title */}
+          <div className="flex items-center space-x-3">
+            <Settings className="w-5 h-5 text-blue-600" />
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">シフト管理</h1>
+              <p className="text-xs text-gray-500">シフトの確認・編集・承認</p>
+            </div>
           </div>
-        )}
+
+          {/* Right: User Selection */}
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 text-sm">
+              <Users className="w-4 h-4 text-gray-500" />
+              <span className="text-gray-700 hidden sm:inline">表示ユーザー:</span>
+            </div>
+            <div className="min-w-[200px] max-w-[300px]">
+              <UserSelector
+                selectedUserId={selectedUserId}
+                onUserSelect={handleUserSelect}
+                placeholder="全ユーザー"
+                compact
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Shift Calendar */}
-      <AdminShiftCalendar
-        key={refreshTrigger} // Force refresh when refreshTrigger changes
-        selectedUserId={selectedUserId}
-        onShiftEdit={handleShiftEdit}
-        onAddShift={handleAddShift}
-      />
-
+      {/* Calendar - Full Height */}
+      <div className="flex-1 overflow-hidden">
+        <AdminShiftCalendar
+          key={refreshTrigger} // Force refresh when refreshTrigger changes
+          selectedUserId={selectedUserId}
+          onShiftEdit={handleShiftEdit}
+          onAddShift={handleAddShift}
+          fullHeight
+        />
+      </div>
 
       {/* Edit Modal */}
       <ShiftEditModal

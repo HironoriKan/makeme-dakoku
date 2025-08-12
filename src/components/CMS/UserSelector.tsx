@@ -10,12 +10,14 @@ interface UserSelectorProps {
   selectedUserId: string | null;
   onUserSelect: (userId: string | null) => void;
   placeholder?: string;
+  compact?: boolean;
 }
 
 const UserSelector: React.FC<UserSelectorProps> = ({
   selectedUserId,
   onUserSelect,
-  placeholder = "ユーザーを選択してください"
+  placeholder = "ユーザーを選択してください",
+  compact = false
 }) => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,12 +55,16 @@ const UserSelector: React.FC<UserSelectorProps> = ({
     setIsOpen(false);
   };
 
+  const buttonPadding = compact ? "px-3 py-2" : "px-4 py-3";
+  const iconSize = compact ? "w-4 h-4" : "w-4 h-4";
+  const textSize = compact ? "text-sm" : "";
+
   if (loading) {
     return (
       <div className="relative">
-        <div className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg flex items-center">
+        <div className={`w-full ${buttonPadding} bg-white border border-gray-300 rounded-lg flex items-center`}>
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent mr-2"></div>
-          <span className="text-gray-500">読み込み中...</span>
+          <span className={`text-gray-500 ${textSize}`}>読み込み中...</span>
         </div>
       </div>
     );
@@ -67,8 +73,8 @@ const UserSelector: React.FC<UserSelectorProps> = ({
   if (error) {
     return (
       <div className="relative">
-        <div className="w-full px-4 py-3 bg-red-50 border border-red-300 rounded-lg">
-          <span className="text-red-700 text-sm">{error}</span>
+        <div className={`w-full ${buttonPadding} bg-red-50 border border-red-300 rounded-lg`}>
+          <span className={`text-red-700 ${textSize}`}>{error}</span>
         </div>
       </div>
     );
@@ -79,16 +85,16 @@ const UserSelector: React.FC<UserSelectorProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg flex items-center justify-between hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+        className={`w-full ${buttonPadding} bg-white border border-gray-300 rounded-lg flex items-center justify-between hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
       >
         <div className="flex items-center">
-          <User className="w-4 h-4 text-gray-400 mr-3" />
-          <span className={selectedUser ? 'text-gray-900' : 'text-gray-500'}>
+          <User className={`${iconSize} text-gray-400 ${compact ? 'mr-2' : 'mr-3'}`} />
+          <span className={`${selectedUser ? 'text-gray-900' : 'text-gray-500'} ${textSize}`}>
             {selectedUser ? sanitizeUserName(selectedUser.display_name) : placeholder}
           </span>
         </div>
         <ChevronDown 
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+          className={`${iconSize} text-gray-400 transition-transform duration-200 ${
             isOpen ? 'transform rotate-180' : ''
           }`} 
         />

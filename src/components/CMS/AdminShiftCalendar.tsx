@@ -12,12 +12,14 @@ interface AdminShiftCalendarProps {
   selectedUserId: string | null;
   onShiftEdit: (shift: Shift) => void;
   onAddShift?: (date: Date) => void;
+  fullHeight?: boolean;
 }
 
 const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
   selectedUserId,
   onShiftEdit,
-  onAddShift
+  onAddShift,
+  fullHeight = false
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -162,26 +164,49 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
 
   const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
 
+  const containerClass = fullHeight 
+    ? "h-full flex flex-col bg-white"
+    : "bg-white rounded-lg shadow-sm border";
+    
+  const headerClass = fullHeight
+    ? "flex-shrink-0 px-4 py-3 border-b border-gray-200"
+    : "p-6 border-b border-gray-200";
+    
+  const contentClass = fullHeight
+    ? "flex-1 p-4 overflow-hidden"
+    : "p-6";
+    
+  const gridClass = fullHeight
+    ? "grid grid-cols-7 gap-1 h-full"
+    : "grid grid-cols-7 gap-1";
+    
+  const cellClass = fullHeight
+    ? "border border-gray-200 p-2 relative group overflow-hidden"
+    : "min-h-[120px] border border-gray-200 p-2 relative group";
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+    <div className={containerClass}>
+      {/* Compact Header */}
+      <div className={headerClass}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Calendar className="w-6 h-6 text-gray-500" />
-            <h2 className="text-xl font-semibold text-gray-900">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-5 h-5 text-gray-500" />
+            <h2 className={`font-semibold text-gray-900 ${fullHeight ? 'text-lg' : 'text-xl'}`}>
               シフト管理カレンダー
             </h2>
+            {selectedUserId && (
+              <span className="text-sm text-gray-500">（選択中ユーザー表示）</span>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => navigateMonth('prev')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
-            <div className="px-4 py-2 bg-gray-50 rounded-lg min-w-[120px] text-center">
-              <span className="text-lg font-medium text-gray-900">
+            <div className="px-3 py-1 bg-gray-50 rounded-lg min-w-[100px] text-center">
+              <span className="text-sm font-medium text-gray-900">
                 {currentDate.getFullYear()}年{monthNames[currentDate.getMonth()]}
               </span>
             </div>
@@ -189,38 +214,32 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
               onClick={() => navigateMonth('next')}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <ChevronRight className="w-5 h-5 text-gray-600" />
+              <ChevronRight className="w-4 h-4 text-gray-600" />
             </button>
           </div>
         </div>
-        
-        {selectedUserId && (
-          <div className="mt-2 text-sm text-gray-600">
-            選択中のユーザーのシフトを表示しています
-          </div>
-        )}
       </div>
 
       {/* Calendar Content */}
-      <div className="p-6">
+      <div className={contentClass}>
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
             <div className="text-sm text-red-700">{error}</div>
           </div>
         )}
 
         {loading ? (
-          <div className="flex justify-center items-center py-12">
+          <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span className="ml-2 text-gray-600">読み込み中...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-7 gap-1">
+          <div className={gridClass}>
             {/* Week day headers */}
             {weekDays.map((day, index) => (
               <div
                 key={day}
-                className={`p-3 text-center text-sm font-medium ${
+                className={`p-2 text-center text-sm font-medium bg-gray-50 border border-gray-200 ${
                   index === 0 ? 'text-red-600' : index === 6 ? 'text-blue-600' : 'text-gray-700'
                 }`}
               >
@@ -236,12 +255,13 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
               return (
                 <div
                   key={index}
-                  className={`min-h-[120px] border border-gray-200 p-2 relative group ${
+                  className={`${cellClass} ${
                     isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                   } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
+                  style={fullHeight ? { minHeight: 'calc((100vh - 200px) / 7)' } : {}}
                 >
                   <div
-                    className={`text-sm font-medium mb-2 ${
+                    className={`text-xs font-medium mb-1 ${
                       isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
                     } ${
                       index % 7 === 0 ? 'text-red-600' : index % 7 === 6 ? 'text-blue-600' : ''
@@ -250,7 +270,7 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
                     {date.getDate()}
                   </div>
 
-                  <div className="space-y-1 flex-1">
+                  <div className="space-y-1 flex-1 overflow-y-auto">
                     {dayShifts.map((shift) => (
                       <div
                         key={shift.id}
@@ -326,23 +346,25 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
         )}
       </div>
 
-      {/* Legend */}
-      <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex flex-wrap items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
-            <span className="text-sm text-gray-600">承認待ち</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-            <span className="text-sm text-gray-600">承認済み</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 border-2 border-blue-500 rounded-full"></div>
-            <span className="text-sm text-gray-600">今日</span>
+      {/* Compact Legend */}
+      {!fullHeight && (
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex flex-wrap items-center space-x-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
+              <span className="text-sm text-gray-600">承認待ち</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span className="text-sm text-gray-600">承認済み</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 border-2 border-blue-500 rounded-full"></div>
+              <span className="text-sm text-gray-600">今日</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
