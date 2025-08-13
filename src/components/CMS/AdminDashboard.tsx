@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables } from '../../types/supabase';
-import KPIDashboard from './KPIDashboard';
 import ShiftManagement from './ShiftManagement';
 import LocationManagement from './LocationManagement';
 import MonthlyTimeRecords from './MonthlyTimeRecords';
@@ -26,7 +25,7 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
-type TabType = 'dashboard' | 'cms_dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | 'transaction_management' | 'users';
+type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | 'transaction_management' | 'users';
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -278,8 +277,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
 
   const tabLabels = {
-    dashboard: 'KPIダッシュボード',
-    cms_dashboard: 'CMSダッシュボード',
+    dashboard: 'ダッシュボード',
     shift_management: 'シフト管理',
     location_management: '拠点管理',
     monthly_time_records: '打刻記録',
@@ -350,10 +348,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
         {/* Content */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className={activeTab === 'dashboard' || activeTab === 'cms_dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' || activeTab === 'transaction_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
+          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' || activeTab === 'transaction_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
             {activeTab === 'dashboard' ? (
-              <KPIDashboard />
-            ) : activeTab === 'cms_dashboard' ? (
               <CMSDashboard />
             ) : activeTab === 'shift_management' ? (
               <ShiftManagement />
