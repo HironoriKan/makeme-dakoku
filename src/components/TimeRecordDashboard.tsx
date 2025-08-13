@@ -268,16 +268,21 @@ const TimeRecordDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">打刻</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">次の打刻</h3>
-              <TimeRecordButton
-                recordType={nextRecordType}
-                onSuccess={handleTimeRecordSuccess}
-                onError={handleTimeRecordError}
-              />
-            </div>
-            {canClockOut() && (
+            {/* 次の打刻ボタン（退勤以外の場合のみ表示） */}
+            {nextRecordType !== 'clock_out' && (
               <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">次の打刻</h3>
+                <TimeRecordButton
+                  recordType={nextRecordType}
+                  onSuccess={handleTimeRecordSuccess}
+                  onError={handleTimeRecordError}
+                />
+              </div>
+            )}
+            
+            {/* 退勤ボタン（退勤可能な場合のみ表示） */}
+            {canClockOut() && (
+              <div className={nextRecordType !== 'clock_out' ? '' : 'md:col-span-2'}>
                 <h3 className="text-sm font-medium text-gray-700 mb-3">退勤</h3>
                 <button
                   onClick={handleClockoutClick}
