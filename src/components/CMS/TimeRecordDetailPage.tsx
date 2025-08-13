@@ -22,6 +22,8 @@ interface TimeRecordWithDetails extends TimeRecord {
   work_pattern?: WorkPattern;
 }
 
+type WorkStatus = '出勤' | '残業' | '遅刻' | '早退' | '早出' | '欠勤' | '';
+
 interface DailyAttendanceRecord {
   date: string;
   workPattern?: string;
@@ -35,6 +37,7 @@ interface DailyAttendanceRecord {
   overtimeMinutes: number; // 残業時間（分）
   lateMinutes: number; // 遅刻時間（分）
   earlyLeaveMinutes: number; // 早退時間（分）
+  workStatus: WorkStatus; // 稼働ステータス
   
   // 打刻記録
   records: {
@@ -65,6 +68,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   const [currentDate, setCurrentDate] = useState(new Date(year, month - 1, 1));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingCell, setEditingCell] = useState<{date: string, field: string} | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
 
   useEffect(() => {
     fetchUserAndRecords();
@@ -153,6 +158,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           overtimeMinutes: 0,
           lateMinutes: 0,
           earlyLeaveMinutes: 0,
+          workStatus: '',
           records: {}
         };
       });
@@ -325,6 +331,48 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
+  const workStatusOptions: WorkStatus[] = ['', '出勤', '残業', '遅刻', '早退', '早出', '欠勤'];
+
+  const handleCellEdit = (date: string, field: string, currentValue: string) => {
+    setEditingCell({ date, field });
+    setEditValue(currentValue);
+  };
+
+  const handleEditSave = () => {
+    if (!editingCell) return;
+    
+    setDailyRecords(prev => prev.map(record => {
+      if (record.date === editingCell.date) {
+        return {
+          ...record,
+          [editingCell.field]: editingCell.field.includes('Time') ? 
+            parseInt(editValue) || 0 : editValue
+        };
+      }
+      return record;
+    }));
+    
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const handleEditCancel = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const getStatusColor = (status: WorkStatus) => {
+    switch (status) {
+      case '出勤': return 'text-green-600 bg-green-100';
+      case '残業': return 'text-blue-600 bg-blue-100';
+      case '遅刻': return 'text-yellow-600 bg-yellow-100';
+      case '早退': return 'text-orange-600 bg-orange-100';
+      case '早出': return 'text-purple-600 bg-purple-100';
+      case '欠勤': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -421,7 +469,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                 </th>
                 
                 {/* 勤怠管理の情報 */}
-                <th colSpan={8} className="px-3 py-2 text-center text-sm font-medium text-white bg-green-600 border border-gray-300">
+                <th colSpan={9} className="px-3 py-2 text-center text-sm font-medium text-white bg-green-600 border border-gray-300">
                   勤怠管理の情報
                 </th>
                 
@@ -446,6 +494,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">残業時間</th>
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">遅刻時間</th>
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">早退時間</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">稼働ステータス</th>
                 
                 {/* 打刻時刻の情報 */}
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-orange-50 border border-gray-300">出勤打刻</th>
@@ -481,8 +530,51 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                     <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-blue-25">{record.shiftEndTime || '-'}</td>
                     
                     {/* 勤怠管理の情報 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">{record.clockIn || '-'}</td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">{record.clockOut || '-'}</td>
+                    {/* 出勤 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'clockIn' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'clockIn', record.clockIn || '')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.clockIn || '-'}
+                        </div>
+                      )}
+                    </td>
+                    
+                    {/* 退勤 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'clockOut' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'clockOut', record.clockOut || '')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.clockOut || '-'}
+                        </div>
+                      )}
+                    </td>
+                    
+                    {/* その他の時間項目 - 表示のみ */}
                     <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
                       {record.breakTime > 0 ? formatTime(record.breakTime) : '-'}
                     </td>
@@ -506,6 +598,32 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                       {record.earlyLeaveMinutes > 0 ? (
                         <span className="text-orange-600 font-medium">{formatTime(record.earlyLeaveMinutes)}</span>
                       ) : '-'}
+                    </td>
+                    
+                    {/* 稼働ステータス - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'workStatus' ? (
+                        <select
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        >
+                          {workStatusOptions.map(option => (
+                            <option key={option} value={option}>
+                              {option || '未設定'}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'workStatus', record.workStatus)}
+                          className={`cursor-pointer hover:bg-green-100 px-1 py-1 rounded text-xs ${getStatusColor(record.workStatus)}`}
+                        >
+                          {record.workStatus || '未設定'}
+                        </div>
+                      )}
                     </td>
                     
                     {/* 打刻時刻の情報 */}
