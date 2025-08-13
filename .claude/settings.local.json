@@ -53,7 +53,8 @@
       "Bash(node:*)",
       "Bash(npx tsc:*)",
       "Bash(git merge:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

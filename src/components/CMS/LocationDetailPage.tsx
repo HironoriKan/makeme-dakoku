@@ -13,7 +13,7 @@ import {
   AlertCircle,
   Save,
   Users,
-  DollarSign,
+  JapaneseYen,
   Car,
   Calendar
 } from 'lucide-react';
@@ -476,12 +476,12 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
-                      <DollarSign className="w-4 h-4 text-gray-400" />
+                      <JapaneseYen className="w-4 h-4 text-gray-400" />
                       <input
                         type="number"
                         value={locationUser.hourly_wage || ''}
                         onChange={(e) => handleUserWageChange(locationUser.user_id, e.target.value)}
-                        placeholder="時給を入力"
+                        placeholder="時給"
                         className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-500">円</span>
@@ -494,7 +494,7 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
                         type="number"
                         value={locationUser.transportation_cost || ''}
                         onChange={(e) => handleTransportationCostChange(locationUser.user_id, e.target.value)}
-                        placeholder="交通費を入力"
+                        placeholder="片道費用"
                         className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-500">円</span>
