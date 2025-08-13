@@ -406,25 +406,52 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           <table className="min-w-full border-collapse">
             {/* ヘッダー */}
             <thead className="bg-gray-50">
+              {/* 上段：分類ヘッダー */}
               <tr>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">
+                <th rowSpan={2} className="px-4 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300 align-middle">
                   日付
                 </th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">勤怠パターン</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">シフト出勤</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">シフト退勤</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">出勤</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">退勤</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">休憩時間</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">拘束時間</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">実働時間</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">残業時間</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">遅刻時間</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">早退時間</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">出勤打刻</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">退勤打刻</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">休憩開始</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">休憩終了</th>
+                <th rowSpan={2} className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300 align-middle">
+                  勤怠パターン
+                </th>
+                
+                {/* シフトの情報 */}
+                <th colSpan={2} className="px-3 py-2 text-center text-sm font-medium text-white bg-blue-600 border border-gray-300">
+                  シフトの情報
+                </th>
+                
+                {/* 勤怠管理の情報 */}
+                <th colSpan={8} className="px-3 py-2 text-center text-sm font-medium text-white bg-green-600 border border-gray-300">
+                  勤怠管理の情報
+                </th>
+                
+                {/* 打刻時刻の情報 */}
+                <th colSpan={4} className="px-3 py-2 text-center text-sm font-medium text-white bg-orange-600 border border-gray-300">
+                  打刻時刻の情報
+                </th>
+              </tr>
+              
+              {/* 下段：詳細項目ヘッダー */}
+              <tr>
+                {/* シフトの情報 */}
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-blue-50 border border-gray-300">シフト出勤</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-blue-50 border border-gray-300">シフト退勤</th>
+                
+                {/* 勤怠管理の情報 */}
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">出勤</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">退勤</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">休憩時間</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">拘束時間</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">実働時間</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">残業時間</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">遅刻時間</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-green-50 border border-gray-300">早退時間</th>
+                
+                {/* 打刻時刻の情報 */}
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-orange-50 border border-gray-300">出勤打刻</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-orange-50 border border-gray-300">退勤打刻</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-orange-50 border border-gray-300">休憩開始</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 bg-orange-50 border border-gray-300">休憩終了</th>
               </tr>
             </thead>
 
@@ -449,71 +476,49 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                     {/* 勤怠パターン */}
                     <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.workPattern || '-'}</td>
                     
-                    {/* シフト出勤 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.shiftStartTime || '-'}</td>
+                    {/* シフトの情報 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-blue-25">{record.shiftStartTime || '-'}</td>
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-blue-25">{record.shiftEndTime || '-'}</td>
                     
-                    {/* シフト退勤 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.shiftEndTime || '-'}</td>
-                    
-                    {/* 出勤 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.clockIn || '-'}</td>
-                    
-                    {/* 退勤 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.clockOut || '-'}</td>
-                    
-                    {/* 休憩時間 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    {/* 勤怠管理の情報 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">{record.clockIn || '-'}</td>
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">{record.clockOut || '-'}</td>
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
                       {record.breakTime > 0 ? formatTime(record.breakTime) : '-'}
                     </td>
-                    
-                    {/* 拘束時間 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
                       {record.totalWorkTime > 0 ? formatTime(record.totalWorkTime) : '-'}
                     </td>
-                    
-                    {/* 実働時間 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
                       {record.actualWorkTime > 0 ? formatTime(record.actualWorkTime) : '-'}
                     </td>
-                    
-                    {/* 残業時間 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
                       {record.overtimeMinutes > 0 ? (
                         <span className="text-red-600 font-medium">{formatTime(record.overtimeMinutes)}</span>
                       ) : '-'}
                     </td>
-                    
-                    {/* 遅刻時間 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
                       {record.lateMinutes > 0 ? (
                         <span className="text-orange-600 font-medium">{formatTime(record.lateMinutes)}</span>
                       ) : '-'}
                     </td>
-                    
-                    {/* 早退時間 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
                       {record.earlyLeaveMinutes > 0 ? (
                         <span className="text-orange-600 font-medium">{formatTime(record.earlyLeaveMinutes)}</span>
                       ) : '-'}
                     </td>
                     
-                    {/* 出勤打刻 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    {/* 打刻時刻の情報 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
                       {record.records.clockIn || '-'}
                     </td>
-                    
-                    {/* 退勤打刻 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
                       {record.records.clockOut || '-'}
                     </td>
-                    
-                    {/* 休憩開始 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
                       {record.records.breakStart || '-'}
                     </td>
-                    
-                    {/* 休憩終了 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
                       {record.records.breakEnd || '-'}
                     </td>
                   </tr>
