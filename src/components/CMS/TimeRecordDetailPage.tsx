@@ -436,28 +436,16 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           const totalMinutes = (managementClockOutTime.getTime() - managementClockInTime.getTime()) / (1000 * 60);
           dailyRecord.totalWorkTime = Math.round(totalMinutes);
           
-          // 2. 休憩時間の計算（設定ベース）
+          // 2. 休憩時間の計算（常に設定ベース、打刻は記録のみ）
           let actualBreakMinutes = 0;
           
-          if (punchRecords.break_start.length > 0 && punchRecords.break_end.length > 0) {
-            // 休憩開始・終了の打刻記録がある場合は実際の打刻から計算
-            const breakStartTimes = punchRecords.break_start.map(time => new Date(`${date} ${time}`));
-            const breakEndTimes = punchRecords.break_end.map(time => new Date(`${date} ${time}`));
-            
-            // 最初の休憩開始から最後の休憩終了までの時間を計算（簡易版）
-            if (breakStartTimes.length > 0 && breakEndTimes.length > 0) {
-              const firstBreakStart = Math.min(...breakStartTimes.map(t => t.getTime()));
-              const lastBreakEnd = Math.max(...breakEndTimes.map(t => t.getTime()));
-              actualBreakMinutes = Math.round((lastBreakEnd - firstBreakStart) / (1000 * 60));
-            }
-          } else {
-            // 打刻記録がない場合は設定ベースで計算
-            actualBreakMinutes = calculateBreakTimeFromSettings(
-              totalMinutes / 60, // 拘束時間（時間単位）
-              breakTimeSettings || [],
-              dailyRecord.workPattern // 拠点情報から拠点を特定
-            );
-          }
+          // 休憩打刻がある場合でも、勤怠管理情報には設定ベースの休憩時間を使用
+          // （打刻記録は「打刻時刻の情報」セクションに表示されるのみ）
+          actualBreakMinutes = calculateBreakTimeFromSettings(
+            totalMinutes / 60, // 拘束時間（時間単位）
+            breakTimeSettings || [],
+            dailyRecord.workPattern // 拠点情報から拠点を特定
+          );
           
           dailyRecord.breakTime = actualBreakMinutes;
           
