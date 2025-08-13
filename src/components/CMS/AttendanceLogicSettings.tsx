@@ -3,14 +3,11 @@ import { supabase } from '../../lib/supabase';
 import { Settings, Save, RotateCcw, AlertCircle, Check } from 'lucide-react';
 
 interface AttendanceLogicConfig {
-  early_arrival_status: string;
+  normal_work_status: string;
   late_arrival_status: string;
   early_departure_status: string;
-  normal_work_status: string;
   absence_status: string;
   conflict_status: string;
-  auto_adjust_clock_in: boolean;
-  auto_adjust_clock_out: boolean;
 }
 
 interface AttendanceLogicSetting {
@@ -27,14 +24,11 @@ interface AttendanceLogicSetting {
 const AttendanceLogicSettings: React.FC = () => {
   const [settings, setSettings] = useState<AttendanceLogicSetting | null>(null);
   const [config, setConfig] = useState<AttendanceLogicConfig>({
-    early_arrival_status: '出勤',
+    normal_work_status: '通常勤務',
     late_arrival_status: '遅刻',
     early_departure_status: '早退',
-    normal_work_status: '出勤',
     absence_status: '欠勤',
-    conflict_status: '要確認',
-    auto_adjust_clock_in: true,
-    auto_adjust_clock_out: false
+    conflict_status: '判定困難'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,7 +36,7 @@ const AttendanceLogicSettings: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [appliedFrom, setAppliedFrom] = useState<string>('');
 
-  const statusOptions = ['出勤', '残業', '遅刻', '早退', '早出', '欠勤', '要確認'];
+  const statusOptions = ['通常勤務', '遅刻', '早退', '欠勤', '判定困難'];
 
   useEffect(() => {
     fetchSettings();
@@ -135,14 +129,11 @@ const AttendanceLogicSettings: React.FC = () => {
 
   const handleReset = () => {
     setConfig({
-      early_arrival_status: '出勤',
+      normal_work_status: '通常勤務',
       late_arrival_status: '遅刻',
       early_departure_status: '早退',
-      normal_work_status: '出勤',
       absence_status: '欠勤',
-      conflict_status: '要確認',
-      auto_adjust_clock_in: true,
-      auto_adjust_clock_out: false
+      conflict_status: '判定困難'
     });
     setAppliedFrom(new Date().toISOString().slice(0, 16));
   };
@@ -232,58 +223,10 @@ const AttendanceLogicSettings: React.FC = () => {
           </div>
 
           {/* ステータス設定 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                早期出勤時のステータス
-              </label>
-              <select
-                value={config.early_arrival_status}
-                onChange={(e) => handleConfigChange('early_arrival_status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">シフト開始時間より早く打刻した場合</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                遅刻時のステータス
-              </label>
-              <select
-                value={config.late_arrival_status}
-                onChange={(e) => handleConfigChange('late_arrival_status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">シフト開始時間より遅く打刻した場合</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                早退時のステータス
-              </label>
-              <select
-                value={config.early_departure_status}
-                onChange={(e) => handleConfigChange('early_departure_status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">シフト終了時間より早く退勤打刻した場合</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                通常勤務時のステータス
+                通常勤務
               </label>
               <select
                 value={config.normal_work_status}
@@ -299,7 +242,39 @@ const AttendanceLogicSettings: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                欠勤時のステータス
+                遅刻
+              </label>
+              <select
+                value={config.late_arrival_status}
+                onChange={(e) => handleConfigChange('late_arrival_status', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">シフト開始時間より遅く打刻した場合</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                早退
+              </label>
+              <select
+                value={config.early_departure_status}
+                onChange={(e) => handleConfigChange('early_departure_status', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {statusOptions.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">シフト終了時間より早く退勤打刻した場合</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                欠勤
               </label>
               <select
                 value={config.absence_status}
@@ -315,7 +290,7 @@ const AttendanceLogicSettings: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                判定困難時のステータス
+                判定困難
               </label>
               <select
                 value={config.conflict_status}
@@ -326,46 +301,7 @@ const AttendanceLogicSettings: React.FC = () => {
                   <option key={status} value={status}>{status}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">複数の条件が該当する場合</p>
-            </div>
-          </div>
-
-          {/* 自動調整設定 */}
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">自動時刻調整設定</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="auto_adjust_clock_in"
-                  checked={config.auto_adjust_clock_in}
-                  onChange={(e) => handleConfigChange('auto_adjust_clock_in', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="auto_adjust_clock_in" className="ml-2 block text-sm text-gray-900">
-                  出勤時刻を自動調整する
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 ml-6">
-                シフト開始時間より早く打刻した場合、出勤時刻をシフト開始時間に調整します
-              </p>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="auto_adjust_clock_out"
-                  checked={config.auto_adjust_clock_out}
-                  onChange={(e) => handleConfigChange('auto_adjust_clock_out', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="auto_adjust_clock_out" className="ml-2 block text-sm text-gray-900">
-                  退勤時刻を自動調整する
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 ml-6">
-                シフト終了時刻より遅く打刻した場合、退勤時刻をシフト終了時刻に調整します
-              </p>
+              <p className="text-xs text-gray-500 mt-1">複数の条件が該当する場合や判定が困難な状況</p>
             </div>
           </div>
         </div>
