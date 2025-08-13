@@ -74,13 +74,18 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
 
     try {
       // ユーザー情報を取得
+      console.log('ユーザー情報取得開始:', userId);
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('ユーザー情報取得エラー:', userError);
+        throw new Error(`ユーザー情報の取得に失敗: ${userError.message}`);
+      }
+      console.log('ユーザー情報取得成功:', userData);
       setUser(userData);
 
       // 月の日数を取得
@@ -96,31 +101,43 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       }
 
       // 打刻記録を取得（勤務パターンとシフト情報も含む）
+      console.log('打刻記録取得開始:', {
+        userId,
+        startDate: startDate.toISOString(),
+        endDate: new Date(targetYear, targetMonth, 1).toISOString()
+      });
       const { data: timeRecords, error: recordsError } = await supabase
         .from('time_records')
-        .select(`
-          *,
-          work_patterns (*)
-        `)
+        .select('*')
         .eq('user_id', userId)
         .gte('recorded_at', startDate.toISOString())
         .lt('recorded_at', new Date(targetYear, targetMonth, 1).toISOString())
         .order('recorded_at');
 
-      if (recordsError) throw recordsError;
+      if (recordsError) {
+        console.error('打刻記録取得エラー:', recordsError);
+        throw new Error(`打刻記録の取得に失敗: ${recordsError.message}`);
+      }
+      console.log('打刻記録取得成功:', timeRecords?.length, '件');
 
       // シフト情報を取得（勤務パターン情報付き）
+      console.log('シフト情報取得開始:', {
+        userId,
+        startDate: dates[0],
+        endDate: dates[dates.length - 1]
+      });
       const { data: shifts, error: shiftsError } = await supabase
         .from('shifts')
-        .select(`
-          *,
-          work_patterns (*)
-        `)
+        .select('*')
         .eq('user_id', userId)
         .gte('shift_date', dates[0])
         .lte('shift_date', dates[dates.length - 1]);
 
-      if (shiftsError) throw shiftsError;
+      if (shiftsError) {
+        console.error('シフト情報取得エラー:', shiftsError);
+        throw new Error(`シフト情報の取得に失敗: ${shiftsError.message}`);
+      }
+      console.log('シフト情報取得成功:', shifts?.length, '件');
 
       // 日別にデータを整理
       const dailyRecordsMap: { [date: string]: DailyAttendanceRecord } = {};
@@ -142,7 +159,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       shifts?.forEach(shift => {
         const shiftDate = shift.shift_date;
         if (dailyRecordsMap[shiftDate]) {
-          dailyRecordsMap[shiftDate].workPattern = shift.work_patterns?.name || 'なし';
+          dailyRecordsMap[shiftDate].workPattern = shift.shift_type || 'なし';
         }
       });
 
@@ -191,10 +208,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
               break;
           }
 
-          // 勤務パターンを設定（最初のレコードから取得）
-          if (record.work_patterns && !dailyRecord.workPattern) {
-            dailyRecord.workPattern = record.work_patterns.name;
-          }
+          // 勤務パターンを設定（シフトタイプから取得）
+          // work_patternsテーブルの参照は一旦削除
         }
       });
 
@@ -241,26 +256,18 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
             dailyRecord.overtimeMinutes = dailyRecord.actualWorkTime - standardWorkMinutes;
           }
           
-          // 遅刻・早退の計算
-          // シフトの勤務パターンから取得した開始・終了時間と比較
-          const shift = shifts?.find(s => s.shift_date === date);
-          if (shift?.work_patterns) {
-            const pattern = shift.work_patterns;
-            
-            if (pattern.start_time && pattern.end_time) {
-              const plannedStartTime = new Date(`${date} ${pattern.start_time}`);
-              const plannedEndTime = new Date(`${date} ${pattern.end_time}`);
-              
-              // 遅刻計算
-              if (clockInTime > plannedStartTime) {
-                dailyRecord.lateMinutes = Math.round((clockInTime.getTime() - plannedStartTime.getTime()) / (1000 * 60));
-              }
-              
-              // 早退計算
-              if (clockOutTime < plannedEndTime) {
-                dailyRecord.earlyLeaveMinutes = Math.round((plannedEndTime.getTime() - clockOutTime.getTime()) / (1000 * 60));
-              }
-            }
+          // 遅刻・早退の計算（シンプル版 - 9:00-18:00を基準）
+          const standardStartTime = new Date(`${date} 09:00:00`);
+          const standardEndTime = new Date(`${date} 18:00:00`);
+          
+          // 遅刻計算
+          if (clockInTime > standardStartTime) {
+            dailyRecord.lateMinutes = Math.round((clockInTime.getTime() - standardStartTime.getTime()) / (1000 * 60));
+          }
+          
+          // 早退計算
+          if (clockOutTime < standardEndTime) {
+            dailyRecord.earlyLeaveMinutes = Math.round((standardEndTime.getTime() - clockOutTime.getTime()) / (1000 * 60));
           }
         }
       });
@@ -268,7 +275,9 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       setDailyRecords(dates.map(date => dailyRecordsMap[date]));
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : '打刻データの取得に失敗しました');
+      console.error('打刻データ取得エラー:', err);
+      const errorMessage = err instanceof Error ? err.message : '打刻データの取得に失敗しました';
+      setError(`エラー詳細: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
