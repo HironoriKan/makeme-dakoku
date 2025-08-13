@@ -1,4 +1,5 @@
 {
+  "name": "makeme-attendance",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",

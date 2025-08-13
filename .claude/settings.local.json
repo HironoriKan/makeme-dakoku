@@ -55,7 +55,8 @@
       "Bash(git merge:*)",
       "Bash(git branch:*)",
       "Bash(grep:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(vercel:*)"
     ],
     "deny": []
   }

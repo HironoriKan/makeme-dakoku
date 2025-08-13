@@ -6,10 +6,20 @@ const LineLogin: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center px-6">
-      <div className="max-w-md w-full">
+    <div 
+      className="min-h-screen flex items-center justify-center px-6 relative"
+      style={{
+        backgroundImage: `url('/images/FV-MakeMe勤怠.png')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* 背景オーバーレイ */}
+      <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+      <div className="max-w-md w-full relative z-10">
         {/* メインコンテンツカード */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8 backdrop-blur-sm bg-white/95">
           
           {/* ヘッダー */}
           <div className="text-center mb-8">
