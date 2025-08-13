@@ -375,50 +375,31 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       {/* メイン表 */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full">
+          <table className="min-w-full border-collapse">
             {/* ヘッダー */}
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">
                   日付
                 </th>
-                
-                {/* 勤怠記録セクション */}
-                <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-50 border-x border-gray-200" colSpan={9}>
-                  勤怠記録
-                </th>
-                
-                {/* 打刻記録セクション */}
-                <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-50 border-l border-gray-200" colSpan={4}>
-                  打刻記録
-                </th>
-              </tr>
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                  <Calendar className="w-3 h-3 inline mr-1" />
-                </th>
-                
-                {/* 勤怠記録の詳細ヘッダー */}
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-x border-gray-200">勤怠パターン</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">出勤</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">退勤</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">休憩時間</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">拘束時間</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">実働時間</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">残業時間</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">遅刻時間</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">早退時間</th>
-                
-                {/* 打刻記録の詳細ヘッダー */}
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 border-r border-gray-200">出勤</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 border-r border-gray-200">退勤</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 border-r border-gray-200">休憩（入り）</th>
-                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">休憩（戻り）</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">勤怠パターン</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">出勤</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">退勤</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">休憩時間</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">拘束時間</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">実働時間</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">残業時間</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">遅刻時間</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">早退時間</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">出勤打刻</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">退勤打刻</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">休憩開始</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">休憩終了</th>
               </tr>
             </thead>
 
             {/* ボディ */}
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white">
               {dailyRecords.map((record) => {
                 const date = new Date(record.date + 'T00:00:00');
                 const day = date.getDate();
@@ -426,55 +407,77 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                 const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                 
                 return (
-                  <tr key={record.date} className={`hover:bg-gray-50 ${isWeekend ? 'bg-red-50' : ''}`}>
+                  <tr key={record.date} className={`hover:bg-gray-50 ${isWeekend ? 'bg-blue-50' : ''}`}>
                     {/* 日付 */}
-                    <td className="px-4 py-3 border-r border-gray-200">
+                    <td className="px-4 py-2 text-center border border-gray-300">
                       <div className="text-sm">
                         <div className="font-medium text-gray-900">{day}日</div>
-                        <div className="text-xs text-gray-500">{weekday}</div>
+                        <div className="text-xs text-gray-500">({weekday})</div>
                       </div>
                     </td>
                     
-                    {/* 勤怠記録 */}
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">{record.workPattern || '-'}</td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">{record.clockIn || '-'}</td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">{record.clockOut || '-'}</td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                    {/* 勤怠パターン */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.workPattern || '-'}</td>
+                    
+                    {/* 出勤 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.clockIn || '-'}</td>
+                    
+                    {/* 退勤 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.clockOut || '-'}</td>
+                    
+                    {/* 休憩時間 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.breakTime > 0 ? formatTime(record.breakTime) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                    
+                    {/* 拘束時間 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.totalWorkTime > 0 ? formatTime(record.totalWorkTime) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                    
+                    {/* 実働時間 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.actualWorkTime > 0 ? formatTime(record.actualWorkTime) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                    
+                    {/* 残業時間 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.overtimeMinutes > 0 ? (
                         <span className="text-red-600 font-medium">{formatTime(record.overtimeMinutes)}</span>
                       ) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                    
+                    {/* 遅刻時間 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.lateMinutes > 0 ? (
                         <span className="text-orange-600 font-medium">{formatTime(record.lateMinutes)}</span>
                       ) : '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                    
+                    {/* 早退時間 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.earlyLeaveMinutes > 0 ? (
                         <span className="text-orange-600 font-medium">{formatTime(record.earlyLeaveMinutes)}</span>
                       ) : '-'}
                     </td>
                     
-                    {/* 打刻記録 */}
-                    <td className="px-2 py-3 text-center text-sm bg-green-25 border-r border-gray-200">
+                    {/* 出勤打刻 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.records.clockIn || '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-green-25 border-r border-gray-200">
+                    
+                    {/* 退勤打刻 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.records.clockOut || '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-green-25 border-r border-gray-200">
+                    
+                    {/* 休憩開始 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.records.breakStart || '-'}
                     </td>
-                    <td className="px-2 py-3 text-center text-sm bg-green-25">
+                    
+                    {/* 休憩終了 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">
                       {record.records.breakEnd || '-'}
                     </td>
                   </tr>
@@ -485,24 +488,6 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         </div>
       </div>
 
-      {/* 凡例 */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">凡例</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-200 rounded"></div>
-            <span>勤怠記録（計算値）</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-200 rounded"></div>
-            <span>打刻記録（実記録）</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="w-3 h-3 bg-red-50 rounded border"></span>
-            <span>土日</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
