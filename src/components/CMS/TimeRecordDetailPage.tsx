@@ -379,14 +379,15 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         }
         
         if (dailyRecord.clockIn && dailyRecord.clockOut) {
-          const clockInTime = new Date(`${dailyRecord.date} ${dailyRecord.clockIn}`);
-          const clockOutTime = new Date(`${dailyRecord.date} ${dailyRecord.clockOut}`);
+          // ===== 勤怠管理の情報計算（勤怠の出勤・退勤時刻から計算） =====
+          const managementClockInTime = new Date(`${dailyRecord.date} ${dailyRecord.clockIn}`);
+          const managementClockOutTime = new Date(`${dailyRecord.date} ${dailyRecord.clockOut}`);
           
-          // 拘束時間（分）
-          const totalMinutes = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60);
+          // 1. 拘束時間 = 勤怠管理の出勤時刻 - 勤怠管理の退勤時刻
+          const totalMinutes = (managementClockOutTime.getTime() - managementClockInTime.getTime()) / (1000 * 60);
           dailyRecord.totalWorkTime = Math.round(totalMinutes);
           
-          // 実際の休憩時間を計算
+          // 2. 休憩時間の計算
           let actualBreakMinutes = 0;
           
           if (punchRecords.break_start.length > 0 && punchRecords.break_end.length > 0) {
@@ -401,13 +402,13 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
               actualBreakMinutes = Math.round((lastBreakEnd - firstBreakStart) / (1000 * 60));
             }
           } else {
-            // 打刻記録がない場合は従来通りの計算（6時間以上なら1時間休憩）
+            // 打刻記録がない場合は拘束時間基準で計算（6時間以上なら1時間休憩）
             actualBreakMinutes = totalMinutes >= 360 ? 60 : 0;
           }
           
           dailyRecord.breakTime = actualBreakMinutes;
           
-          // 実働時間（拘束時間 - 休憩時間）
+          // 3. 実働時間 = 拘束時間 - 休憩時間
           dailyRecord.actualWorkTime = Math.max(0, dailyRecord.totalWorkTime - dailyRecord.breakTime);
           
           // 残業時間（8時間超過分）
