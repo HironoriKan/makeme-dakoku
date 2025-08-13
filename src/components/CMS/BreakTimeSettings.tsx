@@ -376,7 +376,7 @@ const BreakTimeSettings: React.FC = () => {
                   <div key={index} className="p-4 border border-gray-200 rounded-lg">
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">最小勤務時間</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">最小拘束時間</label>
                         <input
                           type="number"
                           step="0.5"
@@ -387,7 +387,7 @@ const BreakTimeSettings: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">最大勤務時間</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">最大拘束時間</label>
                         <input
                           type="number"
                           step="0.5"
@@ -458,7 +458,7 @@ const BreakTimeSettings: React.FC = () => {
                 <div className="space-y-2 mb-4">
                   {setting.break_rules.map((rule, index) => (
                     <div key={index} className="text-sm text-gray-600">
-                      勤務時間 {rule.min_work_hours}時間以上{rule.max_work_hours}時間以下 → 休憩 {rule.break_minutes}分
+                      拘束時間 {rule.min_work_hours}時間以上{rule.max_work_hours}時間以下 → 休憩 {rule.break_minutes}分
                       {rule.description && <span className="text-gray-500 ml-2">({rule.description})</span>}
                     </div>
                   ))}

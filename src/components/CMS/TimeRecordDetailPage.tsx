@@ -330,7 +330,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           if (workHours >= rule.min_work_hours && workHours < rule.max_work_hours) {
             return rule.break_minutes;
           }
-          // 最大勤務時間が高いルールは以上の場合も含む
+          // 最大拘束時間が高いルールは以上の場合も含む
           if (rule.max_work_hours >= 12 && workHours >= rule.min_work_hours) {
             return rule.break_minutes;
           }
@@ -404,7 +404,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         }
       });
 
-      // 各日の勤務時間を計算と勤怠ステータス判定
+      // 各日の拘束時間を計算と勤怠ステータス判定
       Object.keys(dailyRecordsMap).forEach(date => {
         const dailyRecord = dailyRecordsMap[date];
         const punchRecords = dailyPunchRecordsMap[date];
