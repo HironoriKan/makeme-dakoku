@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { LocationService, Location } from '../../services/locationService';
 import AddLocationModal from './AddLocationModal';
 import UserLocationAssignment from './UserLocationAssignment';
+import LocationDetailPage from './LocationDetailPage';
 import { 
   MapPin, 
   Plus, 
@@ -16,7 +17,8 @@ import {
   GripVertical, 
   Store, 
   Calendar,
-  Heart
+  Heart,
+  ExternalLink
 } from 'lucide-react';
 
 type LocationType = 'makeme' | 'permanent' | 'event';
@@ -30,6 +32,7 @@ const LocationManagement: React.FC = () => {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editedData, setEditedData] = useState<Partial<Location>>({});
   const [activeTab, setActiveTab] = useState<LocationType>('permanent');
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLocations();
@@ -195,6 +198,16 @@ const LocationManagement: React.FC = () => {
       </span>
     );
   };
+
+  // 拠点詳細ページが選択されている場合
+  if (selectedLocationId) {
+    return (
+      <LocationDetailPage 
+        locationId={selectedLocationId}
+        onBack={() => setSelectedLocationId(null)}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -516,6 +529,13 @@ const LocationManagement: React.FC = () => {
                                     </div>
                                   ) : (
                                     <div className="flex items-center space-x-2">
+                                      <button
+                                        onClick={() => setSelectedLocationId(location.id)}
+                                        className="p-2 text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                                        title="詳細"
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                      </button>
                                       <button
                                         onClick={() => handleEdit(location)}
                                         className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"

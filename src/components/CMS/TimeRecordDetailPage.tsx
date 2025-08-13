@@ -46,6 +46,10 @@ interface DailyAttendanceRecord {
     clockOut?: string;
     breakStart?: string;
     breakEnd?: string;
+    clockInId?: string;
+    clockOutId?: string;
+    breakStartId?: string;
+    breakEndId?: string;
   };
 }
 
@@ -386,19 +390,23 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
             case 'clock_in':
               dailyRecord.clockIn = recordTime;
               dailyRecord.records.clockIn = recordTime;
+              dailyRecord.records.clockInId = record.id;
               dailyPunchRecordsMap[recordDate].clock_in.push(recordTime);
               break;
             case 'clock_out':
               dailyRecord.clockOut = recordTime;
               dailyRecord.records.clockOut = recordTime;
+              dailyRecord.records.clockOutId = record.id;
               dailyPunchRecordsMap[recordDate].clock_out.push(recordTime);
               break;
             case 'break_start':
               dailyRecord.records.breakStart = recordTime;
+              dailyRecord.records.breakStartId = record.id;
               dailyPunchRecordsMap[recordDate].break_start.push(recordTime);
               break;
             case 'break_end':
               dailyRecord.records.breakEnd = recordTime;
+              dailyRecord.records.breakEndId = record.id;
               dailyPunchRecordsMap[recordDate].break_end.push(recordTime);
               break;
           }
@@ -569,18 +577,62 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     setError(null);
 
     try {
-      // 変更された勤怠管理情報をデータベースに保存
-      // 注意: 実際のDBには保存せず、フロントエンドでのみ管理
-      // 本実装では、実際のAPI呼び出しまたはSupabase更新が必要
+      // 変更されたレコードを実際にSupabaseに保存
+      const promises = dailyRecords.map(async (record) => {
+        const original = originalRecords.find(o => o.date === record.date);
+        
+        // 変更があったレコードのみ処理
+        if (original && (
+          original.clockIn !== record.clockIn ||
+          original.clockOut !== record.clockOut ||
+          original.breakTime !== record.breakTime ||
+          original.workStatus !== record.workStatus
+        )) {
+          // 出勤記録の更新
+          if (original.clockIn !== record.clockIn && record.clockIn && record.records.clockInId) {
+            const clockInTime = new Date(`${record.date}T${record.clockIn}:00`);
+            
+            const { error: clockInError } = await supabase
+              .from('time_records')
+              .update({
+                recorded_at: clockInTime.toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', record.records.clockInId);
+
+            if (clockInError) throw clockInError;
+          }
+
+          // 退勤記録の更新
+          if (original.clockOut !== record.clockOut && record.clockOut && record.records.clockOutId) {
+            const clockOutTime = new Date(`${record.date}T${record.clockOut}:00`);
+            
+            const { error: clockOutError } = await supabase
+              .from('time_records')
+              .update({
+                recorded_at: clockOutTime.toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', record.records.clockOutId);
+
+            if (clockOutError) throw clockOutError;
+          }
+        }
+      });
+
+      await Promise.all(promises);
       
-      // 現在はフロントエンドでの状態管理のみ
+      // 状態を更新
       setOriginalRecords(JSON.parse(JSON.stringify(dailyRecords)));
       setHasChanges(false);
       
-      // 成功メッセージを一時的に表示
+      // データを再取得して同期
+      await fetchUserAndRecords();
+      
+      // 成功メッセージを表示
       const successDiv = document.createElement('div');
       successDiv.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
-      successDiv.textContent = '変更内容を保存しました';
+      successDiv.textContent = '変更内容をデータベースに保存しました';
       document.body.appendChild(successDiv);
       
       setTimeout(() => {

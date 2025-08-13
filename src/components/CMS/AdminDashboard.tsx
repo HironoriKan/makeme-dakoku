@@ -9,6 +9,7 @@ import TimeRecordEditModal from './TimeRecordEditModal';
 import UserDetailPage from './UserDetailPage';
 import AttendanceLogicSettings from './AttendanceLogicSettings';
 import BreakTimeSettings from './BreakTimeSettings';
+import TransactionManagement from './TransactionManagement';
 import { Users, LogOut } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
 
@@ -24,7 +25,7 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
-type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | keyof TableData;
+type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | 'transaction_management' | 'users';
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -70,7 +71,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   useEffect(() => {
-    if (activeTab !== 'dashboard' && activeTab !== 'shift_management' && activeTab !== 'location_management' && activeTab !== 'monthly_time_records' && activeTab !== 'attendance_logic_settings' && activeTab !== 'break_time_settings') {
+    if (activeTab === 'users') {
       fetchData(activeTab);
     }
   }, [activeTab]);
@@ -274,20 +275,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     </div>
   );
 
-  const renderTable = () => {
-    switch (activeTab) {
-      case 'users':
-        return renderUserTable();
-      case 'time_records':
-        return renderTimeRecordTable();
-      case 'shifts':
-        return renderShiftTable();
-      case 'daily_reports':
-        return renderDailyReportTable();
-      default:
-        return null;
-    }
-  };
 
   const tabLabels = {
     dashboard: 'ダッシュボード',
@@ -296,10 +283,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     monthly_time_records: '打刻記録',
     attendance_logic_settings: '勤怠ロジック設定',
     break_time_settings: '休憩時間設定',
-    users: 'ユーザー',
-    time_records: '旧打刻記録',
-    shifts: 'シフト',
-    daily_reports: '日報'
+    transaction_management: 'トランザクション管理',
+    users: 'ユーザー'
   };
 
   return (
@@ -327,7 +312,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               >
                 <div className="flex items-center justify-between">
                   <span>{tabLabels[tab]}</span>
-                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && tab !== 'monthly_time_records' && tab !== 'attendance_logic_settings' && tab !== 'break_time_settings' && (
+                  {tab === 'users' && (
                     <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
                       {data[tab as keyof TableData].length}
                     </span>
@@ -363,7 +348,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
         {/* Content */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' ? '' : 'bg-white rounded-lg shadow p-6'}>
+          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' || activeTab === 'transaction_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
             {activeTab === 'dashboard' ? (
               <KPIDashboard />
             ) : activeTab === 'shift_management' ? (
@@ -376,7 +361,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <AttendanceLogicSettings />
             ) : activeTab === 'break_time_settings' ? (
               <BreakTimeSettings />
-            ) : (
+            ) : activeTab === 'transaction_management' ? (
+              <TransactionManagement />
+            ) : activeTab === 'users' ? (
               <>
                 {error && (
                   <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
@@ -397,9 +384,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       </h1>
                       <p className="text-gray-600">
                         {activeTab === 'users' && 'ユーザーの情報を確認・管理できます'}
-                        {activeTab === 'time_records' && '打刻記録の確認・編集ができます'}
-                        {activeTab === 'shifts' && 'シフトの確認・管理ができます'}
-                        {activeTab === 'daily_reports' && '日報データを確認できます'}
                       </p>
                     </div>
                     <div className="mb-4 flex justify-between items-center">
@@ -407,17 +391,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         {tabLabels[activeTab]}一覧
                       </h2>
                       <button
-                        onClick={() => fetchData(activeTab as keyof TableData)}
+                        onClick={() => fetchData('users')}
                         className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
                       >
                         更新
                       </button>
                     </div>
-                    {renderTable()}
+                    {renderUserTable()}
                   </div>
                 )}
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

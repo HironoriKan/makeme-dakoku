@@ -1,0 +1,631 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Tables } from '../../types/supabase';
+import { 
+  MapPin, 
+  ChevronLeft, 
+  ChevronRight,
+  Clock,
+  User,
+  ArrowLeft,
+  Coffee,
+  Timer,
+  AlertCircle,
+  Save,
+  Users,
+  DollarSign,
+  Car,
+  Calendar
+} from 'lucide-react';
+import { sanitizeUserName } from '../../utils/textUtils';
+
+type UserType = Tables<'users'>;
+type TimeRecord = Tables<'time_records'>;
+type WorkPattern = Tables<'work_patterns'>;
+type Location = Tables<'locations'>;
+
+interface LocationUser {
+  id: string;
+  user_id: string;
+  location_id: string;
+  hourly_wage: number | null;
+  transportation_cost: number | null;
+  created_at: string;
+  updated_at: string;
+  user: UserType;
+}
+
+interface TimeRecordWithDetails extends TimeRecord {
+  work_pattern?: WorkPattern;
+}
+
+type WorkStatus = '出勤' | '残業' | '遅刻' | '早退' | '早出' | '欠勤' | '要確認' | '';
+
+interface DailyAttendanceRecord {
+  date: string;
+  workPattern?: string;
+  shiftStartTime?: string;
+  shiftEndTime?: string;
+  clockIn?: string;
+  clockOut?: string;
+  breakTime: number;
+  totalWorkTime: number;
+  actualWorkTime: number;
+  overtimeMinutes: number;
+  lateMinutes: number;
+  earlyLeaveMinutes: number;
+  workStatus: WorkStatus;
+  
+  records: {
+    clockIn?: string;
+    clockOut?: string;
+    breakStart?: string;
+    breakEnd?: string;
+  };
+}
+
+interface LocationDetailPageProps {
+  locationId: string;
+  onBack: () => void;
+}
+
+const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onBack }) => {
+  const [location, setLocation] = useState<Location | null>(null);
+  const [users, setUsers] = useState<LocationUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<LocationUser | null>(null);
+  const [dailyRecords, setDailyRecords] = useState<DailyAttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [originalUsers, setOriginalUsers] = useState<LocationUser[]>([]);
+
+  useEffect(() => {
+    fetchLocationDetails();
+  }, [locationId]);
+
+  useEffect(() => {
+    if (selectedUser) {
+      fetchUserAttendanceData(selectedUser.user_id);
+    }
+  }, [selectedUser, currentMonth]);
+
+  const fetchLocationDetails = async () => {
+    try {
+      setLoading(true);
+      
+      // 拠点情報を取得
+      const { data: locationData, error: locationError } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('id', locationId)
+        .single();
+
+      if (locationError) throw locationError;
+      setLocation(locationData);
+
+      // 拠点に配属されたユーザーを取得
+      const { data: usersData, error: usersError } = await supabase
+        .from('user_locations')
+        .select(`
+          *,
+          user:users(*)
+        `)
+        .eq('location_id', locationId)
+        .eq('is_active', true);
+
+      if (usersError) throw usersError;
+      
+      const locationUsers = usersData?.map(item => ({
+        ...item,
+        user: item.user as UserType
+      })) || [];
+      
+      setUsers(locationUsers);
+      setOriginalUsers(JSON.parse(JSON.stringify(locationUsers)));
+      
+      // 最初のユーザーを選択
+      if (locationUsers.length > 0) {
+        setSelectedUser(locationUsers[0]);
+      }
+      
+    } catch (err) {
+      console.error('拠点詳細取得エラー:', err);
+      setError(err instanceof Error ? err.message : '拠点詳細の取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserAttendanceData = async (userId: string) => {
+    if (!userId) return;
+
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1;
+      
+      // 月の範囲を計算
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      
+      // 打刻記録を取得
+      const { data: records, error: recordsError } = await supabase
+        .from('time_records')
+        .select(`
+          *,
+          work_pattern:work_patterns(*)
+        `)
+        .eq('user_id', userId)
+        .gte('recorded_at', startDate.toISOString())
+        .lte('recorded_at', endDate.toISOString())
+        .order('recorded_at');
+
+      if (recordsError) throw recordsError;
+
+      // 日別にデータを整理
+      const dailyData: { [key: string]: DailyAttendanceRecord } = {};
+      
+      // 月の各日を初期化
+      for (let day = 1; day <= endDate.getDate(); day++) {
+        const date = new Date(year, month - 1, day);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        dailyData[dateStr] = {
+          date: dateStr,
+          breakTime: 0,
+          totalWorkTime: 0,
+          actualWorkTime: 0,
+          overtimeMinutes: 0,
+          lateMinutes: 0,
+          earlyLeaveMinutes: 0,
+          workStatus: '',
+          records: {}
+        };
+      }
+
+      // 打刻記録を日別に分類
+      records?.forEach((record: TimeRecordWithDetails) => {
+        const recordDate = new Date(record.recorded_at).toISOString().split('T')[0];
+        const timeStr = new Date(record.recorded_at).toTimeString().substring(0, 5);
+        
+        if (!dailyData[recordDate]) return;
+        
+        switch (record.record_type) {
+          case 'clock_in':
+            dailyData[recordDate].clockIn = timeStr;
+            dailyData[recordDate].records.clockIn = timeStr;
+            break;
+          case 'clock_out':
+            dailyData[recordDate].clockOut = timeStr;
+            dailyData[recordDate].records.clockOut = timeStr;
+            break;
+          case 'break_start':
+            dailyData[recordDate].records.breakStart = timeStr;
+            break;
+          case 'break_end':
+            dailyData[recordDate].records.breakEnd = timeStr;
+            break;
+        }
+        
+        if (record.work_pattern) {
+          dailyData[recordDate].workPattern = record.work_pattern.name;
+          dailyData[recordDate].shiftStartTime = record.work_pattern.start_time;
+          dailyData[recordDate].shiftEndTime = record.work_pattern.end_time;
+        }
+      });
+
+      // 勤務時間を計算
+      Object.values(dailyData).forEach(dayData => {
+        if (dayData.clockIn && dayData.clockOut) {
+          const clockInTime = new Date(`2000-01-01T${dayData.clockIn}:00`);
+          const clockOutTime = new Date(`2000-01-01T${dayData.clockOut}:00`);
+          
+          if (clockOutTime < clockInTime) {
+            clockOutTime.setDate(clockOutTime.getDate() + 1);
+          }
+          
+          const totalMinutes = Math.round((clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60));
+          dayData.totalWorkTime = totalMinutes;
+          
+          // 休憩時間を計算（シンプルな計算）
+          if (totalMinutes > 360) { // 6時間超
+            dayData.breakTime = 60; // 1時間
+          }
+          
+          dayData.actualWorkTime = totalMinutes - dayData.breakTime;
+          
+          // ステータス判定
+          if (dayData.shiftStartTime && dayData.shiftEndTime) {
+            const shiftStart = new Date(`2000-01-01T${dayData.shiftStartTime}:00`);
+            const shiftEnd = new Date(`2000-01-01T${dayData.shiftEndTime}:00`);
+            
+            if (clockInTime > shiftStart) {
+              dayData.lateMinutes = Math.round((clockInTime.getTime() - shiftStart.getTime()) / (1000 * 60));
+              dayData.workStatus = '遅刻';
+            } else if (clockOutTime < shiftEnd) {
+              dayData.earlyLeaveMinutes = Math.round((shiftEnd.getTime() - clockOutTime.getTime()) / (1000 * 60));
+              dayData.workStatus = '早退';
+            } else if (clockOutTime > shiftEnd) {
+              dayData.overtimeMinutes = Math.round((clockOutTime.getTime() - shiftEnd.getTime()) / (1000 * 60));
+              dayData.workStatus = '残業';
+            } else {
+              dayData.workStatus = '出勤';
+            }
+          } else {
+            dayData.workStatus = '出勤';
+          }
+        } else if (dayData.clockIn) {
+          dayData.workStatus = '要確認';
+        } else if (dayData.shiftStartTime) {
+          dayData.workStatus = '欠勤';
+        }
+      });
+
+      setDailyRecords(Object.values(dailyData));
+      
+    } catch (err) {
+      console.error('勤怠データ取得エラー:', err);
+      setError(err instanceof Error ? err.message : '勤怠データの取得に失敗しました');
+    }
+  };
+
+  const handleUserWageChange = (userId: string, wage: string) => {
+    const updatedUsers = users.map(user => 
+      user.user_id === userId 
+        ? { ...user, hourly_wage: wage ? parseFloat(wage) : null }
+        : user
+    );
+    setUsers(updatedUsers);
+    setHasChanges(true);
+  };
+
+  const handleTransportationCostChange = (userId: string, cost: string) => {
+    const updatedUsers = users.map(user => 
+      user.user_id === userId 
+        ? { ...user, transportation_cost: cost ? parseFloat(cost) : null }
+        : user
+    );
+    setUsers(updatedUsers);
+    setHasChanges(true);
+  };
+
+  const handleSaveChanges = async () => {
+    setSaving(true);
+    setError(null);
+    
+    try {
+      // 変更されたユーザーのみ更新
+      const promises = users.map(async (user) => {
+        const original = originalUsers.find(ou => ou.user_id === user.user_id);
+        if (!original || 
+            original.hourly_wage !== user.hourly_wage || 
+            original.transportation_cost !== user.transportation_cost) {
+          
+          const { error } = await supabase
+            .from('user_locations')
+            .update({
+              hourly_wage: user.hourly_wage,
+              transportation_cost: user.transportation_cost,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.user_id)
+            .eq('location_id', locationId);
+          
+          if (error) throw error;
+        }
+      });
+
+      await Promise.all(promises);
+      
+      setOriginalUsers(JSON.parse(JSON.stringify(users)));
+      setHasChanges(false);
+      
+      // 成功メッセージを表示
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+      successDiv.textContent = '設定を保存しました';
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        document.body.removeChild(successDiv);
+      }, 3000);
+      
+    } catch (err) {
+      console.error('保存エラー:', err);
+      setError(err instanceof Error ? err.message : '保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetChanges = () => {
+    setUsers(JSON.parse(JSON.stringify(originalUsers)));
+    setHasChanges(false);
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prevMonth => {
+      const newMonth = new Date(prevMonth);
+      if (direction === 'prev') {
+        newMonth.setMonth(newMonth.getMonth() - 1);
+      } else {
+        newMonth.setMonth(newMonth.getMonth() + 1);
+      }
+      return newMonth;
+    });
+  };
+
+  const formatTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  const getStatusColor = (status: WorkStatus) => {
+    switch (status) {
+      case '出勤': return 'bg-green-100 text-green-800';
+      case '残業': return 'bg-blue-100 text-blue-800';
+      case '遅刻': return 'bg-yellow-100 text-yellow-800';
+      case '早退': return 'bg-orange-100 text-orange-800';
+      case '早出': return 'bg-purple-100 text-purple-800';
+      case '欠勤': return 'bg-red-100 text-red-800';
+      case '要確認': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">読み込み中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* ヘッダー */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={onBack}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <MapPin className="w-6 h-6 text-blue-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {location?.name || '拠点詳細'}
+            </h1>
+            <p className="text-gray-600">{location?.code}</p>
+          </div>
+        </div>
+        
+        {hasChanges && (
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleResetChanges}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={saving}
+            >
+              リセット
+            </button>
+            <button
+              onClick={handleSaveChanges}
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+            >
+              <Save className="w-4 h-4" />
+              <span>{saving ? '保存中...' : '保存'}</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* エラーメッセージ */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <div className="text-sm text-red-700">{error}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ユーザー一覧 */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <Users className="w-5 h-5 text-blue-600" />
+          <h2 className="text-lg font-semibold text-gray-900">配属ユーザー</h2>
+          <span className="text-sm text-gray-500">({users.length}名)</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ユーザー名
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  時給（税抜）
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  交通費
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.map((locationUser) => (
+                <tr key={locationUser.user_id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-3">
+                      <User className="w-5 h-5 text-gray-400" />
+                      <span className="text-sm font-medium text-gray-900">
+                        {sanitizeUserName(locationUser.user.display_name || locationUser.user.line_user_id)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="w-4 h-4 text-gray-400" />
+                      <input
+                        type="number"
+                        value={locationUser.hourly_wage || ''}
+                        onChange={(e) => handleUserWageChange(locationUser.user_id, e.target.value)}
+                        placeholder="時給を入力"
+                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-500">円</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <Car className="w-4 h-4 text-gray-400" />
+                      <input
+                        type="number"
+                        value={locationUser.transportation_cost || ''}
+                        onChange={(e) => handleTransportationCostChange(locationUser.user_id, e.target.value)}
+                        placeholder="交通費を入力"
+                        className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-500">円</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => setSelectedUser(locationUser)}
+                      className={`px-3 py-1 text-sm rounded transition-colors ${
+                        selectedUser?.user_id === locationUser.user_id
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      シフト表示
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* シフト情報表示 */}
+      {selectedUser && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900">
+                {sanitizeUserName(selectedUser.user.display_name || selectedUser.user.line_user_id)}のシフト表
+              </h2>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigateMonth('prev')}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <h3 className="text-lg font-medium text-gray-900">
+                {currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月
+              </h3>
+              <button
+                onClick={() => navigateMonth('next')}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* 勤怠カレンダー */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">日付</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">シフト</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">出勤</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">退勤</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">休憩</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">実働時間</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ステータス</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {dailyRecords.map((record) => (
+                  <tr key={record.date} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {new Date(record.date + 'T00:00:00').toLocaleDateString('ja-JP', {
+                        month: 'short',
+                        day: 'numeric',
+                        weekday: 'short'
+                      })}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {record.shiftStartTime && record.shiftEndTime 
+                        ? `${record.shiftStartTime}-${record.shiftEndTime}` 
+                        : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {record.clockIn ? (
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3 text-green-600" />
+                          <span>{record.clockIn}</span>
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {record.clockOut ? (
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3 text-red-600" />
+                          <span>{record.clockOut}</span>
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {record.breakTime > 0 ? (
+                        <div className="flex items-center space-x-1">
+                          <Coffee className="w-3 h-3 text-orange-600" />
+                          <span>{formatTime(record.breakTime)}</span>
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {record.actualWorkTime > 0 ? (
+                        <div className="flex items-center space-x-1">
+                          <Timer className="w-3 h-3 text-blue-600" />
+                          <span>{formatTime(record.actualWorkTime)}</span>
+                        </div>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {record.workStatus && (
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(record.workStatus)}`}>
+                          {record.workStatus}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LocationDetailPage;
