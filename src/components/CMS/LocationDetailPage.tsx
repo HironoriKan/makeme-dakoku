@@ -15,7 +15,10 @@ import {
   Users,
   JapaneseYen,
   Car,
-  Calendar
+  Calendar,
+  Plus,
+  UserPlus,
+  Trash2
 } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
 
@@ -80,9 +83,13 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [originalUsers, setOriginalUsers] = useState<LocationUser[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserType[]>([]);
+  const [showUserSelect, setShowUserSelect] = useState(false);
+  const [selectedNewUserId, setSelectedNewUserId] = useState<string>('');
 
   useEffect(() => {
     fetchLocationDetails();
+    fetchAvailableUsers();
   }, [locationId]);
 
   useEffect(() => {
@@ -90,6 +97,20 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
       fetchUserAttendanceData(selectedUser.user_id);
     }
   }, [selectedUser, currentMonth]);
+
+  const fetchAvailableUsers = async () => {
+    try {
+      const { data: allUsers, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .order('display_name');
+
+      if (usersError) throw usersError;
+      setAvailableUsers(allUsers || []);
+    } catch (err) {
+      console.error('利用可能ユーザー取得エラー:', err);
+    }
+  };
 
   const fetchLocationDetails = async () => {
     try {
@@ -344,6 +365,79 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
     setHasChanges(false);
   };
 
+  const handleAddUser = async () => {
+    if (!selectedNewUserId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('user_locations')
+        .insert({
+          user_id: selectedNewUserId,
+          location_id: locationId,
+          is_active: true,
+          hourly_wage: null,
+          transportation_cost: null
+        });
+
+      if (error) throw error;
+
+      // データを再取得
+      await fetchLocationDetails();
+      await fetchAvailableUsers();
+      
+      setSelectedNewUserId('');
+      setShowUserSelect(false);
+      
+      // 成功メッセージを表示
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+      successDiv.textContent = 'ユーザーを追加しました';
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        document.body.removeChild(successDiv);
+      }, 3000);
+      
+    } catch (err) {
+      console.error('ユーザー追加エラー:', err);
+      setError(err instanceof Error ? err.message : 'ユーザーの追加に失敗しました');
+    }
+  };
+
+  const handleRemoveUser = async (userId: string, userName: string) => {
+    if (!window.confirm(`${userName}をこの拠点から削除しますか？`)) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('user_locations')
+        .update({ is_active: false })
+        .eq('user_id', userId)
+        .eq('location_id', locationId);
+
+      if (error) throw error;
+
+      // データを再取得
+      await fetchLocationDetails();
+      await fetchAvailableUsers();
+      
+      // 成功メッセージを表示
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+      successDiv.textContent = 'ユーザーを削除しました';
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        document.body.removeChild(successDiv);
+      }, 3000);
+      
+    } catch (err) {
+      console.error('ユーザー削除エラー:', err);
+      setError(err instanceof Error ? err.message : 'ユーザーの削除に失敗しました');
+    }
+  };
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentMonth(prevMonth => {
       const newMonth = new Date(prevMonth);
@@ -360,6 +454,11 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  const getUnassignedUsers = () => {
+    const assignedUserIds = users.map(u => u.user_id);
+    return availableUsers.filter(user => !assignedUserIds.includes(user.id));
   };
 
   const getStatusColor = (status: WorkStatus) => {
@@ -402,7 +501,11 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
             <h1 className="text-2xl font-bold text-gray-900">
               {location?.name || '拠点詳細'}
             </h1>
-            <p className="text-gray-600">{location?.code}</p>
+            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+              <span>拠点コード: {location?.code || '-'}</span>
+              <span>作成日: {location?.created_at ? new Date(location.created_at).toLocaleDateString('ja-JP') : '-'}</span>
+              {location?.address && <span>住所: {location.address}</span>}
+            </div>
           </div>
         </div>
         
@@ -439,11 +542,60 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
 
       {/* ユーザー一覧 */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <Users className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-900">配属ユーザー</h2>
-          <span className="text-sm text-gray-500">({users.length}名)</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Users className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900">配属ユーザー</h2>
+            <span className="text-sm text-gray-500">({users.length}名)</span>
+          </div>
+          <button
+            onClick={() => setShowUserSelect(true)}
+            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>ユーザー追加</span>
+          </button>
         </div>
+
+        {/* ユーザー追加UI */}
+        {showUserSelect && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-medium text-blue-900 mb-3">新しいユーザーを追加</h3>
+            <div className="flex items-center space-x-3">
+              <select
+                value={selectedNewUserId}
+                onChange={(e) => setSelectedNewUserId(e.target.value)}
+                className="flex-1 px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">ユーザーを選択...</option>
+                {getUnassignedUsers().map(user => (
+                  <option key={user.id} value={user.id}>
+                    {sanitizeUserName(user.display_name || user.line_user_id)}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleAddUser}
+                disabled={!selectedNewUserId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                追加
+              </button>
+              <button
+                onClick={() => {
+                  setShowUserSelect(false);
+                  setSelectedNewUserId('');
+                }}
+                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+              >
+                キャンセル
+              </button>
+            </div>
+            {getUnassignedUsers().length === 0 && (
+              <p className="text-sm text-blue-700 mt-2">すべてのユーザーが既に配属されています。</p>
+            )}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="min-w-full">
@@ -501,16 +653,28 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => setSelectedUser(locationUser)}
-                      className={`px-3 py-1 text-sm rounded transition-colors ${
-                        selectedUser?.user_id === locationUser.user_id
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      シフト表示
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setSelectedUser(locationUser)}
+                        className={`px-3 py-1 text-sm rounded transition-colors ${
+                          selectedUser?.user_id === locationUser.user_id
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        シフト表示
+                      </button>
+                      <button
+                        onClick={() => handleRemoveUser(
+                          locationUser.user_id, 
+                          sanitizeUserName(locationUser.user.display_name || locationUser.user.line_user_id)
+                        )}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="ユーザーを削除"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

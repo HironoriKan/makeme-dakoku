@@ -338,9 +338,6 @@ const LocationManagement: React.FC = () => {
                         拠点名
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        拠点コード
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         タイプ
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -358,9 +355,6 @@ const LocationManagement: React.FC = () => {
                       )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         ステータス
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        作成日
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         操作
@@ -412,20 +406,6 @@ const LocationManagement: React.FC = () => {
                                         ? `${location.brand_name} ${location.store_name}` 
                                         : location.name}
                                     </div>
-                                  )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                  {editingLocation?.id === location.id ? (
-                                    <input
-                                      type="text"
-                                      value={editedData.code || ''}
-                                      onChange={(e) => handleInputChange('code', e.target.value)}
-                                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
-                                    />
-                                  ) : (
-                                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-                                      {location.code}
-                                    </span>
                                   )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -505,9 +485,6 @@ const LocationManagement: React.FC = () => {
                                       )}
                                     </button>
                                   </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {formatDateTime(location.created_at)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                   {editingLocation?.id === location.id ? (
