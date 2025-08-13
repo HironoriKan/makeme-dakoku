@@ -110,7 +110,7 @@ const ClockoutConfirmModal: React.FC<ClockoutConfirmModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   ① 残業した時間
                 </label>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                   <input
                     type="number"
                     min="0"
@@ -118,7 +118,7 @@ const ClockoutConfirmModal: React.FC<ClockoutConfirmModalProps> = ({
                     value={overtimeHours}
                     onChange={(e) => setOvertimeHours(e.target.value)}
                     placeholder="0"
-                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
                   />
                   <span className="text-sm text-gray-600">時間</span>
                   <input
@@ -128,7 +128,7 @@ const ClockoutConfirmModal: React.FC<ClockoutConfirmModalProps> = ({
                     value={overtimeMinutes}
                     onChange={(e) => setOvertimeMinutes(e.target.value)}
                     placeholder="0"
-                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
                   />
                   <span className="text-sm text-gray-600">分</span>
                 </div>
@@ -139,7 +139,7 @@ const ClockoutConfirmModal: React.FC<ClockoutConfirmModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   ② シフトより早く稼働した時間
                 </label>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-center space-x-2">
                   <input
                     type="number"
                     min="0"
@@ -147,7 +147,7 @@ const ClockoutConfirmModal: React.FC<ClockoutConfirmModalProps> = ({
                     value={earlyStartHours}
                     onChange={(e) => setEarlyStartHours(e.target.value)}
                     placeholder="0"
-                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
                   />
                   <span className="text-sm text-gray-600">時間</span>
                   <input
@@ -157,7 +157,7 @@ const ClockoutConfirmModal: React.FC<ClockoutConfirmModalProps> = ({
                     value={earlyStartMinutes}
                     onChange={(e) => setEarlyStartMinutes(e.target.value)}
                     placeholder="0"
-                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-16 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-center"
                   />
                   <span className="text-sm text-gray-600">分</span>
                 </div>
