@@ -1,0 +1,432 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Tables } from '../../types/supabase';
+import { 
+  Calendar, 
+  ChevronLeft, 
+  ChevronRight,
+  Clock,
+  User,
+  ArrowLeft,
+  Coffee,
+  Timer,
+  AlertCircle
+} from 'lucide-react';
+import { sanitizeUserName } from '../../utils/textUtils';
+
+type UserType = Tables<'users'>;
+type TimeRecord = Tables<'time_records'>;
+type WorkPattern = Tables<'work_patterns'>;
+
+interface TimeRecordWithDetails extends TimeRecord {
+  work_pattern?: WorkPattern;
+}
+
+interface DailyAttendanceRecord {
+  date: string;
+  workPattern?: string;
+  clockIn?: string;
+  clockOut?: string;
+  breakTime: number; // 分
+  totalWorkTime: number; // 分（拘束時間）
+  actualWorkTime: number; // 分（実働時間）
+  overtimeMinutes: number; // 残業時間（分）
+  lateMinutes: number; // 遅刻時間（分）
+  earlyLeaveMinutes: number; // 早退時間（分）
+  
+  // 打刻記録
+  records: {
+    clockIn?: string;
+    clockOut?: string;
+    breakStart?: string;
+    breakEnd?: string;
+  };
+}
+
+interface TimeRecordDetailPageProps {
+  userId: string;
+  userName: string;
+  year: number;
+  month: number;
+  onBack: () => void;
+}
+
+const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
+  userId,
+  userName,
+  year,
+  month,
+  onBack
+}) => {
+  const [user, setUser] = useState<UserType | null>(null);
+  const [dailyRecords, setDailyRecords] = useState<DailyAttendanceRecord[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date(year, month - 1, 1));
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUserAndRecords();
+  }, [userId, currentDate]);
+
+  const fetchUserAndRecords = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // ユーザー情報を取得
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (userError) throw userError;
+      setUser(userData);
+
+      // 月の日数を取得
+      const targetYear = currentDate.getFullYear();
+      const targetMonth = currentDate.getMonth() + 1;
+      const startDate = new Date(targetYear, targetMonth - 1, 1);
+      const endDate = new Date(targetYear, targetMonth, 0);
+      
+      // その月のすべての日付を生成
+      const dates: string[] = [];
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        dates.push(new Date(d).toISOString().split('T')[0]);
+      }
+
+      // 打刻記録を取得
+      const { data: timeRecords, error: recordsError } = await supabase
+        .from('time_records')
+        .select(`
+          *,
+          work_patterns (*)
+        `)
+        .eq('user_id', userId)
+        .gte('recorded_at', startDate.toISOString())
+        .lt('recorded_at', new Date(targetYear, targetMonth, 1).toISOString())
+        .order('recorded_at');
+
+      if (recordsError) throw recordsError;
+
+      // 日別にデータを整理
+      const dailyRecordsMap: { [date: string]: DailyAttendanceRecord } = {};
+
+      dates.forEach(date => {
+        dailyRecordsMap[date] = {
+          date,
+          breakTime: 0,
+          totalWorkTime: 0,
+          actualWorkTime: 0,
+          overtimeMinutes: 0,
+          lateMinutes: 0,
+          earlyLeaveMinutes: 0,
+          records: {}
+        };
+      });
+
+      // 打刻データを日別に分類
+      timeRecords?.forEach(record => {
+        const recordDate = new Date(record.recorded_at).toISOString().split('T')[0];
+        const recordTime = new Date(record.recorded_at).toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        if (dailyRecordsMap[recordDate]) {
+          const dailyRecord = dailyRecordsMap[recordDate];
+          
+          switch (record.record_type) {
+            case 'clock_in':
+              dailyRecord.clockIn = recordTime;
+              dailyRecord.records.clockIn = recordTime;
+              break;
+            case 'clock_out':
+              dailyRecord.clockOut = recordTime;
+              dailyRecord.records.clockOut = recordTime;
+              break;
+            case 'break_start':
+              dailyRecord.records.breakStart = recordTime;
+              break;
+            case 'break_end':
+              dailyRecord.records.breakEnd = recordTime;
+              break;
+          }
+
+          // 勤務パターンを設定（最初のレコードから取得）
+          if (record.work_patterns && !dailyRecord.workPattern) {
+            dailyRecord.workPattern = record.work_patterns.name;
+          }
+        }
+      });
+
+      // 各日の勤務時間を計算
+      Object.values(dailyRecordsMap).forEach(dailyRecord => {
+        if (dailyRecord.clockIn && dailyRecord.clockOut) {
+          const clockInTime = new Date(`${dailyRecord.date} ${dailyRecord.clockIn}`);
+          const clockOutTime = new Date(`${dailyRecord.date} ${dailyRecord.clockOut}`);
+          
+          // 拘束時間（分）
+          const totalMinutes = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60);
+          dailyRecord.totalWorkTime = Math.round(totalMinutes);
+          
+          // 休憩時間を計算（簡易版：とりあえず1時間固定）
+          dailyRecord.breakTime = totalMinutes >= 360 ? 60 : 0; // 6時間以上なら1時間休憩
+          
+          // 実働時間（拘束時間 - 休憩時間）
+          dailyRecord.actualWorkTime = dailyRecord.totalWorkTime - dailyRecord.breakTime;
+          
+          // 残業時間（8時間超過分）
+          const standardWorkMinutes = 8 * 60; // 8時間
+          if (dailyRecord.actualWorkTime > standardWorkMinutes) {
+            dailyRecord.overtimeMinutes = dailyRecord.actualWorkTime - standardWorkMinutes;
+          }
+          
+          // 遅刻・早退の計算（標準時間との比較 - 簡易版）
+          // TODO: 実際の勤務パターンと比較して計算する
+        }
+      });
+
+      setDailyRecords(dates.map(date => dailyRecordsMap[date]));
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '打刻データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  const formatMonthYear = (date: Date) => {
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long'
+    });
+  };
+
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">読み込み中...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* ヘッダー */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <div>
+              <div className="flex items-center space-x-3 mb-2">
+                <Clock className="w-6 h-6 text-blue-600" />
+                <h1 className="text-2xl font-bold text-gray-900">打刻記録詳細</h1>
+              </div>
+              <div className="flex items-center space-x-3">
+                {user?.picture_url && (
+                  <img
+                    src={user.picture_url}
+                    alt={userName}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                )}
+                <div>
+                  <p className="text-lg font-medium text-gray-900">{userName}</p>
+                  <p className="text-sm text-gray-500">#{user?.employee_number || '---'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 月ナビゲーション */}
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => navigateMonth('prev')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <h2 className="text-xl font-semibold text-gray-900 min-w-[120px] text-center">
+            {formatMonthYear(currentDate)}
+          </h2>
+          <button
+            onClick={() => navigateMonth('next')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ChevronRight className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+      </div>
+
+      {/* エラー表示 */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <div className="text-sm text-red-700">{error}</div>
+          </div>
+        </div>
+      )}
+
+      {/* メイン表 */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            {/* ヘッダー */}
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                  日付
+                </th>
+                
+                {/* 勤怠記録セクション */}
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-50 border-x border-gray-200" colSpan={8}>
+                  勤怠記録
+                </th>
+                
+                {/* 打刻記録セクション */}
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-50 border-l border-gray-200" colSpan={4}>
+                  打刻記録
+                </th>
+              </tr>
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                  <Calendar className="w-3 h-3 inline mr-1" />
+                </th>
+                
+                {/* 勤怠記録の詳細ヘッダー */}
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-x border-gray-200">勤怠パターン</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">出勤</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">退勤</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">休憩時間</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">拘束時間</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">実働時間</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">残業時間</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">遅刻時間</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 border-r border-gray-200">早退時間</th>
+                
+                {/* 打刻記録の詳細ヘッダー */}
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 border-r border-gray-200">出勤</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 border-r border-gray-200">退勤</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50 border-r border-gray-200">休憩（入り）</th>
+                <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50">休憩（戻り）</th>
+              </tr>
+            </thead>
+
+            {/* ボディ */}
+            <tbody className="bg-white divide-y divide-gray-200">
+              {dailyRecords.map((record) => {
+                const date = new Date(record.date + 'T00:00:00');
+                const day = date.getDate();
+                const weekday = date.toLocaleDateString('ja-JP', { weekday: 'short' });
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                
+                return (
+                  <tr key={record.date} className={`hover:bg-gray-50 ${isWeekend ? 'bg-red-50' : ''}`}>
+                    {/* 日付 */}
+                    <td className="px-4 py-3 border-r border-gray-200">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">{day}日</div>
+                        <div className="text-xs text-gray-500">{weekday}</div>
+                      </div>
+                    </td>
+                    
+                    {/* 勤怠記録 */}
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">{record.workPattern || '-'}</td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">{record.clockIn || '-'}</td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">{record.clockOut || '-'}</td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                      {record.breakTime > 0 ? formatTime(record.breakTime) : '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                      {record.totalWorkTime > 0 ? formatTime(record.totalWorkTime) : '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                      {record.actualWorkTime > 0 ? formatTime(record.actualWorkTime) : '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                      {record.overtimeMinutes > 0 ? (
+                        <span className="text-red-600 font-medium">{formatTime(record.overtimeMinutes)}</span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                      {record.lateMinutes > 0 ? (
+                        <span className="text-orange-600 font-medium">{formatTime(record.lateMinutes)}</span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-blue-25 border-r border-gray-200">
+                      {record.earlyLeaveMinutes > 0 ? (
+                        <span className="text-orange-600 font-medium">{formatTime(record.earlyLeaveMinutes)}</span>
+                      ) : '-'}
+                    </td>
+                    
+                    {/* 打刻記録 */}
+                    <td className="px-2 py-3 text-center text-sm bg-green-25 border-r border-gray-200">
+                      {record.records.clockIn || '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-green-25 border-r border-gray-200">
+                      {record.records.clockOut || '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-green-25 border-r border-gray-200">
+                      {record.records.breakStart || '-'}
+                    </td>
+                    <td className="px-2 py-3 text-center text-sm bg-green-25">
+                      {record.records.breakEnd || '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 凡例 */}
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">凡例</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-blue-200 rounded"></div>
+            <span>勤怠記録（計算値）</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-200 rounded"></div>
+            <span>打刻記録（実記録）</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="w-3 h-3 bg-red-50 rounded border"></span>
+            <span>土日</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TimeRecordDetailPage;

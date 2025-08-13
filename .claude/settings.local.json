@@ -51,7 +51,9 @@
       "mcp__supabase__list_tables",
       "Bash(python3:*)",
       "Bash(node:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch:*)"
     ],
     "deny": []
   }

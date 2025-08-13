@@ -10,9 +10,11 @@ import {
   ChevronRight,
   Clock,
   MapPin,
-  User
+  User,
+  FileText
 } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
+import TimeRecordDetailPage from './TimeRecordDetailPage';
 
 type User = Tables<'users'>;
 type TimeRecord = Tables<'time_records'>;
@@ -46,6 +48,25 @@ const MonthlyTimeRecords: React.FC = () => {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 詳細ページ表示状態
+  const [showDetailPage, setShowDetailPage] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState<string>('');
+
+  // 詳細ページへ遷移する関数
+  const handleUserDetail = (userId: string, userName: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setShowDetailPage(true);
+  };
+
+  // 詳細ページから戻る関数
+  const handleBackFromDetail = () => {
+    setShowDetailPage(false);
+    setSelectedUserId(null);
+    setSelectedUserName('');
+  };
 
   useEffect(() => {
     fetchLocations();
@@ -224,6 +245,19 @@ const MonthlyTimeRecords: React.FC = () => {
     );
   }
 
+  // 詳細ページを表示する場合
+  if (showDetailPage && selectedUserId) {
+    return (
+      <TimeRecordDetailPage
+        userId={selectedUserId}
+        userName={selectedUserName}
+        year={currentDate.getFullYear()}
+        month={currentDate.getMonth() + 1}
+        onBack={handleBackFromDetail}
+      />
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
       {/* ヘッダー */}
@@ -301,7 +335,7 @@ const MonthlyTimeRecords: React.FC = () => {
             {/* ヘッダー */}
             <thead className="bg-gray-50">
               <tr>
-                <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200 min-w-[200px]">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4" />
                     <span>ユーザー</span>
@@ -329,27 +363,36 @@ const MonthlyTimeRecords: React.FC = () => {
               {monthlyData.users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   {/* ユーザー名（固定列） */}
-                  <td className="sticky left-0 z-10 bg-white px-4 py-3 border-r border-gray-200">
-                    <div className="flex items-center space-x-3">
-                      {user.picture_url ? (
-                        <img
-                          src={user.picture_url}
-                          alt={sanitizeUserName(user.display_name)}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-gray-500" />
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">
-                          {sanitizeUserName(user.display_name)}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          #{user.employee_number || '---'}
+                  <td className="sticky left-0 z-10 bg-white px-4 py-3 border-r border-gray-200 min-w-[200px]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        {user.picture_url ? (
+                          <img
+                            src={user.picture_url}
+                            alt={sanitizeUserName(user.display_name)}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-gray-500" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-gray-900 text-sm truncate">
+                            {sanitizeUserName(user.display_name)}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate">
+                            #{user.employee_number || '---'}
+                          </div>
                         </div>
                       </div>
+                      <button
+                        onClick={() => handleUserDetail(user.id, sanitizeUserName(user.display_name))}
+                        className="flex-shrink-0 ml-2 p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title={`${sanitizeUserName(user.display_name)}の詳細を表示`}
+                      >
+                        <FileText className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
 
