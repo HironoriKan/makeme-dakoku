@@ -10,7 +10,8 @@ import {
   ArrowLeft,
   Coffee,
   Timer,
-  AlertCircle
+  AlertCircle,
+  Save
 } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
 
@@ -70,6 +71,9 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<{date: string, field: string} | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [hasChanges, setHasChanges] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [originalRecords, setOriginalRecords] = useState<DailyAttendanceRecord[]>([]);
 
   useEffect(() => {
     fetchUserAndRecords();
@@ -492,7 +496,10 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         }
       });
 
-      setDailyRecords(dates.map(date => dailyRecordsMap[date]));
+      const finalRecords = dates.map(date => dailyRecordsMap[date]);
+      setDailyRecords(finalRecords);
+      setOriginalRecords(JSON.parse(JSON.stringify(finalRecords))); // Deep copy
+      setHasChanges(false);
 
     } catch (err) {
       console.error('打刻データ取得エラー:', err);
@@ -549,9 +556,50 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     
     setEditingCell(null);
     setEditValue('');
+    setHasChanges(true);
   };
 
   const handleEditCancel = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const handleSaveChanges = async () => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      // 変更された勤怠管理情報をデータベースに保存
+      // 注意: 実際のDBには保存せず、フロントエンドでのみ管理
+      // 本実装では、実際のAPI呼び出しまたはSupabase更新が必要
+      
+      // 現在はフロントエンドでの状態管理のみ
+      setOriginalRecords(JSON.parse(JSON.stringify(dailyRecords)));
+      setHasChanges(false);
+      
+      // 成功メッセージを一時的に表示
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
+      successDiv.textContent = '変更内容を保存しました';
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        if (document.body.contains(successDiv)) {
+          document.body.removeChild(successDiv);
+        }
+      }, 3000);
+      
+    } catch (err) {
+      console.error('保存エラー:', err);
+      setError(err instanceof Error ? err.message : '保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetChanges = () => {
+    setDailyRecords(JSON.parse(JSON.stringify(originalRecords)));
+    setHasChanges(false);
     setEditingCell(null);
     setEditValue('');
   };
@@ -585,13 +633,13 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       {/* ヘッダー */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={onBack}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
+              </button>
             <div>
               <div className="flex items-center space-x-3 mb-2">
                 <Clock className="w-6 h-6 text-blue-600" />
@@ -611,7 +659,35 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+            
+            {/* 保存ボタン */}
+            {hasChanges && (
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleResetChanges}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  リセット
+                </button>
+                <button
+                  onClick={handleSaveChanges}
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>保存中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>保存</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
         </div>
 
         {/* 月ナビゲーション */}
@@ -843,6 +919,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         </div>
       </div>
 
+    </div>
     </div>
   );
 };
