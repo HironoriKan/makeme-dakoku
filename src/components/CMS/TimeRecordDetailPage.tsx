@@ -157,6 +157,17 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         };
       });
 
+      // 時刻をHH:MM形式にフォーマットする関数
+      const formatTimeToHHMM = (timeString: string | null): string => {
+        if (!timeString) return '-';
+        // HH:MM:SS形式からHH:MM形式に変換
+        const timeParts = timeString.split(':');
+        if (timeParts.length >= 2) {
+          return `${timeParts[0]}:${timeParts[1]}`;
+        }
+        return timeString;
+      };
+
       // シフト情報を各日に設定
       shifts?.forEach(shift => {
         const shiftDate = shift.shift_date;
@@ -165,8 +176,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           const locationId = shift.location_id || 'なし';
           const shiftType = shift.shift_type || 'なし';
           dailyRecordsMap[shiftDate].workPattern = `拠点${locationId} / ${shiftType}`;
-          dailyRecordsMap[shiftDate].shiftStartTime = shift.start_time || '-';
-          dailyRecordsMap[shiftDate].shiftEndTime = shift.end_time || '-';
+          dailyRecordsMap[shiftDate].shiftStartTime = formatTimeToHHMM(shift.start_time);
+          dailyRecordsMap[shiftDate].shiftEndTime = formatTimeToHHMM(shift.end_time);
         }
       });
 
@@ -188,7 +199,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         const recordDate = new Date(record.recorded_at).toISOString().split('T')[0];
         const recordTime = new Date(record.recorded_at).toLocaleTimeString('ja-JP', {
           hour: '2-digit',
-          minute: '2-digit'
+          minute: '2-digit',
+          hour12: false
         });
 
         if (dailyRecordsMap[recordDate] && dailyPunchRecordsMap[recordDate]) {
