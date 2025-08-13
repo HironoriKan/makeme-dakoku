@@ -22,7 +22,7 @@ interface TimeRecordWithDetails extends TimeRecord {
   work_pattern?: WorkPattern;
 }
 
-type WorkStatus = '出勤' | '残業' | '遅刻' | '早退' | '早出' | '欠勤' | '';
+type WorkStatus = '出勤' | '残業' | '遅刻' | '早退' | '早出' | '欠勤' | '要確認' | '';
 
 interface DailyAttendanceRecord {
   date: string;
@@ -174,6 +174,76 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         return timeString;
       };
 
+      // 勤怠ステータス自動判定の関数
+      const determineWorkStatus = (shiftStart: string | null, shiftEnd: string | null, 
+                                 clockInTime: string | null, clockOutTime: string | null): {
+        status: WorkStatus;
+        clockIn?: string;
+        clockOut?: string;
+      } => {
+        const statuses: WorkStatus[] = [];
+        let finalClockIn = clockInTime;
+        let finalClockOut = clockOutTime;
+        
+        // シフトあり・打刻なしの場合は欠勤
+        if (shiftStart && !clockInTime) {
+          return { status: '欠勤', clockIn: undefined, clockOut: undefined };
+        }
+        
+        // シフトなし・打刻ありの場合は出勤
+        if (!shiftStart && clockInTime) {
+          return { status: '出勤', clockIn: clockInTime, clockOut: clockOutTime };
+        }
+        
+        // シフトも打刻もない場合は空
+        if (!shiftStart && !clockInTime) {
+          return { status: '', clockIn: undefined, clockOut: undefined };
+        }
+        
+        if (shiftStart && clockInTime) {
+          const shiftStartTime = new Date(`1970-01-01 ${shiftStart}:00`);
+          const punchInTime = new Date(`1970-01-01 ${clockInTime}:00`);
+          
+          if (punchInTime < shiftStartTime) {
+            // シフトより早い打刻: 出勤時刻をシフト時刻に設定
+            finalClockIn = shiftStart;
+            statuses.push('出勤');
+          } else if (punchInTime > shiftStartTime) {
+            // シフトより遅い打刻: 遅刻
+            statuses.push('遅刻');
+          } else {
+            // 同時刻: 出勤
+            statuses.push('出勤');
+          }
+        }
+        
+        if (shiftEnd && clockOutTime) {
+          const shiftEndTime = new Date(`1970-01-01 ${shiftEnd}:00`);
+          const punchOutTime = new Date(`1970-01-01 ${clockOutTime}:00`);
+          
+          if (punchOutTime < shiftEndTime) {
+            // シフトより早い退勤: 早退
+            statuses.push('早退');
+          } else if (punchOutTime > shiftEndTime) {
+            // シフトより遅い退勤: 出勤（通常勤務）
+            if (!statuses.includes('遅刻') && !statuses.includes('出勤')) {
+              statuses.push('出勤');
+            }
+          }
+        }
+        
+        // ステータスが複数ある場合は要確認
+        if (statuses.length > 1) {
+          return { status: '要確認', clockIn: finalClockIn, clockOut: finalClockOut };
+        }
+        
+        return {
+          status: statuses.length > 0 ? statuses[0] : '出勤',
+          clockIn: finalClockIn,
+          clockOut: finalClockOut
+        };
+      };
+
       // シフト情報を各日に設定
       shifts?.forEach(shift => {
         const shiftDate = shift.shift_date;
@@ -238,10 +308,27 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         }
       });
 
-      // 各日の勤務時間を計算
+      // 各日の勤務時間を計算と勤怠ステータス判定
       Object.keys(dailyRecordsMap).forEach(date => {
         const dailyRecord = dailyRecordsMap[date];
         const punchRecords = dailyPunchRecordsMap[date];
+        
+        // 勤怠ステータスを自動判定
+        const statusResult = determineWorkStatus(
+          dailyRecord.shiftStartTime?.replace(':', '') ? dailyRecord.shiftStartTime : null,
+          dailyRecord.shiftEndTime?.replace(':', '') ? dailyRecord.shiftEndTime : null,
+          dailyRecord.clockIn,
+          dailyRecord.clockOut
+        );
+        
+        // ステータス判定結果を適用
+        dailyRecord.workStatus = statusResult.status;
+        if (statusResult.clockIn) {
+          dailyRecord.clockIn = statusResult.clockIn;
+        }
+        if (statusResult.clockOut) {
+          dailyRecord.clockOut = statusResult.clockOut;
+        }
         
         if (dailyRecord.clockIn && dailyRecord.clockOut) {
           const clockInTime = new Date(`${dailyRecord.date} ${dailyRecord.clockIn}`);
@@ -281,18 +368,36 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
             dailyRecord.overtimeMinutes = dailyRecord.actualWorkTime - standardWorkMinutes;
           }
           
-          // 遅刻・早退の計算（シンプル版 - 9:00-18:00を基準）
-          const standardStartTime = new Date(`${date} 09:00:00`);
-          const standardEndTime = new Date(`${date} 18:00:00`);
-          
-          // 遅刻計算
-          if (clockInTime > standardStartTime) {
-            dailyRecord.lateMinutes = Math.round((clockInTime.getTime() - standardStartTime.getTime()) / (1000 * 60));
-          }
-          
-          // 早退計算
-          if (clockOutTime < standardEndTime) {
-            dailyRecord.earlyLeaveMinutes = Math.round((standardEndTime.getTime() - clockOutTime.getTime()) / (1000 * 60));
+          // シフト時刻がある場合はシフト基準で遅刻・早退を計算
+          if (dailyRecord.shiftStartTime && dailyRecord.shiftEndTime) {
+            const shiftStartTime = new Date(`${date} ${dailyRecord.shiftStartTime}:00`);
+            const shiftEndTime = new Date(`${date} ${dailyRecord.shiftEndTime}:00`);
+            const actualClockInTime = new Date(`${date} ${dailyRecord.records.clockIn || dailyRecord.clockIn}:00`);
+            const actualClockOutTime = new Date(`${date} ${dailyRecord.records.clockOut || dailyRecord.clockOut}:00`);
+            
+            // 遅刻計算（実際の打刻時刻がシフトより遅い場合）
+            if (actualClockInTime > shiftStartTime) {
+              dailyRecord.lateMinutes = Math.round((actualClockInTime.getTime() - shiftStartTime.getTime()) / (1000 * 60));
+            }
+            
+            // 早退計算（実際の打刻時刻がシフトより早い場合）
+            if (actualClockOutTime < shiftEndTime) {
+              dailyRecord.earlyLeaveMinutes = Math.round((shiftEndTime.getTime() - actualClockOutTime.getTime()) / (1000 * 60));
+            }
+          } else {
+            // シフトがない場合は標準時間（9:00-18:00）で計算
+            const standardStartTime = new Date(`${date} 09:00:00`);
+            const standardEndTime = new Date(`${date} 18:00:00`);
+            
+            // 遅刻計算
+            if (clockInTime > standardStartTime) {
+              dailyRecord.lateMinutes = Math.round((clockInTime.getTime() - standardStartTime.getTime()) / (1000 * 60));
+            }
+            
+            // 早退計算
+            if (clockOutTime < standardEndTime) {
+              dailyRecord.earlyLeaveMinutes = Math.round((standardEndTime.getTime() - clockOutTime.getTime()) / (1000 * 60));
+            }
           }
         }
       });
@@ -331,7 +436,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
-  const workStatusOptions: WorkStatus[] = ['', '出勤', '残業', '遅刻', '早退', '早出', '欠勤'];
+  const workStatusOptions: WorkStatus[] = ['', '出勤', '残業', '遅刻', '早退', '早出', '欠勤', '要確認'];
 
   const handleCellEdit = (date: string, field: string, currentValue: string) => {
     setEditingCell({ date, field });
@@ -369,6 +474,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       case '早退': return 'text-orange-600 bg-orange-100';
       case '早出': return 'text-purple-600 bg-purple-100';
       case '欠勤': return 'text-red-600 bg-red-100';
+      case '要確認': return 'text-gray-800 bg-gray-200';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
