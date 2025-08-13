@@ -8,6 +8,7 @@ import MonthlyTimeRecords from './MonthlyTimeRecords';
 import TimeRecordEditModal from './TimeRecordEditModal';
 import UserDetailPage from './UserDetailPage';
 import AttendanceLogicSettings from './AttendanceLogicSettings';
+import BreakTimeSettings from './BreakTimeSettings';
 import { Users, LogOut } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
 
@@ -23,7 +24,7 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
-type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | keyof TableData;
+type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | keyof TableData;
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -69,7 +70,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   useEffect(() => {
-    if (activeTab !== 'dashboard' && activeTab !== 'shift_management' && activeTab !== 'location_management' && activeTab !== 'monthly_time_records' && activeTab !== 'attendance_logic_settings') {
+    if (activeTab !== 'dashboard' && activeTab !== 'shift_management' && activeTab !== 'location_management' && activeTab !== 'monthly_time_records' && activeTab !== 'attendance_logic_settings' && activeTab !== 'break_time_settings') {
       fetchData(activeTab);
     }
   }, [activeTab]);
@@ -294,6 +295,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     location_management: '拠点管理',
     monthly_time_records: '打刻記録',
     attendance_logic_settings: '勤怠ロジック設定',
+    break_time_settings: '休憩時間設定',
     users: 'ユーザー',
     time_records: '旧打刻記録',
     shifts: 'シフト',
@@ -325,7 +327,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               >
                 <div className="flex items-center justify-between">
                   <span>{tabLabels[tab]}</span>
-                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && tab !== 'monthly_time_records' && tab !== 'attendance_logic_settings' && (
+                  {tab !== 'dashboard' && tab !== 'shift_management' && tab !== 'location_management' && tab !== 'monthly_time_records' && tab !== 'attendance_logic_settings' && tab !== 'break_time_settings' && (
                     <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
                       {data[tab as keyof TableData].length}
                     </span>
@@ -361,7 +363,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
         {/* Content */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' ? '' : 'bg-white rounded-lg shadow p-6'}>
+          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' ? '' : 'bg-white rounded-lg shadow p-6'}>
             {activeTab === 'dashboard' ? (
               <KPIDashboard />
             ) : activeTab === 'shift_management' ? (
@@ -372,6 +374,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               <MonthlyTimeRecords />
             ) : activeTab === 'attendance_logic_settings' ? (
               <AttendanceLogicSettings />
+            ) : activeTab === 'break_time_settings' ? (
+              <BreakTimeSettings />
             ) : (
               <>
                 {error && (

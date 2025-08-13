@@ -181,6 +181,13 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         .eq('setting_key', 'attendance_status_logic')
         .single();
       
+      // 休憩時間設定を取得（全体設定と拠点別設定）
+      const { data: breakTimeSettings, error: breakError } = await supabase
+        .from('break_time_settings')
+        .select('*')
+        .eq('is_active', true)
+        .order('location_id', { ascending: true, nullsFirst: true });
+      
       let config: any = {
         early_arrival_status: '出勤',
         late_arrival_status: '遅刻',
@@ -290,6 +297,48 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           clockOut: finalClockOut
         };
       };
+      
+      // 休憩時間設定から休憩時間を計算する関数
+      const calculateBreakTimeFromSettings = (workHours: number, settings: any[], locationPattern?: string): number => {
+        // 拠点別設定を優先して適用
+        let applicableSetting = null;
+        
+        // 拠点パターンから拠点IDを抽出し、該当する設定を探す
+        for (const setting of settings) {
+          if (setting.location_id) {
+            // 拠点別設定の場合、パターンマッチングで確認
+            // ここでは簡易的に拠点IDが含まれているかをチェック
+            if (locationPattern && locationPattern.includes(setting.location_id)) {
+              applicableSetting = setting;
+              break;
+            }
+          }
+        }
+        
+        // 拠点別設定がない場合は全体設定を使用
+        if (!applicableSetting) {
+          applicableSetting = settings.find(s => s.location_id === null);
+        }
+        
+        if (!applicableSetting || !applicableSetting.break_rules) {
+          // 設定がない場合はデフォルトロジック（6時間以上で1時間）
+          return workHours >= 6 ? 60 : 0;
+        }
+        
+        // 休憩ルールを適用
+        for (const rule of applicableSetting.break_rules) {
+          if (workHours >= rule.min_work_hours && workHours < rule.max_work_hours) {
+            return rule.break_minutes;
+          }
+          // 最大勤務時間が高いルールは以上の場合も含む
+          if (rule.max_work_hours >= 12 && workHours >= rule.min_work_hours) {
+            return rule.break_minutes;
+          }
+        }
+        
+        // マッチしない場合はデフォルト
+        return workHours >= 6 ? 60 : 0;
+      };
 
       // シフト情報を各日に設定
       shifts?.forEach(shift => {
@@ -387,11 +436,11 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           const totalMinutes = (managementClockOutTime.getTime() - managementClockInTime.getTime()) / (1000 * 60);
           dailyRecord.totalWorkTime = Math.round(totalMinutes);
           
-          // 2. 休憩時間の計算
+          // 2. 休憩時間の計算（設定ベース）
           let actualBreakMinutes = 0;
           
           if (punchRecords.break_start.length > 0 && punchRecords.break_end.length > 0) {
-            // 休憩開始・終了の打刻記録から計算
+            // 休憩開始・終了の打刻記録がある場合は実際の打刻から計算
             const breakStartTimes = punchRecords.break_start.map(time => new Date(`${date} ${time}`));
             const breakEndTimes = punchRecords.break_end.map(time => new Date(`${date} ${time}`));
             
@@ -402,8 +451,12 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
               actualBreakMinutes = Math.round((lastBreakEnd - firstBreakStart) / (1000 * 60));
             }
           } else {
-            // 打刻記録がない場合は拘束時間基準で計算（6時間以上なら1時間休憩）
-            actualBreakMinutes = totalMinutes >= 360 ? 60 : 0;
+            // 打刻記録がない場合は設定ベースで計算
+            actualBreakMinutes = calculateBreakTimeFromSettings(
+              totalMinutes / 60, // 拘束時間（時間単位）
+              breakTimeSettings || [],
+              dailyRecord.workPattern // 拠点情報から拠点を特定
+            );
           }
           
           dailyRecord.breakTime = actualBreakMinutes;
