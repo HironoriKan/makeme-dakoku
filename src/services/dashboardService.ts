@@ -39,6 +39,17 @@ export interface DashboardStats {
   };
 }
 
+export interface TimeSeriesData {
+  period: string; // YYYY-MM-DD, YYYY-MM, YYYY-WW 形式
+  label: string; // 表示用ラベル
+  totalSales: number;
+  customerUnitPrice: number;
+  itemsPerCustomer: number;
+}
+
+export type PeriodType = 'daily' | 'weekly' | 'monthly';
+export type MetricType = 'totalSales' | 'customerUnitPrice' | 'itemsPerCustomer';
+
 export class DashboardService {
   // 有効ユーザー数を取得
   static async getActiveUsersCount(): Promise<number> {
@@ -279,6 +290,172 @@ export class DashboardService {
     } catch (error) {
       console.error('ダッシュボード統計の取得に失敗:', error);
       throw error;
+    }
+  }
+
+  // 時系列売上データを取得
+  static async getTimeSeriesData(periodType: PeriodType): Promise<TimeSeriesData[]> {
+    try {
+      const endDate = new Date();
+      let startDate = new Date();
+      
+      // 期間タイプに応じて開始日を設定
+      switch (periodType) {
+        case 'daily': // 1日単位の1ヶ月分
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'weekly': // 週単位の3ヶ月分
+          startDate.setMonth(endDate.getMonth() - 3);
+          break;
+        case 'monthly': // 1ヶ月単位の1年分
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+      }
+
+      // データベースから売上データを取得
+      const { data: dailyReports, error } = await supabase
+        .from('daily_reports')
+        .select('*')
+        .gte('report_date', startDate.toISOString().split('T')[0])
+        .lte('report_date', endDate.toISOString().split('T')[0])
+        .order('report_date');
+
+      if (error) throw new Error(`時系列データの取得に失敗: ${error.message}`);
+
+      return this.processTimeSeriesData(dailyReports || [], periodType, startDate, endDate);
+    } catch (error) {
+      console.error('時系列データの取得に失敗:', error);
+      throw error;
+    }
+  }
+
+  // 時系列データを処理
+  private static processTimeSeriesData(
+    reports: DailyReport[], 
+    periodType: PeriodType,
+    startDate: Date,
+    endDate: Date
+  ): TimeSeriesData[] {
+    const dataMap = new Map<string, {
+      totalSales: number;
+      totalItems: number;
+      totalCustomers: number;
+      reportCount: number;
+    }>();
+
+    // レポートデータをグループ化
+    reports.forEach(report => {
+      const reportDate = new Date(report.report_date);
+      const periodKey = this.getPeriodKey(reportDate, periodType);
+      
+      if (!dataMap.has(periodKey)) {
+        dataMap.set(periodKey, {
+          totalSales: 0,
+          totalItems: 0,
+          totalCustomers: 0,
+          reportCount: 0
+        });
+      }
+
+      const data = dataMap.get(periodKey)!;
+      data.totalSales += report.sales_amount;
+      data.totalItems += report.items_sold;
+      data.totalCustomers += report.customer_count;
+      data.reportCount += 1;
+    });
+
+    // 期間の全範囲を生成（データがない期間も含む）
+    const periods = this.generatePeriods(startDate, endDate, periodType);
+    
+    return periods.map(period => {
+      const data = dataMap.get(period.key) || {
+        totalSales: 0,
+        totalItems: 0,
+        totalCustomers: 0,
+        reportCount: 0
+      };
+
+      const customerUnitPrice = data.totalCustomers > 0 ? data.totalSales / data.totalCustomers : 0;
+      const itemsPerCustomer = data.totalCustomers > 0 ? data.totalItems / data.totalCustomers : 0;
+
+      return {
+        period: period.key,
+        label: period.label,
+        totalSales: data.totalSales,
+        customerUnitPrice,
+        itemsPerCustomer
+      };
+    });
+  }
+
+  // 期間キーを生成
+  private static getPeriodKey(date: Date, periodType: PeriodType): string {
+    switch (periodType) {
+      case 'daily':
+        return date.toISOString().split('T')[0]; // YYYY-MM-DD
+      case 'weekly':
+        const year = date.getFullYear();
+        const week = this.getWeekOfYear(date);
+        return `${year}-W${week.toString().padStart(2, '0')}`; // YYYY-WNN
+      case 'monthly':
+        return date.toISOString().substring(0, 7); // YYYY-MM
+      default:
+        throw new Error(`未対応の期間タイプ: ${periodType}`);
+    }
+  }
+
+  // 週番号を取得（ISO週番号）
+  private static getWeekOfYear(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  }
+
+  // 期間範囲を生成
+  private static generatePeriods(startDate: Date, endDate: Date, periodType: PeriodType): Array<{key: string, label: string}> {
+    const periods: Array<{key: string, label: string}> = [];
+    const current = new Date(startDate);
+    
+    while (current <= endDate) {
+      const key = this.getPeriodKey(current, periodType);
+      const label = this.getPeriodLabel(current, periodType);
+      
+      // 重複チェック
+      if (!periods.find(p => p.key === key)) {
+        periods.push({ key, label });
+      }
+
+      // 次の期間へ
+      switch (periodType) {
+        case 'daily':
+          current.setDate(current.getDate() + 1);
+          break;
+        case 'weekly':
+          current.setDate(current.getDate() + 7);
+          break;
+        case 'monthly':
+          current.setMonth(current.getMonth() + 1);
+          break;
+      }
+    }
+
+    return periods;
+  }
+
+  // 期間ラベルを生成
+  private static getPeriodLabel(date: Date, periodType: PeriodType): string {
+    switch (periodType) {
+      case 'daily':
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+      case 'weekly':
+        const week = this.getWeekOfYear(date);
+        return `${date.getFullYear()}年 第${week}週`;
+      case 'monthly':
+        return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+      default:
+        return date.toISOString().split('T')[0];
     }
   }
 }

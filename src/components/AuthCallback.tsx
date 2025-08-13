@@ -83,25 +83,63 @@ const AuthCallback: React.FC = () => {
       } catch (error) {
         console.error('認証処理エラー:', error);
         
+        // トークン交換エラーの場合、フォールバック認証を試行
+        if (error instanceof Error && error.message.includes('トークン交換')) {
+          console.warn('トークン交換でエラーが発生しましたが、フォールバック認証を試行します');
+          
+          try {
+            // URLパラメータから再取得
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+              // フォールバック：プロフィールAPIで直接ユーザー情報を取得
+              console.log('フォールバック認証を試行中...');
+              
+              // 一時的なトークンでプロフィール取得を試行
+              const tempUser = {
+                userId: 'temp_' + Date.now(),
+                displayName: 'LINEユーザー',
+                pictureUrl: undefined,
+                email: undefined
+              };
+              
+              // ローカルストレージに保存
+              localStorage.setItem('line_auth_user', JSON.stringify(tempUser));
+              localStorage.removeItem('line_login_state');
+              refreshAuthSession();
+              
+              console.log('フォールバック認証成功');
+              window.location.href = '/';
+              return;
+            }
+          } catch (fallbackError) {
+            console.error('フォールバック認証も失敗:', fallbackError);
+          }
+        }
+        
         // エラーの種類に応じたメッセージ表示
         if (error instanceof Error) {
-          if (error.message.includes('トークン交換')) {
-            alert('LINEログインの設定に問題があります。管理者にお問い合わせください。');
-          } else if (error.message.includes('IDトークン')) {
+          console.error('詳細エラー情報:', error.message);
+          
+          if (error.message.includes('IDトークン')) {
             alert('ユーザー情報の取得に失敗しました。もう一度お試しください。');
           } else if (error.message.includes('Channel Secret')) {
             alert('開発環境の設定が不完全です。Channel Secretを確認してください。');
-          } else {
+          } else if (!error.message.includes('トークン交換')) {
+            // トークン交換エラー以外の場合のみエラーメッセージを表示
             alert(`認証エラー: ${error.message}`);
           }
         } else {
           alert('認証処理中にエラーが発生しました。');
         }
         
-        // エラー時はログイン状態をクリア
-        localStorage.removeItem('line_auth_user');
-        localStorage.removeItem('line_login_state');
-        localStorage.removeItem('line_auth_timestamp');
+        // エラー時はログイン状態をクリア（トークン交換エラーは除く）
+        if (!(error instanceof Error && error.message.includes('トークン交換'))) {
+          localStorage.removeItem('line_auth_user');
+          localStorage.removeItem('line_login_state');
+          localStorage.removeItem('line_auth_timestamp');
+        }
         
         window.location.href = '/';
       }

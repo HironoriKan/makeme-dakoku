@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LocationService, Location } from '../services/locationService';
+import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Store, Calendar, ChevronDown, Heart } from 'lucide-react';
 
 interface LocationSelectorProps {
@@ -13,22 +14,29 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   onLocationSelect,
   className = ''
 }) => {
+  const { user } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    fetchActiveLocations();
-  }, []);
+    fetchUserAssignedLocations();
+  }, [user]);
 
-  const fetchActiveLocations = async () => {
+  const fetchUserAssignedLocations = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const activeLocations = await LocationService.getActiveLocations();
-      setLocations(activeLocations);
+      if (!user?.userId) {
+        setError('ユーザー情報が取得できません');
+        return;
+      }
+
+      // ユーザーに割り当てられた拠点のみを取得
+      const assignedLocations = await LocationService.getUserAssignedLocations(user.userId);
+      setLocations(assignedLocations);
     } catch (err) {
       setError(err instanceof Error ? err.message : '拠点の取得に失敗しました');
     } finally {
@@ -97,7 +105,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         <div className="p-4 border border-red-300 rounded-lg bg-red-50">
           <div className="text-red-700 text-sm">{error}</div>
           <button
-            onClick={fetchActiveLocations}
+            onClick={fetchUserAssignedLocations}
             className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
           >
             再試行
@@ -110,7 +118,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
   return (
     <div className={`relative ${className}`}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        打刻拠点を選択 <span className="text-red-500">*</span>
+        割り当て拠点から選択 <span className="text-red-500">*</span>
       </label>
       
       {/* Selected Location Display / Dropdown Trigger */}
@@ -212,7 +220,11 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
           {locations.length === 0 && (
             <div className="px-4 py-8 text-center text-gray-500">
               <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p>利用可能な拠点がありません</p>
+              <p>
+                割り当てられた拠点がありません
+                <br />
+                <span className="text-xs">管理者にお問い合わせください</span>
+              </p>
             </div>
           )}
         </div>

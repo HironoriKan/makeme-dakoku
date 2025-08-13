@@ -9,18 +9,33 @@ import {
   Minus,
   DollarSign,
   ShoppingCart,
-  UserCheck
+  UserCheck,
+  BarChart3
 } from 'lucide-react';
-import { DashboardService, DashboardStats } from '../services/dashboardService';
+import { 
+  DashboardService, 
+  DashboardStats, 
+  TimeSeriesData, 
+  PeriodType, 
+  MetricType 
+} from '../services/dashboardService';
 
 const CMSDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChartLoading, setIsChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('monthly');
+  const [selectedMetric, setSelectedMetric] = useState<MetricType>('totalSales');
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    loadTimeSeriesData();
+  }, [selectedPeriod]);
 
   const loadDashboardData = async () => {
     try {
@@ -33,6 +48,19 @@ const CMSDashboard: React.FC = () => {
       setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadTimeSeriesData = async () => {
+    try {
+      setIsChartLoading(true);
+      const timeSeriesStats = await DashboardService.getTimeSeriesData(selectedPeriod);
+      setTimeSeriesData(timeSeriesStats);
+    } catch (err) {
+      console.error('時系列データの取得に失敗:', err);
+      // グラフデータのエラーは全体のエラー状態には影響しない
+    } finally {
+      setIsChartLoading(false);
     }
   };
 
@@ -62,6 +90,38 @@ const CMSDashboard: React.FC = () => {
     if (percentage > 0) return 'text-green-600';
     if (percentage < 0) return 'text-red-600';
     return 'text-gray-600';
+  };
+
+  const getMetricValue = (data: TimeSeriesData, metric: MetricType): number => {
+    switch (metric) {
+      case 'totalSales': return data.totalSales;
+      case 'customerUnitPrice': return data.customerUnitPrice;
+      case 'itemsPerCustomer': return data.itemsPerCustomer;
+    }
+  };
+
+  const getMetricLabel = (metric: MetricType): string => {
+    switch (metric) {
+      case 'totalSales': return '売上高';
+      case 'customerUnitPrice': return '顧客単価';
+      case 'itemsPerCustomer': return '一人当たり購入個数';
+    }
+  };
+
+  const getMetricUnit = (metric: MetricType): string => {
+    switch (metric) {
+      case 'totalSales': return '円';
+      case 'customerUnitPrice': return '円';
+      case 'itemsPerCustomer': return '個';
+    }
+  };
+
+  const getPeriodLabel = (period: PeriodType): string => {
+    switch (period) {
+      case 'daily': return '1日単位（1ヶ月）';
+      case 'weekly': return '週単位（3ヶ月）';
+      case 'monthly': return '月単位（1年）';
+    }
   };
 
   if (isLoading) {
@@ -99,6 +159,110 @@ const CMSDashboard: React.FC = () => {
   }
 
   if (!stats) return null;
+
+  // 簡易折れ線グラフコンポーネント
+  const LineChart: React.FC<{
+    data: TimeSeriesData[];
+    metric: MetricType;
+    isLoading: boolean;
+  }> = ({ data, metric, isLoading }) => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600 text-sm">グラフを読み込み中...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (data.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-64 text-gray-500">
+          <p>データがありません</p>
+        </div>
+      );
+    }
+
+    const values = data.map(d => getMetricValue(d, metric));
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    const range = maxValue - minValue || 1;
+
+    const chartWidth = 600;
+    const chartHeight = 200;
+    const padding = 40;
+
+    // SVGパスを生成
+    const pathData = data.map((d, index) => {
+      const x = padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+      const value = getMetricValue(d, metric);
+      const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+
+    return (
+      <div className="relative">
+        <svg width={chartWidth} height={chartHeight} className="w-full h-64">
+          {/* グリッドライン */}
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f0f0f0" strokeWidth="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+          
+          {/* Y軸ラベル */}
+          <text x="10" y="25" fontSize="12" fill="#666" textAnchor="middle">
+            {metric === 'totalSales' ? formatCurrency(maxValue) : formatNumber(maxValue)}
+          </text>
+          <text x="10" y={chartHeight - 10} fontSize="12" fill="#666" textAnchor="middle">
+            {metric === 'totalSales' ? formatCurrency(minValue) : formatNumber(minValue)}
+          </text>
+          
+          {/* 折れ線 */}
+          <path
+            d={pathData}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="2"
+            className="drop-shadow-sm"
+          />
+          
+          {/* データポイント */}
+          {data.map((d, index) => {
+            const x = padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+            const value = getMetricValue(d, metric);
+            const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
+            
+            return (
+              <g key={index}>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="4"
+                  fill="#3b82f6"
+                  className="hover:fill-blue-700 cursor-pointer"
+                />
+                {/* ホバー時のツールチップ効果（簡易版） */}
+                <title>
+                  {d.label}: {metric === 'totalSales' ? formatCurrency(value) : formatNumber(value)}
+                </title>
+              </g>
+            );
+          })}
+        </svg>
+        
+        {/* X軸ラベル */}
+        <div className="flex justify-between mt-2 px-10 text-xs text-gray-600">
+          <span>{data[0]?.label}</span>
+          {data.length > 2 && <span>{data[Math.floor(data.length / 2)]?.label}</span>}
+          <span>{data[data.length - 1]?.label}</span>
+        </div>
+      </div>
+    );
+  };
 
   const StatsCard: React.FC<{
     title: string;
@@ -197,56 +361,88 @@ const CMSDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 売上データ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* 先月の売上 */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">先月の売上</h2>
-            <div className="space-y-4">
-              <StatsCard
-                title="売上高"
-                value={formatCurrency(stats.lastMonthSales.totalSales)}
-                icon={<DollarSign className="w-6 h-6 text-purple-600" />}
-              />
-              <StatsCard
-                title="顧客単価"
-                value={formatCurrency(stats.lastMonthSales.customerUnitPrice)}
-                icon={<ShoppingCart className="w-6 h-6 text-purple-600" />}
-              />
-              <StatsCard
-                title="顧客購入数"
-                value={stats.lastMonthSales.customerPurchaseCount}
-                icon={<Users className="w-6 h-6 text-purple-600" />}
-                subtitle="人"
-              />
+        {/* 売上トレンド分析 */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <BarChart3 className="w-6 h-6 text-blue-600" />
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">売上トレンド分析</h2>
+                <p className="text-sm text-gray-600">時系列データで売上動向を確認</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {/* 期間切り替え */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-700">期間:</span>
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value as PeriodType)}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="monthly">月単位（1年）</option>
+                  <option value="weekly">週単位（3ヶ月）</option>
+                  <option value="daily">日単位（1ヶ月）</option>
+                </select>
+              </div>
+              
+              {/* 指標切り替え */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-700">指標:</span>
+                <select
+                  value={selectedMetric}
+                  onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="totalSales">売上高</option>
+                  <option value="customerUnitPrice">顧客単価</option>
+                  <option value="itemsPerCustomer">一人当たり購入個数</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* 今月の売上 */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">今月の売上</h2>
-            <div className="space-y-4">
-              <StatsCard
-                title="売上高"
-                value={formatCurrency(stats.currentMonthSales.totalSales)}
-                icon={<DollarSign className="w-6 h-6 text-orange-600" />}
-                trend={stats.monthOverMonthComparison.salesGrowth}
-              />
-              <StatsCard
-                title="顧客単価"
-                value={formatCurrency(stats.currentMonthSales.customerUnitPrice)}
-                icon={<ShoppingCart className="w-6 h-6 text-orange-600" />}
-                trend={stats.monthOverMonthComparison.unitPriceGrowth}
-              />
-              <StatsCard
-                title="顧客購入数"
-                value={stats.currentMonthSales.customerPurchaseCount}
-                icon={<Users className="w-6 h-6 text-orange-600" />}
-                trend={stats.monthOverMonthComparison.purchaseCountGrowth}
-                subtitle="人"
-              />
+          {/* グラフエリア */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                {getMetricLabel(selectedMetric)}の推移
+              </h3>
+              <p className="text-sm text-gray-600">
+                期間: {getPeriodLabel(selectedPeriod)} | 単位: {getMetricUnit(selectedMetric)}
+              </p>
             </div>
+            
+            <LineChart 
+              data={timeSeriesData} 
+              metric={selectedMetric}
+              isLoading={isChartLoading}
+            />
           </div>
+        </div>
+
+        {/* 今月実績サマリー */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatsCard
+            title="今月の売上高"
+            value={formatCurrency(stats.currentMonthSales.totalSales)}
+            icon={<DollarSign className="w-6 h-6 text-blue-600" />}
+            trend={stats.monthOverMonthComparison.salesGrowth}
+          />
+          <StatsCard
+            title="今月の顧客単価"
+            value={formatCurrency(stats.currentMonthSales.customerUnitPrice)}
+            icon={<ShoppingCart className="w-6 h-6 text-green-600" />}
+            trend={stats.monthOverMonthComparison.unitPriceGrowth}
+          />
+          <StatsCard
+            title="今月の顧客購入数"
+            value={stats.currentMonthSales.customerPurchaseCount}
+            icon={<Users className="w-6 h-6 text-purple-600" />}
+            trend={stats.monthOverMonthComparison.purchaseCountGrowth}
+            subtitle="人"
+          />
         </div>
 
         {/* リフレッシュボタン */}

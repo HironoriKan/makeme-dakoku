@@ -35,8 +35,21 @@ export const exchangeCodeForToken = async (code: string): Promise<{
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    console.error('LINE API エラー:', errorData);
-    throw new Error('トークン交換に失敗しました');
+    console.error('LINE API エラー:', {
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+      url: apiUrl
+    });
+    
+    // より詳細なエラーメッセージ
+    if (response.status === 400) {
+      console.error('トークン交換エラー: リクエストパラメータが無効です');
+    } else if (response.status === 401) {
+      console.error('トークン交換エラー: Channel IDまたはChannel Secretが無効です');
+    }
+    
+    throw new Error(`トークン交換エラー (${response.status}): ${errorData.error_description || errorData.error || 'Unknown error'}`);
   }
 
   return response.json();

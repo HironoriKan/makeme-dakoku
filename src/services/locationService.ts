@@ -318,6 +318,78 @@ export class LocationService {
   }
 
   /**
+   * ユーザーに割り当てられた有効な拠点一覧を取得
+   */
+  static async getUserAssignedLocations(lineUserId: string): Promise<Location[]> {
+    console.log('📍 ユーザー割り当て拠点一覧を取得:', lineUserId);
+
+    try {
+      // 1. LINEユーザーIDからデータベースのユーザーIDを取得
+      const { data: userRecord, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('line_user_id', lineUserId)
+        .single();
+
+      if (userError || !userRecord) {
+        console.error('❌ ユーザー情報取得エラー:', userError);
+        // ユーザーが見つからない場合は全拠点を返す（フォールバック）
+        console.warn('フォールバック: 全拠点を返します');
+        return await this.getActiveLocations();
+      }
+
+      const dbUserId = userRecord.id;
+      console.log('✅ データベースユーザーID取得成功:', dbUserId);
+
+      // 2. ユーザーに割り当てられた拠点を取得
+      const { data: locationAccess, error } = await supabase
+        .from('user_location_access')
+        .select(`
+          location_id,
+          locations!inner(*)
+        `)
+        .eq('user_id', dbUserId);
+
+      if (error) {
+        console.error('❌ ユーザー割り当て拠点取得エラー:', error);
+        // エラーが発生した場合は全拠点を返す（フォールバック）
+        console.warn('フォールバック: 全拠点を返します');
+        return await this.getActiveLocations();
+      }
+
+      // 拠点データを抽出してLocation[]形式に変換
+      const assignedLocations = (locationAccess || [])
+        .map(access => access.locations)
+        .filter((location): location is Location => 
+          location !== null && 
+          location.is_active === true
+        )
+        .sort((a, b) => a.display_order - b.display_order);
+
+      console.log('✅ ユーザー割り当て拠点取得成功:', assignedLocations.length, '件');
+      
+      // データベースのenum制約に対応：メイクミー拠点を識別
+      const processedLocations = assignedLocations.map(location => ({
+        ...location,
+        location_type: this.identifyMakemeLocation(location) ? 'makeme' : location.location_type
+      }));
+      
+      // 拠点が割り当てられていない場合は全拠点を返す
+      if (processedLocations.length === 0) {
+        console.warn('ユーザーに拠点が割り当てられていません。全拠点を返します。');
+        return await this.getActiveLocations();
+      }
+      
+      return processedLocations;
+    } catch (error) {
+      console.error('❌ ユーザー割り当て拠点取得処理エラー:', error);
+      // エラー時は全拠点を返す（フォールバック）
+      console.warn('エラー発生のためフォールバック: 全拠点を返します');
+      return await this.getActiveLocations();
+    }
+  }
+
+  /**
    * 拠点IDから拠点情報を取得
    */
   static async getLocationById(locationId: string): Promise<Location | null> {
