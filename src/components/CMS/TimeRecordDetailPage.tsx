@@ -122,7 +122,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       }
       console.log('打刻記録取得成功:', timeRecords?.length, '件');
 
-      // シフト情報を取得（勤務パターン情報付き）
+      // シフト情報を取得
       console.log('シフト情報取得開始:', {
         userId,
         startDate: dates[0],
@@ -161,7 +161,10 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       shifts?.forEach(shift => {
         const shiftDate = shift.shift_date;
         if (dailyRecordsMap[shiftDate]) {
-          dailyRecordsMap[shiftDate].workPattern = shift.shift_type || 'なし';
+          // 拠点IDとタイプを組み合わせた勤務パターンを作成（拠点名は後で取得）
+          const locationId = shift.location_id || 'なし';
+          const shiftType = shift.shift_type || 'なし';
+          dailyRecordsMap[shiftDate].workPattern = `拠点${locationId} / ${shiftType}`;
           dailyRecordsMap[shiftDate].shiftStartTime = shift.start_time || '-';
           dailyRecordsMap[shiftDate].shiftEndTime = shift.end_time || '-';
         }
