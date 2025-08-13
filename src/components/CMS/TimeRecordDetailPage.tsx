@@ -174,25 +174,66 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         return timeString;
       };
 
-      // 勤怠ステータス自動判定の関数
-      const determineWorkStatus = (shiftStart: string | null, shiftEnd: string | null, 
+      // 勤怠ロジック設定を取得
+      const { data: logicSettings, error: logicError } = await supabase
+        .from('attendance_logic_settings')
+        .select('*')
+        .eq('setting_key', 'attendance_status_logic')
+        .single();
+      
+      let config: any = {
+        early_arrival_status: '出勤',
+        late_arrival_status: '遅刻',
+        early_departure_status: '早退',
+        normal_work_status: '出勤',
+        absence_status: '欠勤',
+        conflict_status: '要確認',
+        auto_adjust_clock_in: true,
+        auto_adjust_clock_out: false
+      };
+      
+      if (logicSettings && !logicError) {
+        config = logicSettings.setting_value;
+      }
+
+      // 勤怠ステータス自動判定の関数（設定適用日時以降のみ適用）
+      const determineWorkStatus = (recordDate: string, shiftStart: string | null, shiftEnd: string | null, 
                                  clockInTime: string | null, clockOutTime: string | null): {
         status: WorkStatus;
         clockIn?: string;
         clockOut?: string;
       } => {
+        // 設定適用日時以降のデータのみ自動判定を適用
+        const recordDateTime = new Date(recordDate);
+        const appliedFromDate = logicSettings ? new Date(logicSettings.applied_from) : new Date();
+        
+        // 設定適用日時より前のデータは既存のステータスを保持（空の場合のみデフォルトロジック適用）
+        if (recordDateTime < appliedFromDate) {
+          // 既存データ保護: 簡易的な判定のみ
+          if (shiftStart && !clockInTime) {
+            return { status: '欠勤', clockIn: undefined, clockOut: undefined };
+          }
+          if (!shiftStart && clockInTime) {
+            return { status: '出勤', clockIn: clockInTime, clockOut: clockOutTime };
+          }
+          if (!shiftStart && !clockInTime) {
+            return { status: '', clockIn: undefined, clockOut: undefined };
+          }
+          return { status: '出勤', clockIn: clockInTime, clockOut: clockOutTime };
+        }
+        
         const statuses: WorkStatus[] = [];
         let finalClockIn = clockInTime;
         let finalClockOut = clockOutTime;
         
         // シフトあり・打刻なしの場合は欠勤
         if (shiftStart && !clockInTime) {
-          return { status: '欠勤', clockIn: undefined, clockOut: undefined };
+          return { status: config.absence_status as WorkStatus, clockIn: undefined, clockOut: undefined };
         }
         
         // シフトなし・打刻ありの場合は出勤
         if (!shiftStart && clockInTime) {
-          return { status: '出勤', clockIn: clockInTime, clockOut: clockOutTime };
+          return { status: config.normal_work_status as WorkStatus, clockIn: clockInTime, clockOut: clockOutTime };
         }
         
         // シフトも打刻もない場合は空
@@ -205,15 +246,17 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           const punchInTime = new Date(`1970-01-01 ${clockInTime}:00`);
           
           if (punchInTime < shiftStartTime) {
-            // シフトより早い打刻: 出勤時刻をシフト時刻に設定
-            finalClockIn = shiftStart;
-            statuses.push('出勤');
+            // シフトより早い打刻: 設定に基づくステータス、時刻調整も設定に従う
+            if (config.auto_adjust_clock_in) {
+              finalClockIn = shiftStart;
+            }
+            statuses.push(config.early_arrival_status as WorkStatus);
           } else if (punchInTime > shiftStartTime) {
             // シフトより遅い打刻: 遅刻
-            statuses.push('遅刻');
+            statuses.push(config.late_arrival_status as WorkStatus);
           } else {
             // 同時刻: 出勤
-            statuses.push('出勤');
+            statuses.push(config.normal_work_status as WorkStatus);
           }
         }
         
@@ -223,22 +266,22 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           
           if (punchOutTime < shiftEndTime) {
             // シフトより早い退勤: 早退
-            statuses.push('早退');
+            statuses.push(config.early_departure_status as WorkStatus);
           } else if (punchOutTime > shiftEndTime) {
             // シフトより遅い退勤: 出勤（通常勤務）
-            if (!statuses.includes('遅刻') && !statuses.includes('出勤')) {
-              statuses.push('出勤');
+            if (!statuses.includes(config.late_arrival_status as WorkStatus) && !statuses.includes(config.normal_work_status as WorkStatus)) {
+              statuses.push(config.normal_work_status as WorkStatus);
             }
           }
         }
         
         // ステータスが複数ある場合は要確認
         if (statuses.length > 1) {
-          return { status: '要確認', clockIn: finalClockIn, clockOut: finalClockOut };
+          return { status: config.conflict_status as WorkStatus, clockIn: finalClockIn, clockOut: finalClockOut };
         }
         
         return {
-          status: statuses.length > 0 ? statuses[0] : '出勤',
+          status: statuses.length > 0 ? statuses[0] : (config.normal_work_status as WorkStatus),
           clockIn: finalClockIn,
           clockOut: finalClockOut
         };
@@ -313,8 +356,9 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         const dailyRecord = dailyRecordsMap[date];
         const punchRecords = dailyPunchRecordsMap[date];
         
-        // 勤怠ステータスを自動判定
+        // 勤怠ステータスを自動判定（日付も渡す）
         const statusResult = determineWorkStatus(
+          date,
           dailyRecord.shiftStartTime?.replace(':', '') ? dailyRecord.shiftStartTime : null,
           dailyRecord.shiftEndTime?.replace(':', '') ? dailyRecord.shiftEndTime : null,
           dailyRecord.clockIn,
