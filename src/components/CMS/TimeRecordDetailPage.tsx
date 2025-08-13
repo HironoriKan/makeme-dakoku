@@ -95,7 +95,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         dates.push(new Date(d).toISOString().split('T')[0]);
       }
 
-      // 打刻記録を取得
+      // 打刻記録を取得（勤務パターンとシフト情報も含む）
       const { data: timeRecords, error: recordsError } = await supabase
         .from('time_records')
         .select(`
@@ -108,6 +108,19 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         .order('recorded_at');
 
       if (recordsError) throw recordsError;
+
+      // シフト情報を取得（勤務パターン情報付き）
+      const { data: shifts, error: shiftsError } = await supabase
+        .from('shifts')
+        .select(`
+          *,
+          work_patterns (*)
+        `)
+        .eq('user_id', userId)
+        .gte('shift_date', dates[0])
+        .lte('shift_date', dates[dates.length - 1]);
+
+      if (shiftsError) throw shiftsError;
 
       // 日別にデータを整理
       const dailyRecordsMap: { [date: string]: DailyAttendanceRecord } = {};
@@ -125,6 +138,27 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         };
       });
 
+      // シフト情報を各日に設定
+      shifts?.forEach(shift => {
+        const shiftDate = shift.shift_date;
+        if (dailyRecordsMap[shiftDate]) {
+          dailyRecordsMap[shiftDate].workPattern = shift.work_patterns?.name || 'なし';
+        }
+      });
+
+      // 日別の打刻記録を整理
+      const dailyPunchRecordsMap: { [date: string]: { [type: string]: string[] } } = {};
+      
+      // 初期化
+      dates.forEach(date => {
+        dailyPunchRecordsMap[date] = {
+          clock_in: [],
+          clock_out: [],
+          break_start: [],
+          break_end: []
+        };
+      });
+
       // 打刻データを日別に分類
       timeRecords?.forEach(record => {
         const recordDate = new Date(record.recorded_at).toISOString().split('T')[0];
@@ -133,23 +167,27 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           minute: '2-digit'
         });
 
-        if (dailyRecordsMap[recordDate]) {
+        if (dailyRecordsMap[recordDate] && dailyPunchRecordsMap[recordDate]) {
           const dailyRecord = dailyRecordsMap[recordDate];
           
           switch (record.record_type) {
             case 'clock_in':
               dailyRecord.clockIn = recordTime;
               dailyRecord.records.clockIn = recordTime;
+              dailyPunchRecordsMap[recordDate].clock_in.push(recordTime);
               break;
             case 'clock_out':
               dailyRecord.clockOut = recordTime;
               dailyRecord.records.clockOut = recordTime;
+              dailyPunchRecordsMap[recordDate].clock_out.push(recordTime);
               break;
             case 'break_start':
               dailyRecord.records.breakStart = recordTime;
+              dailyPunchRecordsMap[recordDate].break_start.push(recordTime);
               break;
             case 'break_end':
               dailyRecord.records.breakEnd = recordTime;
+              dailyPunchRecordsMap[recordDate].break_end.push(recordTime);
               break;
           }
 
@@ -161,7 +199,10 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       });
 
       // 各日の勤務時間を計算
-      Object.values(dailyRecordsMap).forEach(dailyRecord => {
+      Object.keys(dailyRecordsMap).forEach(date => {
+        const dailyRecord = dailyRecordsMap[date];
+        const punchRecords = dailyPunchRecordsMap[date];
+        
         if (dailyRecord.clockIn && dailyRecord.clockOut) {
           const clockInTime = new Date(`${dailyRecord.date} ${dailyRecord.clockIn}`);
           const clockOutTime = new Date(`${dailyRecord.date} ${dailyRecord.clockOut}`);
@@ -170,11 +211,29 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           const totalMinutes = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60);
           dailyRecord.totalWorkTime = Math.round(totalMinutes);
           
-          // 休憩時間を計算（簡易版：とりあえず1時間固定）
-          dailyRecord.breakTime = totalMinutes >= 360 ? 60 : 0; // 6時間以上なら1時間休憩
+          // 実際の休憩時間を計算
+          let actualBreakMinutes = 0;
+          
+          if (punchRecords.break_start.length > 0 && punchRecords.break_end.length > 0) {
+            // 休憩開始・終了の打刻記録から計算
+            const breakStartTimes = punchRecords.break_start.map(time => new Date(`${date} ${time}`));
+            const breakEndTimes = punchRecords.break_end.map(time => new Date(`${date} ${time}`));
+            
+            // 最初の休憩開始から最後の休憩終了までの時間を計算（簡易版）
+            if (breakStartTimes.length > 0 && breakEndTimes.length > 0) {
+              const firstBreakStart = Math.min(...breakStartTimes.map(t => t.getTime()));
+              const lastBreakEnd = Math.max(...breakEndTimes.map(t => t.getTime()));
+              actualBreakMinutes = Math.round((lastBreakEnd - firstBreakStart) / (1000 * 60));
+            }
+          } else {
+            // 打刻記録がない場合は従来通りの計算（6時間以上なら1時間休憩）
+            actualBreakMinutes = totalMinutes >= 360 ? 60 : 0;
+          }
+          
+          dailyRecord.breakTime = actualBreakMinutes;
           
           // 実働時間（拘束時間 - 休憩時間）
-          dailyRecord.actualWorkTime = dailyRecord.totalWorkTime - dailyRecord.breakTime;
+          dailyRecord.actualWorkTime = Math.max(0, dailyRecord.totalWorkTime - dailyRecord.breakTime);
           
           // 残業時間（8時間超過分）
           const standardWorkMinutes = 8 * 60; // 8時間
@@ -182,8 +241,27 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
             dailyRecord.overtimeMinutes = dailyRecord.actualWorkTime - standardWorkMinutes;
           }
           
-          // 遅刻・早退の計算（標準時間との比較 - 簡易版）
-          // TODO: 実際の勤務パターンと比較して計算する
+          // 遅刻・早退の計算
+          // シフトの勤務パターンから取得した開始・終了時間と比較
+          const shift = shifts?.find(s => s.shift_date === date);
+          if (shift?.work_patterns) {
+            const pattern = shift.work_patterns;
+            
+            if (pattern.start_time && pattern.end_time) {
+              const plannedStartTime = new Date(`${date} ${pattern.start_time}`);
+              const plannedEndTime = new Date(`${date} ${pattern.end_time}`);
+              
+              // 遅刻計算
+              if (clockInTime > plannedStartTime) {
+                dailyRecord.lateMinutes = Math.round((clockInTime.getTime() - plannedStartTime.getTime()) / (1000 * 60));
+              }
+              
+              // 早退計算
+              if (clockOutTime < plannedEndTime) {
+                dailyRecord.earlyLeaveMinutes = Math.round((plannedEndTime.getTime() - clockOutTime.getTime()) / (1000 * 60));
+              }
+            }
+          }
         }
       });
 
@@ -306,7 +384,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                 </th>
                 
                 {/* 勤怠記録セクション */}
-                <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-50 border-x border-gray-200" colSpan={8}>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-50 border-x border-gray-200" colSpan={9}>
                   勤怠記録
                 </th>
                 
