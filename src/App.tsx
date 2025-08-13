@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, MapPin, User, Coffee, LogIn, LogOut, Menu } from 'lucide-react';
 import CalendarTabs from './components/CalendarTabs';
 import CheckoutReportModal from './components/CheckoutReportModal';
+import ClockoutConfirmModal from './components/ClockoutConfirmModal';
 import Footer from './components/Footer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AdminProvider } from './contexts/AdminContext';
@@ -30,7 +31,13 @@ const TimeTrackingApp: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [dbRecords, setDbRecords] = useState<any[]>([]);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showClockoutModal, setShowClockoutModal] = useState(false);
   const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
+  const [pendingClockoutData, setPendingClockoutData] = useState<{
+    hasExtraWork: boolean;
+    overtimeMinutes?: number;
+    earlyStartMinutes?: number;
+  } | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -184,11 +191,9 @@ const TimeTrackingApp: React.FC = () => {
           setWorkStatus('in');
           break;
         case 'check-out':
-          setWorkStatus('out');
-          // 退勤時にモーダルを表示（退勤時刻を記録）
-          setCheckoutTime(new Date().toISOString());
-          setShowCheckoutModal(true);
-          break;
+          // 退勤確認モーダルを先に表示
+          setShowClockoutModal(true);
+          return; // 実際の退勤処理は確認後に実行
         case 'break-start':
           setWorkStatus('break');
           break;
@@ -224,6 +229,65 @@ const TimeTrackingApp: React.FC = () => {
       const message = error instanceof Error ? error.message : '打刻に失敗しました';
       alert(`エラー: ${message}`);
     }
+  };
+
+  const handleClockoutConfirm = async (hasExtraWork: boolean, overtimeMinutes?: number, earlyStartMinutes?: number) => {
+    if (!user) return;
+
+    try {
+      setShowClockoutModal(false);
+      setPendingClockoutData({ hasExtraWork, overtimeMinutes, earlyStartMinutes });
+
+      // 選択された拠点の情報を取得
+      const selectedLocationInfo = locations.find(loc => loc.id === selectedLocation);
+      const locationName = selectedLocationInfo?.name || '不明';
+
+      // 退勤打刻を実行
+      await TimeRecordService.createTimeRecord(user, {
+        recordType: 'clock_out',
+        locationId: selectedLocation,
+        note: `${locationName}からの打刻`
+      });
+
+      // ローカル状態を更新
+      const newEntry: TimeEntry = {
+        id: Date.now().toString(),
+        type: 'check-out',
+        timestamp: new Date(),
+        location: selectedLocationInfo?.name || '不明'
+      };
+
+      setTimeEntries(prev => [newEntry, ...prev]);
+      setWorkStatus('out');
+      setCheckoutTime(new Date().toISOString());
+
+      // リアルタイム更新を通知
+      notifyTimeRecordUpdate();
+      notifyAttendanceUpdate();
+
+      // 成功表示
+      const buttonSpan = document.querySelector(`button[data-action="check-out"] span`);
+      if (buttonSpan) {
+        const originalText = buttonSpan.textContent;
+        buttonSpan.textContent = '✓ 記録済み';
+        setTimeout(() => {
+          if (buttonSpan) buttonSpan.textContent = originalText || '退勤';
+        }, 2000);
+      }
+
+      // 退勤後に日報モーダルを表示
+      setShowCheckoutModal(true);
+
+    } catch (error) {
+      console.error('退勤打刻エラー:', error);
+      const message = error instanceof Error ? error.message : '退勤打刻に失敗しました';
+      alert(`エラー: ${message}`);
+    }
+  };
+
+  const handleClockoutCancel = () => {
+    setShowClockoutModal(false);
+    setPendingClockoutData(null);
   };
 
   const isButtonDisabled = (action: 'check-in' | 'check-out' | 'break-start' | 'break-end') => {
@@ -529,12 +593,21 @@ const TimeTrackingApp: React.FC = () => {
           <CalendarTabs />
         </div>
 
+        {/* Clockout Confirm Modal */}
+        <ClockoutConfirmModal
+          isOpen={showClockoutModal}
+          onClose={handleClockoutCancel}
+          onConfirm={handleClockoutConfirm}
+          onCancel={handleClockoutCancel}
+        />
+
         {/* Checkout Report Modal */}
         <CheckoutReportModal
           isOpen={showCheckoutModal}
           onClose={() => {
             setShowCheckoutModal(false);
             setCheckoutTime(null);
+            setPendingClockoutData(null);
           }}
           checkoutTime={checkoutTime}
         />
