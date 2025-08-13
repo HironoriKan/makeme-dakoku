@@ -339,20 +339,9 @@ const TimeTrackingApp: React.FC = () => {
 
 
   return (
-    <div 
-      className="min-h-screen bg-gray-50 relative"
-      style={{
-        backgroundImage: 'url(/images/FV_メイクミー勤怠.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed'
-      }}
-    >
-      {/* Background overlay for better content readability */}
-      <div className="absolute inset-0 bg-white/20 backdrop-blur-[1px]"></div>
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b relative z-20">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -400,14 +389,8 @@ const TimeTrackingApp: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content - Bottom Modal Style */}
-      <main className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-w-md mx-auto z-10" 
-            style={{ minHeight: '65vh' }}>
-        {/* Drag Handle */}
-        <div className="flex justify-center pt-4 pb-2">
-          <div className="w-10 h-1 bg-gray-300 rounded-full"></div>
-        </div>
-        <div className="px-6 py-4">
+      {/* Main Content */}
+      <main className="max-w-md mx-auto px-4 py-6">
         {/* Login Status */}
         <div className="text-white text-center py-3 rounded-lg mb-6" style={{backgroundColor: '#CB8585'}}>
           <p className="text-sm font-medium">ログインしました</p>
@@ -604,13 +587,11 @@ const TimeTrackingApp: React.FC = () => {
             </div>
           </div>
         )}
-        
+      </main>
         {/* Calendar Tabs */}
-        <div className="px-4 mt-8">
+        <div className="max-w-md mx-auto px-4 mt-8">
           <CalendarTabs />
         </div>
-        </div>
-      </main>
 
         {/* Clockout Confirm Modal */}
         <ClockoutConfirmModal
