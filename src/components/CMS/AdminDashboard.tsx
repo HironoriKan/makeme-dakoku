@@ -10,6 +10,7 @@ import UserDetailPage from './UserDetailPage';
 import AttendanceLogicSettings from './AttendanceLogicSettings';
 import BreakTimeSettings from './BreakTimeSettings';
 import TransactionManagement from './TransactionManagement';
+import CMSDashboard from '../CMSDashboard';
 import { Users, LogOut } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
 
@@ -25,7 +26,7 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
-type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | 'transaction_management' | 'users';
+type TabType = 'dashboard' | 'cms_dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | 'transaction_management' | 'users';
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -277,7 +278,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
 
   const tabLabels = {
-    dashboard: 'ダッシュボード',
+    dashboard: 'KPIダッシュボード',
+    cms_dashboard: 'CMSダッシュボード',
     shift_management: 'シフト管理',
     location_management: '拠点管理',
     monthly_time_records: '打刻記録',
@@ -348,9 +350,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
         {/* Content */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' || activeTab === 'transaction_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
+          <div className={activeTab === 'dashboard' || activeTab === 'cms_dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' || activeTab === 'transaction_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
             {activeTab === 'dashboard' ? (
               <KPIDashboard />
+            ) : activeTab === 'cms_dashboard' ? (
+              <CMSDashboard />
             ) : activeTab === 'shift_management' ? (
               <ShiftManagement />
             ) : activeTab === 'location_management' ? (
