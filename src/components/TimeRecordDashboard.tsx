@@ -4,6 +4,8 @@ import { useRealtime } from '../contexts/RealtimeContext';
 import { TimeRecordService } from '../services/timeRecordService';
 import TimeRecordButton from './TimeRecordButton';
 import TimeRecordHistory from './TimeRecordHistory';
+import ClockoutConfirmModal from './ClockoutConfirmModal';
+import CheckoutReportModal from './CheckoutReportModal';
 import { Database } from '../types/supabase';
 
 type TimeRecord = Database['public']['Tables']['time_records']['Row'];
@@ -19,6 +21,13 @@ const TimeRecordDashboard: React.FC = () => {
     message: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showClockoutModal, setShowClockoutModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [pendingClockout, setPendingClockout] = useState<{
+    hasExtraWork: boolean;
+    overtimeMinutes?: number;
+    earlyStartMinutes?: number;
+  } | null>(null);
 
   const loadTodayRecords = async () => {
     if (!user) return;
@@ -55,6 +64,50 @@ const TimeRecordDashboard: React.FC = () => {
   const handleTimeRecordSuccess = () => {
     showNotification('success', '打刻が完了しました');
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleClockoutClick = () => {
+    setShowClockoutModal(true);
+  };
+
+  const handleClockoutConfirm = async (hasExtraWork: boolean, overtimeMinutes?: number, earlyStartMinutes?: number) => {
+    setShowClockoutModal(false);
+    setPendingClockout({ hasExtraWork, overtimeMinutes, earlyStartMinutes });
+    
+    // 実際の退勤打刻を実行
+    try {
+      if (!user) return;
+      
+      // TODO: 残業・早出時間をデータベースに記録する処理を追加
+      // 現在は打刻のみ実行
+      const recordData = {
+        recordType: 'clock_out' as RecordType,
+        locationId: undefined,
+        location: undefined
+      };
+      
+      await TimeRecordService.createTimeRecord(user, recordData);
+      showNotification('success', '退勤打刻が完了しました');
+      setRefreshTrigger(prev => prev + 1);
+      
+      // 退勤後に日報モーダルを表示
+      setShowReportModal(true);
+      
+    } catch (error) {
+      console.error('退勤打刻エラー:', error);
+      const message = error instanceof Error ? error.message : '退勤打刻に失敗しました';
+      showNotification('error', message);
+    }
+  };
+
+  const handleClockoutCancel = () => {
+    setShowClockoutModal(false);
+    setPendingClockout(null);
+  };
+
+  const handleReportModalClose = () => {
+    setShowReportModal(false);
+    setPendingClockout(null);
   };
 
   const handleTimeRecordError = (error: string) => {
@@ -226,11 +279,15 @@ const TimeRecordDashboard: React.FC = () => {
             {canClockOut() && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-3">退勤</h3>
-                <TimeRecordButton
-                  recordType="clock_out"
-                  onSuccess={handleTimeRecordSuccess}
-                  onError={handleTimeRecordError}
-                />
+                <button
+                  onClick={handleClockoutClick}
+                  className="w-full flex items-center justify-center px-6 py-4 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg shadow-md transition-all duration-200 transform hover:shadow-lg active:scale-95"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9.5 9.293 10.793a1 1 0 001.414 1.414l2-2a1 1 0 000-1.414z" clipRule="evenodd" />
+                  </svg>
+                  <span>退勤</span>
+                </button>
               </div>
             )}
           </div>
@@ -248,6 +305,21 @@ const TimeRecordDashboard: React.FC = () => {
           todayOnly={false}
         />
       </div>
+
+      {/* 退勤確認モーダル */}
+      <ClockoutConfirmModal
+        isOpen={showClockoutModal}
+        onClose={handleClockoutCancel}
+        onConfirm={handleClockoutConfirm}
+        onCancel={handleClockoutCancel}
+      />
+
+      {/* 日報登録モーダル */}
+      <CheckoutReportModal
+        isOpen={showReportModal}
+        onClose={handleReportModalClose}
+        checkoutTime={new Date().toISOString()}
+      />
     </div>
   );
 };

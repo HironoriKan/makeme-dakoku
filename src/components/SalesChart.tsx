@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, Calendar, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { DailyReportService, DailyReport } from '../services/dailyReportService';
@@ -21,6 +21,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
   const [totalSales, setTotalSales] = useState(0);
   const [maxSales, setMaxSales] = useState(0);
   const [avgSales, setAvgSales] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // データ取得
   const fetchChartData = async () => {
@@ -119,6 +120,11 @@ const SalesChart: React.FC<SalesChartProps> = () => {
       setTotalSales(total);
       setMaxSales(max);
       setAvgSales(avg);
+
+      // データが更新されたら最新日付にスクロール
+      setTimeout(() => {
+        scrollToLatest();
+      }, 100);
     } catch (error) {
       console.error('売上データ取得エラー:', error);
     } finally {
@@ -129,6 +135,16 @@ const SalesChart: React.FC<SalesChartProps> = () => {
   useEffect(() => {
     fetchChartData();
   }, [user, selectedPeriod]);
+
+  // 最新日付（右端）にスクロールする関数
+  const scrollToLatest = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        left: scrollContainerRef.current.scrollWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // チャート描画
   const renderChart = () => {
@@ -181,7 +197,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     const adjustedMaxValue = Math.max(...yAxisTicks);
 
     return (
-      <div className="relative overflow-x-auto">
+      <div ref={scrollContainerRef} className="relative overflow-x-auto">
         <div style={{ width: `${Math.max(containerWidth, svgWidth)}px` }}>
           <svg width={svgWidth} height={svgHeight}>
             {/* グリッドライン（縦軸ラベルは非表示） */}

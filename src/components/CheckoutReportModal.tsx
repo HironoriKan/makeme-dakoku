@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, DollarSign, Users, Package, MessageSquare, CheckCircle } from 'lucide-react';
+import { X, DollarSign, Users, Package, CheckCircle, ChevronRight } from 'lucide-react';
 import { DailyReportService, DailyReportData } from '../services/dailyReportService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,7 +13,6 @@ interface ReportData {
   sales: string;
   customerCount: string;
   itemsSold: string;
-  notes: string;
 }
 
 const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClose, checkoutTime }) => {
@@ -21,8 +20,7 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
   const [reportData, setReportData] = useState<ReportData>({
     sales: '',
     customerCount: '',
-    itemsSold: '',
-    notes: ''
+    itemsSold: ''
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,16 +39,14 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
           setReportData({
             sales: todayReport.sales_amount > 0 ? todayReport.sales_amount.toString() : '',
             customerCount: todayReport.customer_count > 0 ? todayReport.customer_count.toString() : '',
-            itemsSold: todayReport.items_sold > 0 ? todayReport.items_sold.toString() : '',
-            notes: todayReport.notes ? todayReport.notes.split('\n[追記')[0] : '' // 追記部分を除いた元の備考のみ
+            itemsSold: todayReport.items_sold > 0 ? todayReport.items_sold.toString() : ''
           });
         } else {
           // 既存データがない場合は空にリセット
           setReportData({
             sales: '',
             customerCount: '',
-            itemsSold: '',
-            notes: ''
+            itemsSold: ''
           });
         }
       } catch (error) {
@@ -84,7 +80,7 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
         salesAmount: parseInt(reportData.sales) || 0,
         customerCount: parseInt(reportData.customerCount) || 0,
         itemsSold: parseInt(reportData.itemsSold) || 0,
-        notes: reportData.notes.trim() || undefined,
+        notes: undefined, // 備考は削除
         checkoutTime: checkoutTime || new Date().toISOString() // 退勤時刻を記録
       };
 
@@ -106,12 +102,20 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
     }
   };
 
+  const handleSkip = () => {
+    // スキップ時は何も記録せずに完了画面に遷移
+    setIsSubmitted(true);
+    // 3秒後にモーダルを閉じる
+    setTimeout(() => {
+      handleClose();
+    }, 3000);
+  };
+
   const handleClose = () => {
     setReportData({
       sales: '',
       customerCount: '',
-      itemsSold: '',
-      notes: ''
+      itemsSold: ''
     });
     setIsSubmitted(false);
     setIsSubmitting(false);
@@ -128,13 +132,20 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
           <>
             {/* ヘッダー */}
             <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">退勤報告</h2>
+              <h2 className="text-xl font-semibold text-gray-900">日報登録</h2>
               <button
                 onClick={handleClose}
                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
+            </div>
+
+            {/* スキップ案内 */}
+            <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-700">
+                日報の登録は任意です。入力したい項目がある場合のみご記入ください。
+              </p>
             </div>
 
             {/* 既存日報の警告メッセージ */}
@@ -170,13 +181,12 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <DollarSign className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  売上（円）
+                  売上（円）<span className="text-xs text-gray-500 ml-1">※任意</span>
                 </label>
                 <input
                   type="number"
                   value={reportData.sales}
                   onChange={(e) => handleInputChange('sales', e.target.value)}
-                  required
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent"
                   placeholder="例: 150000"
@@ -188,13 +198,12 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Users className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  購入お客様数（人）
+                  購入お客様数（人）<span className="text-xs text-gray-500 ml-1">※任意</span>
                 </label>
                 <input
                   type="number"
                   value={reportData.customerCount}
                   onChange={(e) => handleInputChange('customerCount', e.target.value)}
-                  required
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent"
                   placeholder="例: 25"
@@ -206,13 +215,12 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Package className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  販売アイテム数（個）
+                  販売アイテム数（個）<span className="text-xs text-gray-500 ml-1">※任意</span>
                 </label>
                 <input
                   type="number"
                   value={reportData.itemsSold}
                   onChange={(e) => handleInputChange('itemsSold', e.target.value)}
-                  required
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent"
                   placeholder="例: 40"
@@ -220,49 +228,46 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                 <p className="text-xs text-gray-500 mt-1">販売した商品の総数を入力してください</p>
               </div>
 
-              {/* 備考 */}
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                  <MessageSquare className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  備考（任意）
-                </label>
-                <textarea
-                  value={reportData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent resize-none"
-                  placeholder="特記事項や気になったことがあれば記入してください"
-                />
-              </div>
 
               {/* 送信ボタン */}
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-between pt-4">
                 <button
                   type="button"
-                  onClick={handleClose}
+                  onClick={handleSkip}
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  キャンセル
+                  <ChevronRight className="w-4 h-4 mr-2" />
+                  スキップ
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#CB8585' }}
-                  onMouseEnter={(e) => {
-                    if (!isSubmitting) {
-                      e.currentTarget.style.backgroundColor = '#B87575';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSubmitting) {
-                      e.currentTarget.style.backgroundColor = '#CB8585';
-                    }
-                  }}
-                >
-                  {isSubmitting ? '送信中...' : '提出'}
-                </button>
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#CB8585' }}
+                    onMouseEnter={(e) => {
+                      if (!isSubmitting) {
+                        e.currentTarget.style.backgroundColor = '#B87575';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSubmitting) {
+                        e.currentTarget.style.backgroundColor = '#CB8585';
+                      }
+                    }}
+                  >
+                    {isSubmitting ? '送信中...' : '提出'}
+                  </button>
+                </div>
               </div>
             </form>
           </>
