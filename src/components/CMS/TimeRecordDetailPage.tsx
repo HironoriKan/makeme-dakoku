@@ -25,6 +25,8 @@ interface TimeRecordWithDetails extends TimeRecord {
 interface DailyAttendanceRecord {
   date: string;
   workPattern?: string;
+  shiftStartTime?: string; // シフト出勤時間
+  shiftEndTime?: string; // シフト退勤時間
   clockIn?: string;
   clockOut?: string;
   breakTime: number; // 分
@@ -160,6 +162,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         const shiftDate = shift.shift_date;
         if (dailyRecordsMap[shiftDate]) {
           dailyRecordsMap[shiftDate].workPattern = shift.shift_type || 'なし';
+          dailyRecordsMap[shiftDate].shiftStartTime = shift.start_time || '-';
+          dailyRecordsMap[shiftDate].shiftEndTime = shift.end_time || '-';
         }
       });
 
@@ -392,6 +396,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                   日付
                 </th>
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">勤怠パターン</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">シフト出勤</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">シフト退勤</th>
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">出勤</th>
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">退勤</th>
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300">休憩時間</th>
@@ -427,6 +433,12 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                     
                     {/* 勤怠パターン */}
                     <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.workPattern || '-'}</td>
+                    
+                    {/* シフト出勤 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.shiftStartTime || '-'}</td>
+                    
+                    {/* シフト退勤 */}
+                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.shiftEndTime || '-'}</td>
                     
                     {/* 出勤 */}
                     <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.clockIn || '-'}</td>
