@@ -222,4 +222,41 @@ export class TimeRecordService {
     console.log('✅ 日別打刻記録取得成功:', records?.length, '件');
     return records || []
   }
+
+  // 今日の特定拠点での特定タイプの打刻をチェック
+  static async hasTodayRecordForLocation(
+    lineUser: LineUser,
+    locationId: string,
+    recordType: RecordType
+  ): Promise<boolean> {
+    console.log('🔍 今日の拠点別打刻チェック:', { user: lineUser.userId, locationId, recordType });
+
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    const startOfDay = `${today}T00:00:00.000Z`
+    const endOfDay = `${today}T23:59:59.999Z`
+
+    const { data: records, error } = await supabase
+      .from('time_records')
+      .select(`
+        id,
+        record_type,
+        location_id,
+        users!inner(line_user_id)
+      `)
+      .eq('users.line_user_id', lineUser.userId)
+      .eq('location_id', locationId)
+      .eq('record_type', recordType)
+      .gte('recorded_at', startOfDay)
+      .lte('recorded_at', endOfDay)
+      .limit(1)
+
+    if (error) {
+      console.error('❌ 拠点別打刻チェックエラー:', error);
+      return false
+    }
+
+    const hasRecord = records && records.length > 0
+    console.log(hasRecord ? '⚠️ 既に打刻済み' : '✅ 打刻可能');
+    return hasRecord
+  }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, DollarSign, Users, Package, CheckCircle, ChevronRight } from 'lucide-react';
+import { X, DollarSign, Users, Package, CheckCircle } from 'lucide-react';
 import { DailyReportService, DailyReportData } from '../services/dailyReportService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -102,14 +102,6 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
     }
   };
 
-  const handleSkip = () => {
-    // スキップ時は何も記録せずに完了画面に遷移
-    setIsSubmitted(true);
-    // 3秒後にモーダルを閉じる
-    setTimeout(() => {
-      handleClose();
-    }, 3000);
-  };
 
   const handleClose = () => {
     setReportData({
@@ -141,12 +133,6 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
               </button>
             </div>
 
-            {/* スキップ案内 */}
-            <div className="mx-6 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-700">
-                日報の登録は任意です。入力したい項目がある場合のみご記入ください。
-              </p>
-            </div>
 
             {/* 既存日報の警告メッセージ */}
             {existingReport && (
@@ -158,16 +144,16 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">既存の日報があります</h3>
+                    <h3 className="text-sm font-medium text-yellow-800">本日の日報が登録済みです</h3>
                     <div className="mt-2 text-sm text-yellow-700">
-                      <p>本日分の日報は既に登録済みです。</p>
+                      <p>現在の登録内容:</p>
                       <p className="mt-1">
                         <strong>売上:</strong> ¥{existingReport.sales_amount?.toLocaleString() || '0'}、
                         <strong>お客様:</strong> {existingReport.customer_count || 0}人、
                         <strong>アイテム:</strong> {existingReport.items_sold || 0}個
                       </p>
                       <p className="mt-1 text-xs">
-                        ※ 入力欄に既存データが設定されています。編集して上書きできます。
+                        内容を修正して提出すると新しい内容で更新されます。
                       </p>
                     </div>
                   </div>
@@ -177,11 +163,16 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
 
             {/* フォーム */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-700">
+                  本日の業務内容を入力してください。空欄のままでも提出できます。
+                </p>
+              </div>
               {/* 売上 */}
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <DollarSign className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  売上（円）<span className="text-xs text-gray-500 ml-1">※任意</span>
+                  売上（円）
                 </label>
                 <input
                   type="number"
@@ -191,14 +182,14 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent"
                   placeholder="例: 150000"
                 />
-                <p className="text-xs text-gray-500 mt-1">本日の総売上金額を入力してください</p>
+                <p className="text-xs text-gray-500 mt-1">本日の総売上金額を入力してください（空欄可）</p>
               </div>
 
               {/* 購入お客様数 */}
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Users className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  購入お客様数（人）<span className="text-xs text-gray-500 ml-1">※任意</span>
+                  購入お客様数（人）
                 </label>
                 <input
                   type="number"
@@ -208,14 +199,14 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent"
                   placeholder="例: 25"
                 />
-                <p className="text-xs text-gray-500 mt-1">商品を購入されたお客様の人数を入力してください</p>
+                <p className="text-xs text-gray-500 mt-1">商品を購入されたお客様の人数を入力してください（空欄可）</p>
               </div>
 
               {/* 販売アイテム数 */}
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Package className="w-4 h-4 mr-2" style={{ color: '#CB8585' }} />
-                  販売アイテム数（個）<span className="text-xs text-gray-500 ml-1">※任意</span>
+                  販売アイテム数（個）
                 </label>
                 <input
                   type="number"
@@ -225,49 +216,38 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#CB8585] focus:border-transparent"
                   placeholder="例: 40"
                 />
-                <p className="text-xs text-gray-500 mt-1">販売した商品の総数を入力してください</p>
+                <p className="text-xs text-gray-500 mt-1">販売した商品の総数を入力してください（空欄可）</p>
               </div>
 
 
               {/* 送信ボタン */}
-              <div className="flex justify-between pt-4">
+              <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
-                  onClick={handleSkip}
+                  onClick={handleClose}
                   disabled={isSubmitting}
-                  className="flex items-center px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ChevronRight className="w-4 h-4 mr-2" />
-                  スキップ
+                  キャンセル
                 </button>
-                <div className="flex space-x-3">
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    disabled={isSubmitting}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    キャンセル
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-2 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#CB8585' }}
-                    onMouseEnter={(e) => {
-                      if (!isSubmitting) {
-                        e.currentTarget.style.backgroundColor = '#B87575';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSubmitting) {
-                        e.currentTarget.style.backgroundColor = '#CB8585';
-                      }
-                    }}
-                  >
-                    {isSubmitting ? '送信中...' : '提出'}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-6 py-2 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: '#CB8585' }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.backgroundColor = '#B87575';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.backgroundColor = '#CB8585';
+                    }
+                  }}
+                >
+                  {isSubmitting ? '送信中...' : '日報を提出'}
+                </button>
               </div>
             </form>
           </>
@@ -277,8 +257,8 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
             <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E8F5E8' }}>
               <CheckCircle className="w-8 h-8" style={{ color: '#059669' }} />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">報告完了</h3>
-            <p className="text-gray-600 mb-4">本日の業務報告を受け付けました。</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">日報提出完了</h3>
+            <p className="text-gray-600 mb-4">本日の日報を提出しました。退勤手続きが完了しました。</p>
             <div className="text-2xl font-medium mb-6" style={{ color: '#CB8585' }}>
               お疲れ様でした！
             </div>

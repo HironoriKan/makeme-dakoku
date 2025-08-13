@@ -16,12 +16,18 @@ import {
   Users as UsersIcon,
   BarChart3,
   ShoppingCart,
-  Target
+  Target,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Plus
 } from 'lucide-react';
 import { sanitizeUserName, sanitizeDisplayText } from '../../utils/textUtils';
 
 type User = Tables<'users'>;
 type DailyReport = Tables<'daily_reports'>;
+type TimeRecord = Tables<'time_records'>;
+type WorkPattern = Tables<'work_patterns'>;
 
 interface UserDetailPageProps {
   userId: string;
@@ -61,14 +67,26 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<Partial<User>>({});
   const [graphMode, setGraphMode] = useState<'sales' | 'customers' | 'unitPrice' | 'itemsSold'>('sales');
+  const [activeTab, setActiveTab] = useState<'shift' | 'performance'>('shift');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [shiftData, setShiftData] = useState<{ [key: string]: any }>({});
+  const [workPatterns, setWorkPatterns] = useState<WorkPattern[]>([]);
 
   useEffect(() => {
     if (userId) {
       fetchUserDetail();
       fetchUserStats();
       fetchUserReports();
+      fetchWorkPatterns();
+      fetchShiftData();
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchShiftData();
+    }
+  }, [currentMonth, userId]);
 
   const fetchUserDetail = async () => {
     if (!userId) return;
@@ -178,6 +196,87 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     }
   };
 
+  const fetchWorkPatterns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('work_patterns')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setWorkPatterns(data || []);
+    } catch (err) {
+      console.warn('勤務パターンの取得に失敗しました:', err);
+    }
+  };
+
+  const fetchShiftData = async () => {
+    if (!userId) return;
+
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const startDate = new Date(year, month, 1).toISOString();
+      const endDate = new Date(year, month + 1, 0).toISOString();
+
+      const { data, error } = await supabase
+        .from('time_records')
+        .select(`
+          *,
+          work_pattern:work_patterns(*)
+        `)
+        .eq('user_id', userId)
+        .gte('recorded_at', startDate)
+        .lte('recorded_at', endDate)
+        .order('recorded_at');
+
+      if (error) throw error;
+
+      // データを日付別に整理
+      const organized: { [key: string]: any } = {};
+      data?.forEach(record => {
+        const date = new Date(record.recorded_at).toISOString().split('T')[0];
+        if (!organized[date]) {
+          organized[date] = {
+            date,
+            records: [],
+            clockIn: null,
+            clockOut: null,
+            breakStart: null,
+            breakEnd: null,
+            workPattern: null
+          };
+        }
+        
+        organized[date].records.push(record);
+        
+        switch (record.record_type) {
+          case 'clock_in':
+            organized[date].clockIn = new Date(record.recorded_at).toTimeString().substring(0, 5);
+            break;
+          case 'clock_out':
+            organized[date].clockOut = new Date(record.recorded_at).toTimeString().substring(0, 5);
+            break;
+          case 'break_start':
+            organized[date].breakStart = new Date(record.recorded_at).toTimeString().substring(0, 5);
+            break;
+          case 'break_end':
+            organized[date].breakEnd = new Date(record.recorded_at).toTimeString().substring(0, 5);
+            break;
+        }
+
+        if (record.work_pattern) {
+          organized[date].workPattern = record.work_pattern;
+        }
+      });
+
+      setShiftData(organized);
+    } catch (err) {
+      console.warn('シフトデータの取得に失敗しました:', err);
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
@@ -220,6 +319,68 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ja-JP');
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prevMonth => {
+      const newMonth = new Date(prevMonth);
+      if (direction === 'prev') {
+        newMonth.setMonth(newMonth.getMonth() - 1);
+      } else {
+        newMonth.setMonth(newMonth.getMonth() + 1);
+      }
+      return newMonth;
+    });
+  };
+
+  const getMonthDates = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    
+    const dates = [];
+    
+    // 前月の日付で埋める
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const date = new Date(year, month, -i);
+      dates.push({
+        date: date,
+        dateStr: date.toISOString().split('T')[0],
+        day: date.getDate(),
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+    
+    // 今月の日付
+    const today = new Date();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dateStr = date.toISOString().split('T')[0];
+      dates.push({
+        date: date,
+        dateStr: dateStr,
+        day: day,
+        isCurrentMonth: true,
+        isToday: dateStr === today.toISOString().split('T')[0]
+      });
+    }
+    
+    // 来月の日付で埋める（42日で埋める）
+    const remainingSlots = 42 - dates.length;
+    for (let day = 1; day <= remainingSlots; day++) {
+      const date = new Date(year, month + 1, day);
+      dates.push({
+        date: date,
+        dateStr: date.toISOString().split('T')[0],
+        day: date.getDate(),
+        isCurrentMonth: false,
+        isToday: false
+      });
+    }
+    
+    return dates;
   };
 
   // iOS ヘルスケア風のグラフコンポーネント
@@ -391,6 +552,154 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
               {graphMode === 'itemsSold' && `${maxValue}個`}
             </div>
             <div className="text-sm text-gray-600">最大</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // シフト管理カレンダーコンポーネント
+  const ShiftCalendar = () => {
+    const monthDates = getMonthDates();
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+
+    const getShiftStatus = (dateStr: string) => {
+      const shift = shiftData[dateStr];
+      if (!shift) return null;
+
+      if (shift.clockIn && shift.clockOut) {
+        return {
+          status: '出勤完了',
+          color: 'bg-green-100 text-green-800 border-green-200',
+          time: `${shift.clockIn}-${shift.clockOut}`
+        };
+      } else if (shift.clockIn) {
+        return {
+          status: '出勤中',
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          time: `${shift.clockIn}-`
+        };
+      } else if (shift.workPattern) {
+        return {
+          status: 'シフト予定',
+          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          time: `${shift.workPattern.start_time.substring(0, 5)}-${shift.workPattern.end_time.substring(0, 5)}`
+        };
+      }
+      
+      return null;
+    };
+
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-full bg-blue-100">
+              <Calendar className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">シフト管理カレンダー</h3>
+              <p className="text-sm text-gray-600">打刻記録とシフト予定の管理</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigateMonth('prev')}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg font-medium text-gray-900 min-w-32 text-center">
+              {currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月
+            </h3>
+            <button
+              onClick={() => navigateMonth('next')}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* カレンダーグリッド */}
+        <div className="grid grid-cols-7 gap-2">
+          {/* 曜日ヘッダー */}
+          {weekdays.map((day, index) => (
+            <div key={day} className={`p-3 text-center text-sm font-medium ${
+              index === 0 ? 'text-red-600' : index === 6 ? 'text-blue-600' : 'text-gray-700'
+            }`}>
+              {day}
+            </div>
+          ))}
+          
+          {/* 日付セル */}
+          {monthDates.map((dateInfo, index) => {
+            const shiftStatus = getShiftStatus(dateInfo.dateStr);
+            const isWeekend = index % 7 === 0 || index % 7 === 6;
+            
+            return (
+              <div
+                key={`${dateInfo.dateStr}-${index}`}
+                className={`min-h-24 p-2 border-2 border-dashed transition-all hover:bg-gray-50 ${
+                  dateInfo.isCurrentMonth
+                    ? dateInfo.isToday
+                      ? 'bg-blue-50 border-blue-300'
+                      : isWeekend
+                        ? 'bg-gray-50 border-gray-200'
+                        : 'bg-white border-gray-200'
+                    : 'bg-gray-50 border-gray-100'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <span className={`text-sm font-medium ${
+                    !dateInfo.isCurrentMonth
+                      ? 'text-gray-400'
+                      : dateInfo.isToday
+                        ? 'text-blue-600'
+                        : isWeekend
+                          ? index % 7 === 0
+                            ? 'text-red-600'
+                            : 'text-blue-600'
+                          : 'text-gray-900'
+                  }`}>
+                    {dateInfo.day}
+                  </span>
+                  
+                  {dateInfo.isCurrentMonth && (
+                    <button
+                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                      title="シフトを追加"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                
+                {shiftStatus && dateInfo.isCurrentMonth && (
+                  <div className={`text-xs px-2 py-1 rounded-md border ${shiftStatus.color}`}>
+                    <div className="font-medium">{shiftStatus.status}</div>
+                    <div className="font-mono text-xs mt-0.5">{shiftStatus.time}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* 凡例 */}
+        <div className="mt-6 flex flex-wrap gap-4 text-xs">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
+            <span className="text-gray-700">出勤完了</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
+            <span className="text-gray-700">出勤中</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
+            <span className="text-gray-700">シフト予定</span>
           </div>
         </div>
       </div>
@@ -619,10 +928,43 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
           </div>
 
-          {/* 右カラム: グラフと日報 */}
+          {/* 右カラム: タブコンテンツ */}
           <div className="lg:col-span-2 space-y-6">
-            {/* iOS風グラフ */}
-            <HealthKitStyleGraph />
+            {/* タブナビゲーション */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setActiveTab('shift')}
+                  className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    activeTab === 'shift'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  シフト管理
+                </button>
+                <button
+                  onClick={() => setActiveTab('performance')}
+                  className={`flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    activeTab === 'performance'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  実績管理
+                </button>
+              </div>
+            </div>
+
+            {/* タブコンテンツ */}
+            {activeTab === 'shift' ? (
+              <ShiftCalendar />
+            ) : (
+              <>
+                {/* iOS風グラフ */}
+                <HealthKitStyleGraph />
 
             {/* 最近の日報 */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -679,6 +1021,8 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                 </div>
               )}
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>

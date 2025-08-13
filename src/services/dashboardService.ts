@@ -23,12 +23,14 @@ export interface DashboardStats {
     totalSales: number;
     customerUnitPrice: number;
     customerPurchaseCount: number;
+    itemsPerCustomer: number;
   };
   
   currentMonthSales: {
     totalSales: number;
     customerUnitPrice: number;
     customerPurchaseCount: number;
+    itemsPerCustomer: number;
   };
   
   // 前月比
@@ -36,6 +38,7 @@ export interface DashboardStats {
     salesGrowth: number; // パーセンテージ
     unitPriceGrowth: number;
     purchaseCountGrowth: number;
+    itemsPerCustomerGrowth: number;
   };
 }
 

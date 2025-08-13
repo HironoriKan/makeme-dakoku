@@ -642,6 +642,13 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
     return userShifts.find(shift => shift.date === dateStr);
   };
 
+  const getWorkingUsersCountForDate = (dateStr: string) => {
+    return users.filter(user => {
+      const shiftData = getUserShiftDataForDate(user.user_id, dateStr);
+      return shiftData && (shiftData.shiftStartTime || shiftData.clockIn) && shiftData.workStatus !== '欠勤';
+    }).length;
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -874,72 +881,91 @@ const LocationDetailPage: React.FC<LocationDetailPageProps> = ({ locationId, onB
             <div className="min-w-full">
               {/* ヘッダー（日付） */}
               <div className="flex border-b-2 border-gray-200">
-                <div className="w-32 px-4 py-3 bg-gray-50 font-medium text-sm text-gray-900 border-r border-gray-200 sticky left-0 z-10">
+                <div className="w-40 px-4 py-3 bg-gray-50 font-medium text-sm text-gray-900 border-r border-gray-200 sticky left-0 z-10">
                   ユーザー名
                 </div>
-                {getMonthDates().map((dateInfo) => (
-                  <div
-                    key={dateInfo.date}
-                    className={`min-w-20 px-2 py-3 text-center text-xs font-medium border-r border-gray-200 ${
-                      dateInfo.isWeekend 
-                        ? 'bg-red-50 text-red-700' 
-                        : 'bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <div>{dateInfo.day}</div>
-                    <div className="text-xs opacity-75">
-                      {['日', '月', '火', '水', '木', '金', '土'][dateInfo.dayOfWeek]}
+                {getMonthDates().map((dateInfo) => {
+                  const workingCount = getWorkingUsersCountForDate(dateInfo.date);
+                  return (
+                    <div
+                      key={dateInfo.date}
+                      className={`min-w-24 px-2 py-2 text-center text-xs font-medium border-r border-gray-200 ${
+                        dateInfo.isWeekend 
+                          ? 'bg-red-50 text-red-700' 
+                          : 'bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <div className="font-bold">{dateInfo.day}</div>
+                      <div className="text-xs opacity-75">
+                        {['日', '月', '火', '水', '木', '金', '土'][dateInfo.dayOfWeek]}
+                      </div>
+                      {workingCount > 0 && (
+                        <div className="mt-1 bg-blue-500 text-white rounded-full text-xs px-1 py-0.5">
+                          {workingCount}名
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* ユーザー行 */}
               {users.map((user) => (
-                <div key={user.user_id} className="flex border-b border-gray-200 hover:bg-gray-50">
-                  <div className="w-32 px-4 py-3 font-medium text-sm text-gray-900 border-r border-gray-200 sticky left-0 z-10 bg-white">
+                <div key={user.user_id} className="flex border-b border-gray-100">
+                  <div className="w-40 px-4 py-4 font-medium text-sm text-gray-900 border-r border-gray-200 sticky left-0 z-10 bg-white flex items-center">
                     <div className="truncate" title={sanitizeUserName(user.user.display_name || user.user.line_user_id)}>
                       {sanitizeUserName(user.user.display_name || user.user.line_user_id)}
                     </div>
                   </div>
                   {getMonthDates().map((dateInfo) => {
                     const shiftData = getUserShiftDataForDate(user.user_id, dateInfo.date);
+                    const hasShift = shiftData && (shiftData.shiftStartTime || shiftData.clockIn);
+                    
                     return (
                       <div
                         key={`${user.user_id}-${dateInfo.date}`}
-                        className={`min-w-20 px-1 py-2 text-center text-xs border-r border-gray-200 ${
+                        className={`min-w-24 px-1 py-2 border-r border-gray-200 relative ${
                           dateInfo.isWeekend ? 'bg-red-50' : 'bg-white'
                         }`}
                       >
-                        {shiftData && (
-                          <div className="space-y-1">
-                            {/* シフト時間 */}
-                            {shiftData.shiftStartTime && shiftData.shiftEndTime && (
-                              <div className="text-blue-600 font-medium">
-                                {shiftData.shiftStartTime.substring(0, 5)}-{shiftData.shiftEndTime.substring(0, 5)}
-                              </div>
-                            )}
+                        {hasShift && (
+                          <div className="h-full flex flex-col justify-center items-center space-y-1">
+                            {/* ガントバー */}
+                            <div 
+                              className={`w-full h-6 rounded-md flex items-center justify-center text-xs font-medium text-white shadow-sm ${
+                                shiftData?.workStatus === '出勤' ? 'bg-green-500' :
+                                shiftData?.workStatus === '残業' ? 'bg-blue-500' :
+                                shiftData?.workStatus === '遅刻' ? 'bg-yellow-500' :
+                                shiftData?.workStatus === '早退' ? 'bg-orange-500' :
+                                shiftData?.workStatus === '欠勤' ? 'bg-red-500' :
+                                shiftData?.workStatus === '要確認' ? 'bg-gray-500' :
+                                'bg-indigo-500'
+                              }`}
+                              title={`${shiftData?.shiftStartTime || shiftData?.clockIn || ''} - ${shiftData?.shiftEndTime || shiftData?.clockOut || ''}`}
+                            >
+                              {shiftData?.workStatus === '出勤' ? '出' :
+                               shiftData?.workStatus === '残業' ? '残' :
+                               shiftData?.workStatus === '遅刻' ? '遅' :
+                               shiftData?.workStatus === '早退' ? '早' :
+                               shiftData?.workStatus === '欠勤' ? '欠' :
+                               shiftData?.workStatus === '要確認' ? '要' : 
+                               '勤'}
+                            </div>
                             
-                            {/* 出退勤時間 */}
-                            {(shiftData.clockIn || shiftData.clockOut) && (
-                              <div className="text-gray-600">
-                                <div>{shiftData.clockIn || '-'}</div>
-                                <div>{shiftData.clockOut || '-'}</div>
-                              </div>
-                            )}
-                            
-                            {/* ステータス */}
-                            {shiftData.workStatus && (
-                              <div className={`inline-block px-1 py-0.5 rounded text-xs font-medium ${getStatusColor(shiftData.workStatus)}`}>
-                                {shiftData.workStatus === '出勤' ? '出' :
-                                 shiftData.workStatus === '残業' ? '残' :
-                                 shiftData.workStatus === '遅刻' ? '遅' :
-                                 shiftData.workStatus === '早退' ? '早' :
-                                 shiftData.workStatus === '欠勤' ? '欠' :
-                                 shiftData.workStatus === '要確認' ? '要' : 
-                                 shiftData.workStatus}
-                              </div>
-                            )}
+                            {/* 時間表示 */}
+                            <div className="text-xs text-gray-600 text-center leading-tight">
+                              {shiftData?.shiftStartTime && shiftData?.shiftEndTime ? (
+                                <div className="font-medium">
+                                  {shiftData.shiftStartTime.substring(0, 5)}-{shiftData.shiftEndTime.substring(0, 5)}
+                                </div>
+                              ) : (
+                                (shiftData?.clockIn || shiftData?.clockOut) && (
+                                  <div className="font-medium">
+                                    {shiftData?.clockIn?.substring(0, 5) || '??'}-{shiftData?.clockOut?.substring(0, 5) || '??'}
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
