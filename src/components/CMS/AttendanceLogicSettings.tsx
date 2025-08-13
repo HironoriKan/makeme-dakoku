@@ -364,7 +364,7 @@ const AttendanceLogicSettings: React.FC = () => {
                 </label>
               </div>
               <p className="text-xs text-gray-500 ml-6">
-                シフト終了時間より早く打刻した場合、退勤時刻をシフト終了時間に調整します
+                シフト終了時刻より遅く打刻した場合、退勤時刻をシフト終了時刻に調整します
               </p>
             </div>
           </div>

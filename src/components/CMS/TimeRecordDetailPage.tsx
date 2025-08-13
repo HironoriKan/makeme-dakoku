@@ -268,7 +268,11 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
             // シフトより早い退勤: 早退
             statuses.push(config.early_departure_status as WorkStatus);
           } else if (punchOutTime > shiftEndTime) {
-            // シフトより遅い退勤: 出勤（通常勤務）
+            // シフトより遅い退勤: 設定に基づく時刻調整
+            if (config.auto_adjust_clock_out) {
+              finalClockOut = shiftEnd;
+            }
+            // 出勤（通常勤務）
             if (!statuses.includes(config.late_arrival_status as WorkStatus) && !statuses.includes(config.normal_work_status as WorkStatus)) {
               statuses.push(config.normal_work_status as WorkStatus);
             }
