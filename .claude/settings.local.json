@@ -54,7 +54,8 @@
       "Bash(npx tsc:*)",
       "Bash(git merge:*)",
       "Bash(git branch:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

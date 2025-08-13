@@ -261,11 +261,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           const punchInTime = new Date(`1970-01-01 ${clockInTime}:00`);
           
           if (punchInTime < shiftStartTime) {
-            // シフトより早い打刻: 設定に基づくステータス、時刻調整も設定に従う
-            if (config.auto_adjust_clock_in) {
-              finalClockIn = shiftStart;
-            }
-            statuses.push(config.early_arrival_status as WorkStatus);
+            // シフトより早い打刻: 通常勤務として扱う
+            statuses.push(config.normal_work_status as WorkStatus);
           } else if (punchInTime > shiftStartTime) {
             // シフトより遅い打刻: 遅刻
             statuses.push(config.late_arrival_status as WorkStatus);
@@ -283,10 +280,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
             // シフトより早い退勤: 早退
             statuses.push(config.early_departure_status as WorkStatus);
           } else if (punchOutTime > shiftEndTime) {
-            // シフトより遅い退勤: 設定に基づく時刻調整
-            if (config.auto_adjust_clock_out) {
-              finalClockOut = shiftEnd;
-            }
+            // シフトより遅い退勤: 通常勤務として扱う
             // 出勤（通常勤務）
             if (!statuses.includes(config.late_arrival_status as WorkStatus) && !statuses.includes(config.normal_work_status as WorkStatus)) {
               statuses.push(config.normal_work_status as WorkStatus);
@@ -490,15 +484,23 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
             // シフトがない場合は標準時間（9:00-18:00）で計算
             const standardStartTime = new Date(`${date} 09:00:00`);
             const standardEndTime = new Date(`${date} 18:00:00`);
+            const clockInTime = dailyRecord.records.clockIn || dailyRecord.clockIn;
+            const clockOutTime = dailyRecord.records.clockOut || dailyRecord.clockOut;
             
             // 遅刻計算
-            if (clockInTime > standardStartTime) {
-              dailyRecord.lateMinutes = Math.round((clockInTime.getTime() - standardStartTime.getTime()) / (1000 * 60));
+            if (clockInTime) {
+              const actualClockInTime = new Date(`${date} ${clockInTime}:00`);
+              if (actualClockInTime > standardStartTime) {
+                dailyRecord.lateMinutes = Math.round((actualClockInTime.getTime() - standardStartTime.getTime()) / (1000 * 60));
+              }
             }
             
             // 早退計算
-            if (clockOutTime < standardEndTime) {
-              dailyRecord.earlyLeaveMinutes = Math.round((standardEndTime.getTime() - clockOutTime.getTime()) / (1000 * 60));
+            if (clockOutTime) {
+              const actualClockOutTime = new Date(`${date} ${clockOutTime}:00`);
+              if (actualClockOutTime < standardEndTime) {
+                dailyRecord.earlyLeaveMinutes = Math.round((standardEndTime.getTime() - actualClockOutTime.getTime()) / (1000 * 60));
+              }
             }
           }
         }
