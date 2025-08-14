@@ -121,7 +121,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
           {shift ? (
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
-              style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
+              style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type, shift.start_time, shift.end_time) }}
             >
               {day}
             </div>
@@ -286,9 +286,23 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
             <div className="flex items-center space-x-1">
               <div 
                 className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('early') }}
+              />
+              <span className="text-gray-600 text-xs">早番</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div 
+                className="w-3 h-3 rounded-full" 
                 style={{ backgroundColor: ShiftService.getShiftTypeColor('normal') }}
               />
-              <span className="text-gray-600 text-xs">勤務</span>
+              <span className="text-gray-600 text-xs">通常</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('late') }}
+              />
+              <span className="text-gray-600 text-xs">遅番</span>
             </div>
             <div className="flex items-center space-x-1">
               <div 
@@ -342,9 +356,23 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
             <div className="flex items-center space-x-1">
               <div 
                 className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('early') }}
+              />
+              <span className="text-gray-600 text-xs">早番</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div 
+                className="w-3 h-3 rounded-full" 
                 style={{ backgroundColor: ShiftService.getShiftTypeColor('normal') }}
               />
-              <span className="text-gray-600 text-xs">勤務</span>
+              <span className="text-gray-600 text-xs">通常</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: ShiftService.getShiftTypeColor('late') }}
+              />
+              <span className="text-gray-600 text-xs">遅番</span>
             </div>
             <div className="flex items-center space-x-1">
               <div 

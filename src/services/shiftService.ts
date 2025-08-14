@@ -178,7 +178,37 @@ export class ShiftService {
     return labels[shiftType] || shiftType
   }
 
-  static getShiftTypeColor(shiftType: ShiftType): string {
+  /**
+   * 開始・終了時間に基づいてシフトタイプを自動判定
+   */
+  static determineShiftType(startTime: string | null, endTime: string | null): ShiftType {
+    if (!startTime || !endTime) return 'normal';
+    
+    const startHour = parseInt(startTime.split(':')[0]);
+    const endHour = parseInt(endTime.split(':')[0]);
+    
+    // 10:00より前に開始 = 早番
+    if (startHour < 10) {
+      return 'early';
+    }
+    
+    // 20時より後に終了 = 遅番（ただし早番条件を満たす場合は早番を優先）
+    if (endHour >= 20) {
+      return 'late';
+    }
+    
+    return 'normal';
+  }
+
+  static getShiftTypeColor(shiftType: ShiftType, startTime?: string | null, endTime?: string | null): string {
+    // 時間ベースで動的にタイプを判定する場合
+    if (shiftType === 'normal' && startTime && endTime) {
+      const dynamicType = this.determineShiftType(startTime, endTime);
+      if (dynamicType !== 'normal') {
+        shiftType = dynamicType;
+      }
+    }
+    
     const colors = {
       early: '#059669', // emerald-600 - 早番(オープン)
       late: '#dc2626', // red-600 - 遅番(締め)

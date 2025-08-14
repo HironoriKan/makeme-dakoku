@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables } from '../../types/supabase';
 import { Clock, MapPin, User, CheckCircle, XCircle } from 'lucide-react';
+import { ShiftService } from '../../services/shiftService';
 
 type User = Tables<'users'>;
 type Shift = Tables<'shifts'>;
@@ -113,14 +114,9 @@ const TodayShiftView: React.FC = () => {
     return time.substring(0, 5); // HH:MM
   };
 
-  const getShiftTypeColor = (shiftType: string) => {
-    const colors = {
-      early: '#059669',    // emerald-600
-      late: '#dc2626',     // red-600
-      normal: '#CB8585',   // pink-400
-      off: '#6b7280'       // gray-500
-    };
-    return colors[shiftType as keyof typeof colors] || '#6b7280';
+  const getShiftTypeColor = (shiftType: string, startTime?: string | null, endTime?: string | null) => {
+    // ShiftServiceの動的判定を使用
+    return ShiftService.getShiftTypeColor(shiftType as any, startTime, endTime);
   };
 
   const getShiftTypeLabel = (shiftType: string) => {
@@ -259,7 +255,7 @@ const TodayShiftView: React.FC = () => {
                             <h3 className="font-medium text-gray-900">{shiftUser.user.display_name}</h3>
                             <span 
                               className="px-2 py-1 text-xs rounded text-white"
-                              style={{ backgroundColor: getShiftTypeColor(shiftUser.shift.shift_type) }}
+                              style={{ backgroundColor: getShiftTypeColor(shiftUser.shift.shift_type, shiftUser.shift.start_time, shiftUser.shift.end_time) }}
                             >
                               {getShiftTypeLabel(shiftUser.shift.shift_type)}
                             </span>
