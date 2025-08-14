@@ -96,14 +96,59 @@ const LineLogin: React.FC = () => {
         />
         
         {/* CTAボタン（ボトムシートを表示するトリガー） */}
-        <div className="mt-4">
-          <button
-            onClick={handleShowBottomSheet}
-            className="px-8 py-4 bg-[#00B900] hover:bg-[#009900] text-white text-lg font-semibold rounded-2xl shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
-          >
-            サインイン
-          </button>
+        <div className="mt-4 relative">
+          <div id="btn_animation">
+            <button
+              onClick={handleShowBottomSheet}
+              className="btn relative block w-[200px] h-[78px] leading-[78px] text-2xl rounded-[39px] no-underline text-white text-center transition-all duration-200"
+              style={{
+                backgroundColor: '#63d4db',
+                color: '#fbfbfb'
+              }}
+            >
+              サインイン
+            </button>
+          </div>
         </div>
+
+        {/* アニメーション用CSS */}
+        <style jsx>{`
+          #btn_animation .btn::before, 
+          #btn_animation .btn::after {
+            content: "";
+            position: absolute;
+            z-index: -10;
+            width: 200px;
+            height: 78px;
+            top: 0;
+            left: 0;
+            border-radius: 39px;
+            background: #a6f9ff;
+            transform: translate3d(0, 0, 0);
+          }
+
+          #btn_animation .btn::before {
+            animation: anime 1s ease-out infinite;
+          }
+
+          #btn_animation .btn::after {
+            animation: anime 1s ease-out 1s infinite;
+          }
+
+          @keyframes anime {
+            0% {
+              transform: scale(0.95);
+              opacity: 1;
+            }
+            90% {
+              opacity: 0.1;
+            }
+            100% {
+              transform: scale(1.2, 1.4);
+              opacity: 0;
+            }
+          }
+        `}</style>
       </div>
       
       {/* ボトムシート背景オーバーレイ */}
