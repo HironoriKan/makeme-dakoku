@@ -205,7 +205,7 @@ export class DashboardService {
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
     const { data, error } = await supabase
-      .from('daily_reports')
+      .from('daily_reports_with_metrics')
       .select('sales_amount, customer_count, customer_unit_price')
       .gte('report_date', startDate)
       .lte('report_date', endDate);
@@ -317,7 +317,7 @@ export class DashboardService {
 
       // データベースから売上データを取得
       const { data: dailyReports, error } = await supabase
-        .from('daily_reports')
+        .from('daily_reports_with_metrics')
         .select('*')
         .gte('report_date', startDate.toISOString().split('T')[0])
         .lte('report_date', endDate.toISOString().split('T')[0])
