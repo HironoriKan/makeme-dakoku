@@ -10,7 +10,15 @@ const LineLogin: React.FC = () => {
   const bottomSheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 初期状態では何もしない（CTAボタンでボトムシートを表示する）
+    // オーバースクロールを無効化
+    document.body.style.overscrollBehavior = 'none';
+    document.body.style.overflow = 'hidden';
+    
+    // クリーンアップ
+    return () => {
+      document.body.style.overscrollBehavior = '';
+      document.body.style.overflow = '';
+    };
   }, []);
 
   const handleShowBottomSheet = () => {
