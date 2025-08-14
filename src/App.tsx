@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Clock, MapPin, Coffee, LogIn, LogOut, Menu } from 'lucide-react';
 import CalendarTabs from './components/CalendarTabs';
 import CheckoutReportModal from './components/CheckoutReportModal';
 import ClockoutConfirmModal from './components/ClockoutConfirmModal';
 import Footer from './components/Footer';
+import { ToastProvider, useToast } from './components/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AdminProvider } from './contexts/AdminContext';
 import { RealtimeProvider, useRealtime } from './contexts/RealtimeContext';
@@ -23,6 +25,7 @@ interface TimeEntry {
 const TimeTrackingApp: React.FC = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const { notifyTimeRecordUpdate, notifyAttendanceUpdate } = useRealtime();
+  const { showToast } = useToast();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workStatus, setWorkStatus] = useState<'out' | 'in' | 'break'>('out');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
@@ -229,7 +232,7 @@ const TimeTrackingApp: React.FC = () => {
     } catch (error) {
       console.error('打刻エラー:', error);
       const message = error instanceof Error ? error.message : '打刻に失敗しました';
-      alert(`エラー: ${message}`);
+      showToast('error', `打刻エラー: ${message}`);
     }
   };
 
@@ -283,7 +286,7 @@ const TimeTrackingApp: React.FC = () => {
     } catch (error) {
       console.error('退勤打刻エラー:', error);
       const message = error instanceof Error ? error.message : '退勤打刻に失敗しました';
-      alert(`エラー: ${message}`);
+      showToast('error', `退勤打刻エラー: ${message}`);
     }
   };
 
@@ -307,15 +310,6 @@ const TimeTrackingApp: React.FC = () => {
     }
   };
 
-  // 認証コールバックページの場合
-  if (window.location.pathname === '/auth/callback') {
-    return <AuthCallback />;
-  }
-
-  // 管理者ページの場合
-  if (window.location.pathname === '/admin') {
-    return <AdminPage />;
-  }
 
   // ローディング中
   if (isLoading) {
@@ -642,13 +636,22 @@ const TimeTrackingApp: React.FC = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <AdminProvider>
-        <RealtimeProvider>
-          <TimeTrackingApp />
-        </RealtimeProvider>
-      </AdminProvider>
-    </AuthProvider>
+    <Router>
+      <ToastProvider>
+        <AuthProvider>
+          <AdminProvider>
+            <RealtimeProvider>
+              <Routes>
+                <Route path="/" element={<TimeTrackingApp />} />
+                <Route path="/admin/*" element={<AdminPage />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </RealtimeProvider>
+          </AdminProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </Router>
   );
 }
 

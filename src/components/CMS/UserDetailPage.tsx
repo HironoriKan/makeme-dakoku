@@ -181,7 +181,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
     try {
       const { data, error: statsError } = await supabase
-        .from('daily_reports_with_metrics')
+        .from('daily_reports')
         .select('*')
         .eq('user_id', userId);
 
@@ -225,7 +225,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
     try {
       const { data, error: reportsError } = await supabase
-        .from('daily_reports_with_metrics')
+        .from('daily_reports')
         .select('*')
         .eq('user_id', userId)
         .order('report_date', { ascending: true });

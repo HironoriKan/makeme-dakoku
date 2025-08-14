@@ -56,9 +56,17 @@ export class DailyReportService {
     // 今日の日付を取得
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
 
+    // 計算指標を算出
+    const customerUnitPrice = reportData.customerCount > 0 
+      ? Math.round(reportData.salesAmount / reportData.customerCount) 
+      : 0
+    const itemsPerCustomer = reportData.customerCount > 0 
+      ? Math.round((reportData.itemsSold / reportData.customerCount) * 10) / 10 
+      : 0.0
+
     // 既存の今日の報告があるかチェック
     const { data: existingReport, error: findError } = await supabase
-      .from('daily_reports_with_metrics')
+      .from('daily_reports')
       .select('*')
       .eq('user_id', user.id)
       .eq('report_date', today)
@@ -73,11 +81,13 @@ export class DailyReportService {
       // 既存の日報がある場合は上書き更新
       console.log('⚠️ 既存の日報が見つかりました。データを上書き更新します:', existingReport.id)
       
-      // フォームから送信されたデータで更新（計算項目は含めない）
+      // フォームから送信されたデータで完全に上書き更新
       const updateData = {
         sales_amount: reportData.salesAmount,
         customer_count: reportData.customerCount,
         items_sold: reportData.itemsSold,
+        customer_unit_price: customerUnitPrice,
+        items_per_customer: itemsPerCustomer,
         // 退勤時刻は常に最新を記録
         checkout_time: reportData.checkoutTime,
         // 備考は新しい内容で上書き（追記ではなく）
@@ -98,29 +108,18 @@ export class DailyReportService {
       }
 
       console.log('✅ 既存日報を安全に更新:', updatedReport)
-      
-      // 更新後、ビューから計算項目付きのデータを取得して返す
-      const { data: reportWithMetrics, error: viewError } = await supabase
-        .from('daily_reports_with_metrics')
-        .select('*')
-        .eq('id', updatedReport.id)
-        .single()
-
-      if (viewError) {
-        console.error('❌ ビューからの取得エラー:', viewError)
-        throw new Error(`ビューからの取得エラー: ${viewError.message}`)
-      }
-
-      return reportWithMetrics
+      return updatedReport
     }
 
-    // 新規作成の場合（計算項目は含めない）
+    // 新規作成の場合
     const reportRecord = {
       user_id: user.id,
       report_date: today,
       sales_amount: reportData.salesAmount,
       customer_count: reportData.customerCount,
       items_sold: reportData.itemsSold,
+      customer_unit_price: customerUnitPrice,
+      items_per_customer: itemsPerCustomer,
       checkout_time: reportData.checkoutTime,
       notes: reportData.notes || null,
     }
@@ -138,20 +137,7 @@ export class DailyReportService {
     }
 
     console.log('✅ 日次報告新規作成成功:', newReport)
-    
-    // 新規作成後、ビューから計算項目付きのデータを取得して返す
-    const { data: reportWithMetrics, error: viewError } = await supabase
-      .from('daily_reports_with_metrics')
-      .select('*')
-      .eq('id', newReport.id)
-      .single()
-
-    if (viewError) {
-      console.error('❌ ビューからの取得エラー:', viewError)
-      throw new Error(`ビューからの取得エラー: ${viewError.message}`)
-    }
-
-    return reportWithMetrics
+    return newReport
   }
 
   static async getTodayReport(lineUser: LineUser): Promise<DailyReport | null> {
@@ -173,7 +159,7 @@ export class DailyReportService {
     const today = new Date().toISOString().split('T')[0]
 
     const { data: report, error } = await supabase
-      .from('daily_reports_with_metrics')
+      .from('daily_reports')
       .select('*')
       .eq('user_id', user.id)
       .eq('report_date', today)
@@ -212,7 +198,7 @@ export class DailyReportService {
     const endDate = new Date(year, month, 0).toISOString().split('T')[0]
 
     const { data: reports, error } = await supabase
-      .from('daily_reports_with_metrics')
+      .from('daily_reports')
       .select('*')
       .eq('user_id', user.id)
       .gte('report_date', startDate)
