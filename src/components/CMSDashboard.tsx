@@ -15,14 +15,15 @@ import {
 import { 
   DashboardService, 
   DashboardStats, 
-  TimeSeriesData, 
+  TimeSeriesData,
+  ComparisonTimeSeriesData, 
   PeriodType, 
   MetricType 
 } from '../services/dashboardService';
 
 const CMSDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
+  const [timeSeriesData, setTimeSeriesData] = useState<ComparisonTimeSeriesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,7 @@ const CMSDashboard: React.FC = () => {
   const loadTimeSeriesData = async () => {
     try {
       setIsChartLoading(true);
-      const timeSeriesStats = await DashboardService.getTimeSeriesData(selectedPeriod);
+      const timeSeriesStats = await DashboardService.getTimeSeriesDataWithComparison(selectedPeriod);
       setTimeSeriesData(timeSeriesStats);
     } catch (err) {
       console.error('時系列データの取得に失敗:', err);
@@ -95,6 +96,8 @@ const CMSDashboard: React.FC = () => {
   const getMetricValue = (data: TimeSeriesData, metric: MetricType): number => {
     switch (metric) {
       case 'totalSales': return data.totalSales;
+      case 'customerCount': return data.customerCount;
+      case 'itemsSold': return data.itemsSold;
       case 'customerUnitPrice': return data.customerUnitPrice;
       case 'itemsPerCustomer': return data.itemsPerCustomer;
     }
@@ -102,15 +105,19 @@ const CMSDashboard: React.FC = () => {
 
   const getMetricLabel = (metric: MetricType): string => {
     switch (metric) {
-      case 'totalSales': return '売上高';
+      case 'totalSales': return '売上';
+      case 'customerCount': return '購入お客様数';
+      case 'itemsSold': return '販売アイテム数';
       case 'customerUnitPrice': return '顧客単価';
-      case 'itemsPerCustomer': return '一人当たり購入個数';
+      case 'itemsPerCustomer': return '顧客販売個数';
     }
   };
 
   const getMetricUnit = (metric: MetricType): string => {
     switch (metric) {
       case 'totalSales': return '円';
+      case 'customerCount': return '人';
+      case 'itemsSold': return '個';
       case 'customerUnitPrice': return '円';
       case 'itemsPerCustomer': return '個';
     }
@@ -118,9 +125,9 @@ const CMSDashboard: React.FC = () => {
 
   const getPeriodLabel = (period: PeriodType): string => {
     switch (period) {
-      case 'daily': return '1日単位（1ヶ月）';
-      case 'weekly': return '週単位（3ヶ月）';
-      case 'monthly': return '月単位（1年）';
+      case 'daily': return '日単位（31日間）';
+      case 'weekly': return '週単位（3ヶ月間、月曜開始）';
+      case 'monthly': return '月単位（1年間）';
     }
   };
 
@@ -160,9 +167,9 @@ const CMSDashboard: React.FC = () => {
 
   if (!stats) return null;
 
-  // 簡易折れ線グラフコンポーネント
-  const LineChart: React.FC<{
-    data: TimeSeriesData[];
+  // 比較折れ線グラフコンポーネント
+  const ComparisonLineChart: React.FC<{
+    data: ComparisonTimeSeriesData | null;
     metric: MetricType;
     isLoading: boolean;
   }> = ({ data, metric, isLoading }) => {
@@ -177,7 +184,7 @@ const CMSDashboard: React.FC = () => {
       );
     }
 
-    if (data.length === 0) {
+    if (!data || data.current.length === 0) {
       return (
         <div className="flex items-center justify-center h-48 text-gray-500">
           <p className="text-sm">データがありません</p>
@@ -185,26 +192,37 @@ const CMSDashboard: React.FC = () => {
       );
     }
 
-    const values = data.map(d => getMetricValue(d, metric));
-    const maxValue = Math.max(...values);
-    const minValue = Math.min(...values);
+    const currentValues = data.current.map(d => getMetricValue(d, metric));
+    const comparisonValues = data.comparison.map(d => getMetricValue(d, metric));
+    const allValues = [...currentValues, ...comparisonValues];
+    const maxValue = Math.max(...allValues);
+    const minValue = Math.min(...allValues);
     const range = maxValue - minValue || 1;
 
-    const chartWidth = 500;
-    const chartHeight = 160;
-    const padding = 30;
+    const chartWidth = Math.max(1000, data.current.length * 40); // PC用に拡張
+    const chartHeight = 200;
+    const padding = 50;
 
-    // SVGパスを生成
-    const pathData = data.map((d, index) => {
-      const x = padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+    // 現在のSVGパスを生成（実線）
+    const currentPathData = data.current.map((d, index) => {
+      const x = padding + (index * (chartWidth - 2 * padding)) / (data.current.length - 1);
+      const value = getMetricValue(d, metric);
+      const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+
+    // 比較のSVGパスを生成（波線）
+    const comparisonPathData = data.comparison.map((d, index) => {
+      const x = padding + (index * (chartWidth - 2 * padding)) / (data.comparison.length - 1);
       const value = getMetricValue(d, metric);
       const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
       return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
 
     return (
-      <div className="relative">
-        <svg width={chartWidth} height={chartHeight} className="w-full h-48">
+      <div className="relative overflow-x-auto">
+        <div style={{ width: `${chartWidth}px`, minWidth: '100%' }}>
+          <svg width={chartWidth} height={chartHeight} className="h-52">
           {/* グリッドライン */}
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -215,29 +233,39 @@ const CMSDashboard: React.FC = () => {
           
           {/* Y軸ラベル */}
           <text x="10" y="25" fontSize="12" fill="#666" textAnchor="middle">
-            {metric === 'totalSales' ? formatCurrency(maxValue) : formatNumber(maxValue)}
+            {(metric === 'totalSales' || metric === 'customerUnitPrice') ? formatCurrency(maxValue) : formatNumber(maxValue)}
           </text>
           <text x="10" y={chartHeight - 10} fontSize="12" fill="#666" textAnchor="middle">
-            {metric === 'totalSales' ? formatCurrency(minValue) : formatNumber(minValue)}
+            {(metric === 'totalSales' || metric === 'customerUnitPrice') ? formatCurrency(minValue) : formatNumber(minValue)}
           </text>
           
-          {/* 折れ線 */}
+          {/* 現在の折れ線（実線） */}
           <path
-            d={pathData}
+            d={currentPathData}
             fill="none"
             stroke="#3b82f6"
-            strokeWidth="2"
+            strokeWidth="3"
             className="drop-shadow-sm"
           />
           
-          {/* データポイント */}
-          {data.map((d, index) => {
-            const x = padding + (index * (chartWidth - 2 * padding)) / (data.length - 1);
+          {/* 比較の折れ線（波線） */}
+          <path
+            d={comparisonPathData}
+            fill="none"
+            stroke="#f59e0b"
+            strokeWidth="3"
+            strokeDasharray="8,4"
+            className="drop-shadow-sm"
+          />
+          
+          {/* 現在のデータポイント */}
+          {data.current.map((d, index) => {
+            const x = padding + (index * (chartWidth - 2 * padding)) / (data.current.length - 1);
             const value = getMetricValue(d, metric);
             const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
             
             return (
-              <g key={index}>
+              <g key={`current-${index}`}>
                 <circle
                   cx={x}
                   cy={y}
@@ -245,20 +273,70 @@ const CMSDashboard: React.FC = () => {
                   fill="#3b82f6"
                   className="hover:fill-blue-700 cursor-pointer"
                 />
-                {/* ホバー時のツールチップ効果（簡易版） */}
                 <title>
-                  {d.label}: {metric === 'totalSales' ? formatCurrency(value) : formatNumber(value)}
+                  現在: {d.label}: {(metric === 'totalSales' || metric === 'customerUnitPrice') ? formatCurrency(value) : formatNumber(value)}
                 </title>
               </g>
             );
           })}
-        </svg>
+          
+          {/* 比較のデータポイント */}
+          {data.comparison.map((d, index) => {
+            const x = padding + (index * (chartWidth - 2 * padding)) / (data.comparison.length - 1);
+            const value = getMetricValue(d, metric);
+            const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
+            
+            return (
+              <g key={`comparison-${index}`}>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="4"
+                  fill="#f59e0b"
+                  className="hover:fill-amber-600 cursor-pointer"
+                />
+                <title>
+                  {data.comparisonLabel}: {d.label}: {(metric === 'totalSales' || metric === 'customerUnitPrice') ? formatCurrency(value) : formatNumber(value)}
+                </title>
+              </g>
+            );
+          })}
+          </svg>
+        </div>
+        
+        {/* 凡例 */}
+        <div className="mt-4 flex items-center justify-center space-x-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-0.5 bg-blue-500"></div>
+            <span className="text-sm text-gray-600">現在</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-0.5 bg-amber-500" style={{ backgroundImage: 'repeating-linear-gradient(to right, #f59e0b 0, #f59e0b 6px, transparent 6px, transparent 10px)' }}></div>
+            <span className="text-sm text-gray-600">{data.comparisonLabel}</span>
+          </div>
+        </div>
         
         {/* X軸ラベル */}
-        <div className="flex justify-between mt-2 px-10 text-xs text-gray-600">
-          <span>{data[0]?.label}</span>
-          {data.length > 2 && <span>{data[Math.floor(data.length / 2)]?.label}</span>}
-          <span>{data[data.length - 1]?.label}</span>
+        <div className="mt-2 overflow-x-auto" style={{ width: '100%' }}>
+          <div className="relative" style={{ width: `${chartWidth}px`, height: '20px' }}>
+            {data.current.map((point, index) => {
+              const x = padding + (index * (chartWidth - 2 * padding)) / (data.current.length - 1);
+              return (
+                <div 
+                  key={index}
+                  className="absolute text-xs text-gray-600 text-center"
+                  style={{ 
+                    left: `${x}px`, 
+                    transform: 'translateX(-50%)',
+                    width: '50px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {point.label}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -311,32 +389,44 @@ const CMSDashboard: React.FC = () => {
 
         {/* 今月実績サマリー（売上トレンド分析の上に移動） */}
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">今月の売上実績</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">今月の売上KPI</h2>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <StatsCard
-              title="今月の売上高"
+              title="売上"
               value={formatCurrency(stats.currentMonthSales.totalSales)}
-              icon={<DollarSign className="w-5 h-5 text-blue-600" />}
+              icon={<DollarSign className="w-4 h-4 text-blue-600" />}
               trend={stats.monthOverMonthComparison.salesGrowth}
             />
             <StatsCard
-              title="今月の顧客単価"
+              title="購入お客様数"
+              value={stats.currentMonthSales.customerPurchaseCount}
+              icon={<Users className="w-4 h-4 text-green-600" />}
+              trend={stats.monthOverMonthComparison.purchaseCountGrowth}
+              subtitle="人"
+            />
+            <StatsCard
+              title="販売アイテム数"
+              value={Math.round(stats.currentMonthSales.customerPurchaseCount * stats.currentMonthSales.itemsPerCustomer)}
+              icon={<ShoppingCart className="w-4 h-4 text-purple-600" />}
+              subtitle="個"
+            />
+            <StatsCard
+              title="顧客単価"
               value={formatCurrency(stats.currentMonthSales.customerUnitPrice)}
-              icon={<ShoppingCart className="w-5 h-5 text-green-600" />}
+              icon={<BarChart3 className="w-4 h-4 text-orange-600" />}
               trend={stats.monthOverMonthComparison.unitPriceGrowth}
             />
             <StatsCard
-              title="今月の顧客購入数"
-              value={stats.currentMonthSales.customerPurchaseCount}
-              icon={<Users className="w-5 h-5 text-purple-600" />}
-              trend={stats.monthOverMonthComparison.purchaseCountGrowth}
-              subtitle="人"
+              title="顧客販売個数"
+              value={(stats.currentMonthSales.itemsPerCustomer || 0).toFixed(1)}
+              icon={<TrendingUp className="w-4 h-4 text-indigo-600" />}
+              subtitle="個/人"
             />
           </div>
         </div>
 
         {/* 売上トレンド分析 */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
+        <div className="bg-white rounded-lg shadow-sm border p-4 mb-4 w-full">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -355,9 +445,9 @@ const CMSDashboard: React.FC = () => {
                   onChange={(e) => setSelectedPeriod(e.target.value as PeriodType)}
                   className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="monthly">月単位（1年）</option>
-                  <option value="weekly">週単位（3ヶ月）</option>
-                  <option value="daily">日単位（1ヶ月）</option>
+                  <option value="monthly">月単位（1年間）</option>
+                  <option value="weekly">週単位（3ヶ月間）</option>
+                  <option value="daily">日単位（31日間）</option>
                 </select>
               </div>
               
@@ -369,16 +459,18 @@ const CMSDashboard: React.FC = () => {
                   onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
                   className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="totalSales">売上高</option>
+                  <option value="totalSales">売上</option>
+                  <option value="customerCount">購入お客様数</option>
+                  <option value="itemsSold">販売アイテム数</option>
                   <option value="customerUnitPrice">顧客単価</option>
-                  <option value="itemsPerCustomer">一人当たり購入個数</option>
+                  <option value="itemsPerCustomer">顧客販売個数</option>
                 </select>
               </div>
             </div>
           </div>
 
-          {/* グラフエリア */}
-          <div className="border rounded-lg p-3 bg-gray-50">
+          {/* グラフエリア（横幅いっぱい使用） */}
+          <div className="border rounded-lg p-3 bg-gray-50 w-full overflow-hidden">
             <div className="mb-3">
               <h3 className="text-sm font-medium text-gray-900">
                 {getMetricLabel(selectedMetric)}の推移
@@ -388,7 +480,7 @@ const CMSDashboard: React.FC = () => {
               </p>
             </div>
             
-            <LineChart 
+            <ComparisonLineChart 
               data={timeSeriesData} 
               metric={selectedMetric}
               isLoading={isChartLoading}

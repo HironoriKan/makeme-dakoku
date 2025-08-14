@@ -46,12 +46,20 @@ export interface TimeSeriesData {
   period: string; // YYYY-MM-DD, YYYY-MM, YYYY-WW 形式
   label: string; // 表示用ラベル
   totalSales: number;
+  customerCount: number;
+  itemsSold: number;
   customerUnitPrice: number;
   itemsPerCustomer: number;
 }
 
+export interface ComparisonTimeSeriesData {
+  current: TimeSeriesData[];
+  comparison: TimeSeriesData[];
+  comparisonLabel: string;
+}
+
 export type PeriodType = 'daily' | 'weekly' | 'monthly';
-export type MetricType = 'totalSales' | 'customerUnitPrice' | 'itemsPerCustomer';
+export type MetricType = 'totalSales' | 'customerCount' | 'itemsSold' | 'customerUnitPrice' | 'itemsPerCustomer';
 
 export class DashboardService {
   // 有効ユーザー数を取得
@@ -206,7 +214,7 @@ export class DashboardService {
 
     const { data, error } = await supabase
       .from('daily_reports')
-      .select('sales_amount, customer_count, customer_unit_price')
+      .select('sales_amount, customer_count, customer_unit_price, items_sold')
       .gte('report_date', startDate)
       .lte('report_date', endDate);
 
@@ -214,13 +222,15 @@ export class DashboardService {
 
     const totalSales = data?.reduce((sum, report) => sum + report.sales_amount, 0) || 0;
     const totalCustomers = data?.reduce((sum, report) => sum + report.customer_count, 0) || 0;
+    const totalItems = data?.reduce((sum, report) => sum + report.items_sold, 0) || 0;
     const totalUnitPriceSum = data?.reduce((sum, report) => 
       sum + (report.customer_unit_price || 0), 0) || 0;
 
     return {
       totalSales,
       customerUnitPrice: data?.length ? totalUnitPriceSum / data.length : 0,
-      customerPurchaseCount: totalCustomers
+      customerPurchaseCount: totalCustomers,
+      itemsPerCustomer: totalCustomers > 0 ? totalItems / totalCustomers : 0
     };
   }
 
@@ -296,7 +306,85 @@ export class DashboardService {
     }
   }
 
-  // 時系列売上データを取得
+  // 時系列売上データを取得（比較データ付き）
+  static async getTimeSeriesDataWithComparison(periodType: PeriodType): Promise<ComparisonTimeSeriesData> {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      const comparisonEndDate = new Date();
+      const comparisonStartDate = new Date();
+      
+      // 現在の期間と比較期間を設定
+      switch (periodType) {
+        case 'daily': // 日単位: 31日分、前31日間と比較
+          startDate.setDate(endDate.getDate() - 30);
+          comparisonEndDate.setDate(endDate.getDate() - 31);
+          comparisonStartDate.setDate(comparisonEndDate.getDate() - 30);
+          break;
+        case 'weekly': // 週単位: 3ヶ月分、前3ヶ月間と比較
+          startDate.setMonth(endDate.getMonth() - 3);
+          comparisonEndDate.setMonth(endDate.getMonth() - 3);
+          comparisonStartDate.setMonth(comparisonEndDate.getMonth() - 3);
+          break;
+        case 'monthly': // 月単位: 1年分、前1年間と比較
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          comparisonEndDate.setFullYear(endDate.getFullYear() - 1);
+          comparisonStartDate.setFullYear(comparisonEndDate.getFullYear() - 1);
+          break;
+      }
+
+      // 現在のデータと比較データを並列取得
+      const [currentReportsResult, comparisonReportsResult] = await Promise.all([
+        supabase
+          .from('daily_reports')
+          .select('*')
+          .gte('report_date', startDate.toISOString().split('T')[0])
+          .lte('report_date', endDate.toISOString().split('T')[0])
+          .order('report_date'),
+        supabase
+          .from('daily_reports')
+          .select('*')
+          .gte('report_date', comparisonStartDate.toISOString().split('T')[0])
+          .lte('report_date', comparisonEndDate.toISOString().split('T')[0])
+          .order('report_date')
+      ]);
+
+      if (currentReportsResult.error) throw new Error(`現在の時系列データの取得に失敗: ${currentReportsResult.error.message}`);
+      if (comparisonReportsResult.error) throw new Error(`比較時系列データの取得に失敗: ${comparisonReportsResult.error.message}`);
+
+      const currentData = this.processTimeSeriesData(currentReportsResult.data || [], periodType, startDate, endDate);
+      const comparisonData = this.processTimeSeriesData(comparisonReportsResult.data || [], periodType, comparisonStartDate, comparisonEndDate);
+      
+      // 比較データのラベルを同じにする（表示用）
+      const alignedComparisonData = comparisonData.map((item, index) => ({
+        ...item,
+        label: currentData[index]?.label || item.label
+      }));
+
+      const comparisonLabel = this.getComparisonLabel(periodType);
+
+      return {
+        current: currentData,
+        comparison: alignedComparisonData,
+        comparisonLabel
+      };
+    } catch (error) {
+      console.error('時系列データの取得に失敗:', error);
+      throw error;
+    }
+  }
+
+  // 比較ラベルを取得
+  private static getComparisonLabel(periodType: PeriodType): string {
+    switch (periodType) {
+      case 'daily': return '前31日間';
+      case 'weekly': return '前3ヶ月間';
+      case 'monthly': return '前年同期';
+      default: return '比較データ';
+    }
+  }
+
+  // 既存のgetTimeSeriesDataメソッド（互換性のため保持）
   static async getTimeSeriesData(periodType: PeriodType): Promise<TimeSeriesData[]> {
     try {
       const endDate = new Date();
@@ -304,13 +392,13 @@ export class DashboardService {
       
       // 期間タイプに応じて開始日を設定
       switch (periodType) {
-        case 'daily': // 1日単位の1ヶ月分
-          startDate.setMonth(endDate.getMonth() - 1);
+        case 'daily': // 日単位: 31日分
+          startDate.setDate(endDate.getDate() - 30);
           break;
-        case 'weekly': // 週単位の3ヶ月分
+        case 'weekly': // 週単位: 3ヶ月分
           startDate.setMonth(endDate.getMonth() - 3);
           break;
-        case 'monthly': // 1ヶ月単位の1年分
+        case 'monthly': // 月単位: 1年分
           startDate.setFullYear(endDate.getFullYear() - 1);
           break;
       }
@@ -385,6 +473,8 @@ export class DashboardService {
         period: period.key,
         label: period.label,
         totalSales: data.totalSales,
+        customerCount: data.totalCustomers,
+        itemsSold: data.totalItems,
         customerUnitPrice,
         itemsPerCustomer
       };
@@ -397,9 +487,9 @@ export class DashboardService {
       case 'daily':
         return date.toISOString().split('T')[0]; // YYYY-MM-DD
       case 'weekly':
-        const year = date.getFullYear();
-        const week = this.getWeekOfYear(date);
-        return `${year}-W${week.toString().padStart(2, '0')}`; // YYYY-WNN
+        // 月曜日を開始日とした週の開始日をキーとする
+        const weekStart = this.getWeekStart(date);
+        return weekStart.toISOString().split('T')[0]; // YYYY-MM-DD（その週の月曜日）
       case 'monthly':
         return date.toISOString().substring(0, 7); // YYYY-MM
       default:
@@ -407,7 +497,15 @@ export class DashboardService {
     }
   }
 
-  // 週番号を取得（ISO週番号）
+  // 月曜日を開始日とした週の開始日を取得
+  private static getWeekStart(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 月曜日を開始日とする
+    return new Date(d.setDate(diff));
+  }
+
+  // 週番号を取得（月曜日始まりのISO週番号）
   private static getWeekOfYear(date: Date): number {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -421,26 +519,38 @@ export class DashboardService {
     const periods: Array<{key: string, label: string}> = [];
     const current = new Date(startDate);
     
-    while (current <= endDate) {
-      const key = this.getPeriodKey(current, periodType);
-      const label = this.getPeriodLabel(current, periodType);
-      
-      // 重複チェック
-      if (!periods.find(p => p.key === key)) {
+    if (periodType === 'daily') {
+      // 日単位: 31日分のデータ
+      for (let i = 0; i < 31; i++) {
+        const date = new Date(endDate);
+        date.setDate(date.getDate() - 30 + i);
+        const key = this.getPeriodKey(date, periodType);
+        const label = this.getPeriodLabel(date, periodType);
         periods.push({ key, label });
       }
-
-      // 次の期間へ
-      switch (periodType) {
-        case 'daily':
-          current.setDate(current.getDate() + 1);
-          break;
-        case 'weekly':
-          current.setDate(current.getDate() + 7);
-          break;
-        case 'monthly':
-          current.setMonth(current.getMonth() + 1);
-          break;
+    } else if (periodType === 'weekly') {
+      // 週単位: 3ヶ月分（約12-13週間）
+      const weeksToShow = 13;
+      for (let i = weeksToShow - 1; i >= 0; i--) {
+        const weekDate = new Date(endDate);
+        weekDate.setDate(weekDate.getDate() - (i * 7));
+        const weekStart = this.getWeekStart(weekDate);
+        const key = this.getPeriodKey(weekStart, periodType);
+        const label = this.getPeriodLabel(weekStart, periodType);
+        
+        if (!periods.find(p => p.key === key)) {
+          periods.push({ key, label });
+        }
+      }
+    } else if (periodType === 'monthly') {
+      // 月単位: 1年分（12ヶ月）
+      for (let i = 11; i >= 0; i--) {
+        const monthDate = new Date(endDate);
+        monthDate.setMonth(monthDate.getMonth() - i);
+        monthDate.setDate(1); // 月の初日に設定
+        const key = this.getPeriodKey(monthDate, periodType);
+        const label = this.getPeriodLabel(monthDate, periodType);
+        periods.push({ key, label });
       }
     }
 
@@ -453,8 +563,10 @@ export class DashboardService {
       case 'daily':
         return `${date.getMonth() + 1}/${date.getDate()}`;
       case 'weekly':
-        const week = this.getWeekOfYear(date);
-        return `${date.getFullYear()}年 第${week}週`;
+        const weekStart = this.getWeekStart(date);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        return `${weekStart.getMonth() + 1}/${weekStart.getDate()}-${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
       case 'monthly':
         return `${date.getFullYear()}年${date.getMonth() + 1}月`;
       default:
