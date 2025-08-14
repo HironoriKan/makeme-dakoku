@@ -38,6 +38,7 @@ const TimeTrackingApp: React.FC = () => {
     overtimeMinutes?: number;
     earlyStartMinutes?: number;
   } | null>(null);
+  const [isTimeEntriesExpanded, setIsTimeEntriesExpanded] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -557,9 +558,33 @@ const TimeTrackingApp: React.FC = () => {
         {/* Recent Entries */}
         {timeEntries.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">本日の打刻履歴</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-900">本日の打刻履歴</h3>
+              {timeEntries.length > 1 && (
+                <button
+                  onClick={() => setIsTimeEntriesExpanded(!isTimeEntriesExpanded)}
+                  className="flex items-center text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {isTimeEntriesExpanded ? (
+                    <>
+                      <span>折りたたむ</span>
+                      <svg className="w-4 h-4 ml-1 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      <span>すべて表示 ({timeEntries.length}件)</span>
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
             <div className="space-y-2">
-              {timeEntries.slice(0, 5).map((entry) => (
+              {(isTimeEntriesExpanded ? timeEntries : timeEntries.slice(0, 1)).map((entry, index) => (
                 <div key={entry.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center space-x-2">
                     <div className={`w-2 h-2 rounded-full ${
