@@ -47,27 +47,28 @@ const TimeTrackingApp: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 拠点一覧を取得
+  // ユーザーに配属された拠点一覧を取得
   useEffect(() => {
-    const loadLocations = async () => {
+    const loadUserLocations = async () => {
+      if (!user) return;
+
       try {
-        const locationList = await LocationService.getActiveLocations();
-        setLocations(locationList);
+        // ユーザーに配属された拠点のみ取得
+        const userLocationList = await LocationService.getUserAssignedLocations(user.userId);
+        setLocations(userLocationList);
         
         // デフォルト拠点を設定
-        if (locationList.length > 0 && !selectedLocation) {
-          const defaultLocation = await LocationService.getDefaultLocation();
-          setSelectedLocation(defaultLocation?.id || locationList[0].id);
+        if (userLocationList.length > 0 && !selectedLocation) {
+          setSelectedLocation(userLocationList[0].id);
         }
       } catch (error) {
-        console.error('拠点一覧取得エラー:', error);
-        // フォールバック: 従来の本社を設定
-        setSelectedLocation('HQ');
+        console.error('ユーザー配属拠点取得エラー:', error);
+        // エラー時は全拠点を表示（LocationServiceのフォールバック機能により）
       }
     };
 
-    loadLocations();
-  }, [selectedLocation]);
+    loadUserLocations();
+  }, [user, selectedLocation]);
 
   // DBから今日の打刻記録を取得してローカル状態と同期
   useEffect(() => {
@@ -391,10 +392,6 @@ const TimeTrackingApp: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-md mx-auto px-4 py-6">
-        {/* Login Status */}
-        <div className="text-white text-center py-3 rounded-lg mb-6" style={{backgroundColor: '#CB8585'}}>
-          <p className="text-sm font-medium">ログインしました</p>
-        </div>
 
         {/* Date and Status */}
         <div className="text-center mb-8">
