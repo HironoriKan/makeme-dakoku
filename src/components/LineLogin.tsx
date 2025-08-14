@@ -128,11 +128,11 @@ const LineLogin: React.FC = () => {
           }
 
           #btn_animation .btn::before {
-            animation: anime 1s ease-out infinite;
+            animation: anime 2s ease-out infinite;
           }
 
           #btn_animation .btn::after {
-            animation: anime 1s ease-out 1s infinite;
+            animation: anime 2s ease-out 2s infinite;
           }
 
           @keyframes anime {
