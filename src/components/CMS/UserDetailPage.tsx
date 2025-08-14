@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tables } from '../../types/supabase';
 import { 
@@ -23,11 +23,19 @@ import {
   Plus
 } from 'lucide-react';
 import { sanitizeUserName, sanitizeDisplayText } from '../../utils/textUtils';
+import { DailyReportService } from '../../services/dailyReportService';
 
 type User = Tables<'users'>;
 type DailyReport = Tables<'daily_reports'>;
 type TimeRecord = Tables<'time_records'>;
 type WorkPattern = Tables<'work_patterns'>;
+type PeriodType = 'day' | 'week' | 'month';
+
+interface ChartDataPoint {
+  label: string;
+  value: number;
+  date: string;
+}
 
 interface UserDetailPageProps {
   userId: string;
@@ -66,11 +74,17 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<Partial<User>>({});
-  const [graphMode, setGraphMode] = useState<'sales' | 'customers' | 'unitPrice' | 'itemsSold'>('sales');
   const [activeTab, setActiveTab] = useState<'shift' | 'performance'>('shift');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [shiftData, setShiftData] = useState<{ [key: string]: any }>({});
   const [workPatterns, setWorkPatterns] = useState<WorkPattern[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('day');
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [totalSales, setTotalSales] = useState(0);
+  const [maxSales, setMaxSales] = useState(0);
+  const [avgSales, setAvgSales] = useState(0);
+  const [isChartLoading, setIsChartLoading] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (userId) {
@@ -79,6 +93,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       fetchUserReports();
       fetchWorkPatterns();
       fetchShiftData();
+      fetchChartData();
     }
   }, [userId]);
 
@@ -87,6 +102,12 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       fetchShiftData();
     }
   }, [currentMonth, userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchChartData();
+    }
+  }, [selectedPeriod, userId]);
 
   const fetchUserDetail = async () => {
     if (!userId) return;
@@ -277,6 +298,127 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     }
   };
 
+  // データ取得（SalesChart.tsxと同じロジック）
+  const fetchChartData = async () => {
+    if (!userId) return;
+
+    setIsChartLoading(true);
+    try {
+      // 一時的なユーザーオブジェクトを作成
+      const tempUser = { userId };
+      const now = new Date();
+      let data: ChartDataPoint[] = [];
+
+      if (selectedPeriod === 'day') {
+        // 過去31日間のデータを取得
+        const currentMonth = await DailyReportService.getMonthlyReports(tempUser, now.getFullYear(), now.getMonth() + 1);
+        const previousMonth = await DailyReportService.getMonthlyReports(tempUser, now.getFullYear(), now.getMonth());
+        const allReports = [...currentMonth, ...previousMonth];
+        
+        // 過去31日分のデータを作成
+        for (let i = 30; i >= 0; i--) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - i);
+          const dateString = date.toISOString().split('T')[0];
+          
+          const dayReport = allReports.find(r => r.report_date === dateString);
+          data.push({
+            label: date.getDate().toString(),
+            value: dayReport?.sales_amount || 0,
+            date: dateString
+          });
+        }
+      } else if (selectedPeriod === 'week') {
+        // 過去3ヶ月分の週単位データを取得（約12-13週間）
+        const weeksToShow = 12; // 3ヶ月分の週数
+        
+        // 過去3ヶ月分の全データを取得
+        const allReports: any[] = [];
+        for (let i = 2; i >= 0; i--) {
+          const monthDate = new Date(now);
+          monthDate.setMonth(monthDate.getMonth() - i);
+          
+          const monthReports = await DailyReportService.getMonthlyReports(
+            tempUser, 
+            monthDate.getFullYear(), 
+            monthDate.getMonth() + 1
+          );
+          allReports.push(...monthReports);
+        }
+        
+        // 週単位でグループ化
+        for (let weekIndex = weeksToShow - 1; weekIndex >= 0; weekIndex--) {
+          const weekStart = new Date(now);
+          weekStart.setDate(weekStart.getDate() - (weekIndex * 7) - (now.getDay() || 7) + 1);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          
+          // その週の売上を集計
+          const weekSales = allReports
+            .filter(r => {
+              const reportDate = new Date(r.report_date);
+              return reportDate >= weekStart && reportDate <= weekEnd;
+            })
+            .reduce((sum, r) => sum + r.sales_amount, 0);
+
+          data.push({
+            label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}`,
+            value: weekSales,
+            date: weekStart.toISOString().split('T')[0]
+          });
+        }
+      } else if (selectedPeriod === 'month') {
+        // 過去12ヶ月（1年）のデータを取得
+        for (let i = 11; i >= 0; i--) {
+          const monthDate = new Date(now);
+          monthDate.setMonth(monthDate.getMonth() - i);
+          
+          const monthReports = await DailyReportService.getMonthlyReports(
+            tempUser, 
+            monthDate.getFullYear(), 
+            monthDate.getMonth() + 1
+          );
+          
+          const monthSales = monthReports.reduce((sum, r) => sum + r.sales_amount, 0);
+          
+          data.push({
+            label: `${monthDate.getFullYear()}/${monthDate.getMonth() + 1}`,
+            value: monthSales,
+            date: monthDate.toISOString().split('T')[0]
+          });
+        }
+      }
+
+      setChartData(data);
+      const total = data.reduce((sum, d) => sum + d.value, 0);
+      const max = Math.max(...data.map(d => d.value));
+      const avg = data.length > 0 ? total / data.length : 0;
+      
+      setTotalSales(total);
+      setMaxSales(max);
+      setAvgSales(avg);
+
+      // データが更新されたら最新日付にスクロール
+      setTimeout(() => {
+        scrollToLatest();
+      }, 100);
+    } catch (error) {
+      console.error('売上データ取得エラー:', error);
+    } finally {
+      setIsChartLoading(false);
+    }
+  };
+
+  // 最新日付（右端）にスクロールする関数
+  const scrollToLatest = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        left: scrollContainerRef.current.scrollWidth,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
@@ -319,6 +461,137 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ja-JP');
+  };
+
+  // チャート描画（SalesChart.tsxと同じロジック）
+  const renderChart = () => {
+    if (chartData.length === 0) {
+      return (
+        <div className="h-40 flex items-center justify-center text-gray-500">
+          <span className="text-sm">データがありません</span>
+        </div>
+      );
+    }
+
+    const maxValue = Math.max(...chartData.map(d => d.value));
+    const chartHeight = 120;
+    const minBarWidth = 40; // 最小バー幅
+    const barSpacing = 12; // バー間のスペース
+    const containerWidth = 280; // コンテナ幅
+    const totalBarsWidth = chartData.length * (minBarWidth + barSpacing);
+    const chartWidth = Math.max(containerWidth, totalBarsWidth);
+    const barWidth = Math.max(minBarWidth, (chartWidth - (chartData.length * barSpacing)) / chartData.length);
+    
+    // マージン設定（縦軸ラベルは非表示）
+    const yAxisWidth = 0; // 縦軸ラベル非表示のため0に変更
+    const topMargin = 25; // 上部マージン（値ラベル用）
+    const bottomMargin = 25; // 下部マージン（日付ラベル用）
+    const svgHeight = chartHeight + topMargin + bottomMargin;
+    const svgWidth = chartWidth + yAxisWidth;
+    
+    // 縦軸の目盛り値を計算（5段階）
+    const getYAxisTicks = (maxVal: number) => {
+      if (maxVal === 0) return [0];
+      
+      // 最大値を基に適切な間隔を計算
+      const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
+      const normalized = maxVal / magnitude;
+      
+      let stepSize;
+      if (normalized <= 1) stepSize = 0.2 * magnitude;
+      else if (normalized <= 2) stepSize = 0.4 * magnitude;
+      else if (normalized <= 5) stepSize = magnitude;
+      else stepSize = 2 * magnitude;
+      
+      const ticks = [];
+      for (let i = 0; i <= Math.ceil(maxVal / stepSize); i++) {
+        ticks.push(i * stepSize);
+      }
+      return ticks;
+    };
+    
+    const yAxisTicks = getYAxisTicks(maxValue);
+    const adjustedMaxValue = Math.max(...yAxisTicks);
+
+    return (
+      <div ref={scrollContainerRef} className="relative overflow-x-auto">
+        <div style={{ width: `${Math.max(containerWidth, svgWidth)}px` }}>
+          <svg width={svgWidth} height={svgHeight}>
+            {/* グリッドライン（縦軸ラベルは非表示） */}
+            {yAxisTicks.map((tick, i) => {
+              const y = topMargin + chartHeight * (1 - tick / adjustedMaxValue);
+              return (
+                <g key={i}>
+                  {/* グリッドライン */}
+                  <line
+                    x1={0}
+                    y1={y}
+                    x2={svgWidth}
+                    y2={y}
+                    stroke="#e5e7eb"
+                    strokeWidth="1"
+                    opacity="0.5"
+                  />
+                </g>
+              );
+            })}
+
+            {/* バーチャート */}
+            {chartData.map((point, index) => {
+              const barHeight = adjustedMaxValue > 0 ? (point.value / adjustedMaxValue) * chartHeight : 0;
+              const x = yAxisWidth + index * (barWidth + barSpacing) + barSpacing / 2;
+              const y = topMargin + chartHeight - barHeight;
+
+              return (
+                <g key={index}>
+                  {/* バー */}
+                  <rect
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={barHeight}
+                    fill="#CB8585"
+                    rx="2"
+                    opacity="0.8"
+                  />
+                  {/* 値ラベル（バーの上部） */}
+                  {point.value > 0 && (
+                    <text
+                      x={x + barWidth / 2}
+                      y={y - 5}
+                      textAnchor="middle"
+                      fontSize="9"
+                      fill="#6b7280"
+                    >
+                      ¥{point.value.toLocaleString()}
+                    </text>
+                  )}
+                  {/* 日付ラベル */}
+                  <text
+                    x={x + barWidth / 2}
+                    y={topMargin + chartHeight + 18}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="#6b7280"
+                  >
+                    {point.label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  const getPeriodLabel = () => {
+    switch (selectedPeriod) {
+      case 'day': return '過去31日間';
+      case 'week': return '過去3ヶ月（週単位）';
+      case 'month': return '過去1年';
+      default: return '';
+    }
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -383,180 +656,6 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     return dates;
   };
 
-  // iOS ヘルスケア風のグラフコンポーネント
-  const HealthKitStyleGraph = () => {
-    if (graphData.length === 0) return null;
-
-    const getCurrentValue = (d: DailyReportGraphData) => {
-      switch (graphMode) {
-        case 'sales': return d.sales;
-        case 'customers': return d.customers;
-        case 'unitPrice': return d.unitPrice;
-        case 'itemsSold': return d.itemsSold;
-        default: return d.sales;
-      }
-    };
-
-    const maxValue = Math.max(...graphData.map(getCurrentValue));
-    const minValue = Math.min(...graphData.map(getCurrentValue));
-    const range = maxValue - minValue || 1;
-
-    return (
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-full ${
-              graphMode === 'sales' ? 'bg-blue-100' :
-              graphMode === 'customers' ? 'bg-green-100' :
-              graphMode === 'unitPrice' ? 'bg-purple-100' :
-              'bg-orange-100'
-            }`}>
-              {graphMode === 'sales' && <DollarSign className="w-5 h-5 text-blue-600" />}
-              {graphMode === 'customers' && <UsersIcon className="w-5 h-5 text-green-600" />}
-              {graphMode === 'unitPrice' && <Target className="w-5 h-5 text-purple-600" />}
-              {graphMode === 'itemsSold' && <ShoppingCart className="w-5 h-5 text-orange-600" />}
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                {graphMode === 'sales' && '売上推移'}
-                {graphMode === 'customers' && '客数推移'}
-                {graphMode === 'unitPrice' && '客単価推移'}
-                {graphMode === 'itemsSold' && '販売個数推移'}
-              </h3>
-              <p className="text-sm text-gray-600">過去30日間</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setGraphMode('sales')}
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                graphMode === 'sales' 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              売上
-            </button>
-            <button
-              onClick={() => setGraphMode('customers')}
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                graphMode === 'customers' 
-                  ? 'bg-green-100 text-green-700' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              客数
-            </button>
-            <button
-              onClick={() => setGraphMode('unitPrice')}
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                graphMode === 'unitPrice' 
-                  ? 'bg-purple-100 text-purple-700' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              客単価
-            </button>
-            <button
-              onClick={() => setGraphMode('itemsSold')}
-              className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                graphMode === 'itemsSold' 
-                  ? 'bg-orange-100 text-orange-700' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              販売個数
-            </button>
-          </div>
-        </div>
-
-        {/* グラフエリア */}
-        <div className="h-64 relative">
-          <div className="absolute inset-0 flex items-end space-x-1">
-            {graphData.map((data, index) => {
-              const value = getCurrentValue(data);
-              const height = ((value - minValue) / range) * 100;
-              const barColor = 
-                graphMode === 'sales' ? 'bg-blue-500' :
-                graphMode === 'customers' ? 'bg-green-500' :
-                graphMode === 'unitPrice' ? 'bg-purple-500' :
-                'bg-orange-500';
-              
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <div className="w-full flex justify-center mb-1">
-                    <div
-                      className={`w-3/4 ${barColor} rounded-t-sm transition-all duration-300 hover:opacity-80 relative group`}
-                      style={{ height: `${height || 2}%` }}
-                    >
-                      {/* ツールチップ */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                          {graphMode === 'sales' && formatCurrency(data.sales)}
-                          {graphMode === 'customers' && `${data.customers}人`}
-                          {graphMode === 'unitPrice' && formatCurrency(data.unitPrice)}
-                          {graphMode === 'itemsSold' && `${data.itemsSold}個`}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1 transform rotate-45 origin-center">
-                    {data.formattedDate}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 統計サマリー */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-100">
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${
-              graphMode === 'sales' ? 'text-blue-600' :
-              graphMode === 'customers' ? 'text-green-600' :
-              graphMode === 'unitPrice' ? 'text-purple-600' :
-              'text-orange-600'
-            }`}>
-              {graphMode === 'sales' && formatCurrency(graphData.reduce((sum, d) => sum + d.sales, 0))}
-              {graphMode === 'customers' && `${graphData.reduce((sum, d) => sum + d.customers, 0)}人`}
-              {graphMode === 'unitPrice' && formatCurrency(graphData.reduce((sum, d) => sum + d.unitPrice, 0))}
-              {graphMode === 'itemsSold' && `${graphData.reduce((sum, d) => sum + d.itemsSold, 0)}個`}
-            </div>
-            <div className="text-sm text-gray-600">合計</div>
-          </div>
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${
-              graphMode === 'sales' ? 'text-blue-600' :
-              graphMode === 'customers' ? 'text-green-600' :
-              graphMode === 'unitPrice' ? 'text-purple-600' :
-              'text-orange-600'
-            }`}>
-              {graphMode === 'sales' && formatCurrency(Math.round(graphData.reduce((sum, d) => sum + d.sales, 0) / graphData.length))}
-              {graphMode === 'customers' && `${Math.round(graphData.reduce((sum, d) => sum + d.customers, 0) / graphData.length)}人`}
-              {graphMode === 'unitPrice' && formatCurrency(Math.round(graphData.reduce((sum, d) => sum + d.unitPrice, 0) / graphData.length))}
-              {graphMode === 'itemsSold' && `${Math.round(graphData.reduce((sum, d) => sum + d.itemsSold, 0) / graphData.length)}個`}
-            </div>
-            <div className="text-sm text-gray-600">平均</div>
-          </div>
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${
-              graphMode === 'sales' ? 'text-blue-600' :
-              graphMode === 'customers' ? 'text-green-600' :
-              graphMode === 'unitPrice' ? 'text-purple-600' :
-              'text-orange-600'
-            }`}>
-              {graphMode === 'sales' && formatCurrency(maxValue)}
-              {graphMode === 'customers' && `${maxValue}人`}
-              {graphMode === 'unitPrice' && formatCurrency(maxValue)}
-              {graphMode === 'itemsSold' && `${maxValue}個`}
-            </div>
-            <div className="text-sm text-gray-600">最大</div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // シフト管理カレンダーコンポーネント
   const ShiftCalendar = () => {
@@ -953,7 +1052,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                   }`}
                 >
                   <BarChart3 className="w-4 h-4 mr-2" />
-                  実績管理
+                  日報管理
                 </button>
               </div>
             </div>
@@ -963,8 +1062,74 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
               <ShiftCalendar />
             ) : (
               <>
-                {/* iOS風グラフ */}
-                <HealthKitStyleGraph />
+                {/* 売上推移チャート */}
+                <div className="bg-white rounded-lg shadow-sm p-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <TrendingUp className="w-5 h-5" style={{ color: '#CB8585' }} />
+                    <h4 className="text-md font-semibold text-gray-900">売上推移</h4>
+                  </div>
+
+                  {/* 期間選択タブ */}
+                  <div className="flex space-x-1 mb-4 bg-gray-100 rounded-lg p-1">
+                    {[
+                      { key: 'day' as PeriodType, label: '日', icon: Calendar },
+                      { key: 'week' as PeriodType, label: '週', icon: BarChart3 },
+                      { key: 'month' as PeriodType, label: '月', icon: TrendingUp }
+                    ].map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedPeriod(key)}
+                        className={`flex-1 flex items-center justify-center space-x-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                          selectedPeriod === key
+                            ? 'bg-white shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                        style={selectedPeriod === key ? { color: '#CB8585' } : {}}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 統計情報 */}
+                  <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: '#FDF2F2' }}>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600 flex-shrink-0">{getPeriodLabel()}の売上</p>
+                        <p className="text-lg font-bold text-right" style={{ color: '#CB8585' }}>
+                          ¥{totalSales.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600 flex-shrink-0">最大売上</p>
+                        <p className="text-lg font-semibold text-right" style={{ color: '#CB8585' }}>
+                          ¥{maxSales.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600 flex-shrink-0">平均売上</p>
+                        <p className="text-lg font-semibold text-right" style={{ color: '#CB8585' }}>
+                          ¥{Math.round(avgSales).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* チャート */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    {isChartLoading ? (
+                      <div className="h-40 flex items-center justify-center">
+                        <div className="flex items-center space-x-2 text-gray-500">
+                          <div className="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full" style={{ borderColor: '#CB8585', borderTopColor: 'transparent' }}></div>
+                          <span className="text-sm">読み込み中...</span>
+                        </div>
+                      </div>
+                    ) : (
+                      renderChart()
+                    )}
+                  </div>
+                </div>
 
             {/* 最近の日報 */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">

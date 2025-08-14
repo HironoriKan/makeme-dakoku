@@ -27,12 +27,30 @@ const LineLogin: React.FC = () => {
       {/* 背景オーバーレイ */}
       <div className="absolute inset-0 bg-black bg-opacity-30"></div>
       
+      {/* サービスロゴ（背景の上部に配置） */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex justify-center pt-20">
+        <img 
+          src="/images/MakeMeKINTAI-サービス名2.png" 
+          alt="Make Me KINTAI"
+          className="w-auto h-auto object-contain"
+          style={{ 
+            maxHeight: '120px',
+            maxWidth: '280px',
+            aspectRatio: 'auto'
+          }}
+        />
+      </div>
+      
       {/* ボトムシート */}
       <div 
-        className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-500 ease-out z-20 ${
+        className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 bg-white rounded-t-3xl shadow-2xl transition-transform duration-500 ease-out z-20 ${
           showBottomSheet ? 'translate-y-0' : 'translate-y-full'
         }`}
-        style={{ minHeight: '60vh' }}
+        style={{ 
+          minHeight: '60vh',
+          width: '100%',
+          maxWidth: '428px' // iPhone 14 Pro Max サイズ
+        }}
       >
         {/* ボトムシートハンドル */}
         <div className="flex justify-center pt-4 pb-2">
@@ -40,15 +58,9 @@ const LineLogin: React.FC = () => {
         </div>
 
         <div className="px-6 pb-8">
-          {/* サービスロゴ */}
+          {/* ログイン説明 */}
           <div className="text-center mb-8 mt-4">
-            <img 
-              src="/images/MakeMeKINTAI-サービス名.png" 
-              alt="Make Me KINTAI"
-              className="mx-auto max-w-xs w-full h-auto"
-              style={{ maxHeight: '120px' }}
-            />
-            <p className="text-gray-600 text-base mt-4">LINEアカウントでログイン</p>
+            <p className="text-gray-600 text-base">LINEアカウントでログイン</p>
           </div>
 
           {/* エラーメッセージ */}
