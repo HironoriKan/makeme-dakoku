@@ -84,6 +84,22 @@ const TimeRecordButton: React.FC<TimeRecordButtonProps> = ({
       return;
     }
 
+    // 出勤・退勤の場合のみ、1日1回制限をチェック
+    if ((recordType === 'clock_in' || recordType === 'clock_out') && selectedLocationId) {
+      try {
+        const hasRecord = await TimeRecordService.hasTodayRecordForLocation(user, selectedLocationId, recordType);
+        if (hasRecord) {
+          const label = TimeRecordService.getRecordTypeLabel(recordType);
+          onError?.(`本日は既に${selectedLocation?.name || '選択された拠点'}での${label}を実行済みです`);
+          return;
+        }
+      } catch (error) {
+        console.error('打刻チェックエラー:', error);
+        onError?.('打刻制限の確認に失敗しました');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {

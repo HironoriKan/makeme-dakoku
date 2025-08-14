@@ -9,7 +9,7 @@ const LineLogin: React.FC = () => {
     <div 
       className="min-h-screen flex items-center justify-center px-6 relative"
       style={{
-        backgroundImage: `url('/images/FV-MakeMe勤怠.png')`,
+        backgroundImage: `url('/images/メイクミー勤怠FV2.png')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
