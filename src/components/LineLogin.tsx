@@ -27,8 +27,15 @@ const LineLogin: React.FC = () => {
   };
 
   const handleHideBottomSheet = () => {
-    setShowBottomSheet(false);
-    setSheetPosition(0);
+    // アニメーションで下に下がってから非表示にする
+    const sheetHeight = bottomSheetRef.current?.offsetHeight || 400;
+    setSheetPosition(sheetHeight);
+    
+    // アニメーション完了後に非表示
+    setTimeout(() => {
+      setShowBottomSheet(false);
+      setSheetPosition(0);
+    }, 300);
   };
 
   // タッチ開始
