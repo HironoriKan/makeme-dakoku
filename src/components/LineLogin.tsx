@@ -16,7 +16,7 @@ const LineLogin: React.FC = () => {
 
   return (
     <div 
-      className="h-screen relative overflow-hidden"
+      className="h-screen relative overflow-hidden fixed inset-0"
       style={{
         backgroundImage: `url('/images/メイクミー勤怠FV2.png')`,
         backgroundSize: 'cover',
@@ -28,7 +28,7 @@ const LineLogin: React.FC = () => {
       <div className="absolute inset-0 bg-black bg-opacity-30"></div>
       
       {/* サービスロゴ（背景の上部に配置） */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex justify-center pt-20">
+      <div className="absolute top-0 left-0 right-0 z-10 flex justify-center pt-12 sm:pt-20">
         <img 
           src="/images/MakeMeKINTAI-サービス名2.png" 
           alt="Make Me KINTAI"
@@ -46,7 +46,7 @@ const LineLogin: React.FC = () => {
           showBottomSheet ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ 
-          minHeight: '45vh',
+          minHeight: '50vh',
           width: '100%',
           maxWidth: '428px' // iPhone 14 Pro Max サイズ
         }}
