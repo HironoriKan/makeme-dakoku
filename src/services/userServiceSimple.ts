@@ -11,7 +11,7 @@ export class UserServiceSimple {
     console.log('🔍 ユーザー検索開始:', lineUser.userId);
     
     // 既存ユーザーを検索（RLS無効化済みなのでシンプルに）
-    let { data: existingUser, error: findError } = await supabase
+    const { data: existingUser, error: findError } = await supabase
       .from('users')
       .select('*')
       .eq('line_user_id', lineUser.userId)

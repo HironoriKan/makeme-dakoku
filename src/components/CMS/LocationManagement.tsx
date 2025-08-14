@@ -25,6 +25,7 @@ type LocationType = 'makeme' | 'permanent' | 'event';
 
 const LocationManagement: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
+  const [userCounts, setUserCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -43,8 +44,12 @@ const LocationManagement: React.FC = () => {
     setError(null);
 
     try {
-      const data = await LocationService.getAllLocations();
-      setLocations(data);
+      const [locationsData, userCountsData] = await Promise.all([
+        LocationService.getAllLocations(),
+        LocationService.getLocationUserCounts()
+      ]);
+      setLocations(locationsData);
+      setUserCounts(userCountsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : '拠点データの取得に失敗しました');
     } finally {
@@ -343,6 +348,9 @@ const LocationManagement: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         都道府県
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        配属人数
+                      </th>
                       {activeTab === 'event' && (
                         <>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -435,6 +443,14 @@ const LocationManagement: React.FC = () => {
                                   ) : (
                                     location.prefecture || '-'
                                   )}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                  <div className="flex items-center space-x-1">
+                                    <Users className="w-4 h-4 text-gray-400" />
+                                    <span className="font-medium text-blue-600">
+                                      {userCounts[location.id] || 0}名
+                                    </span>
+                                  </div>
                                 </td>
                                 {activeTab === 'event' && (
                                   <>

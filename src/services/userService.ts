@@ -31,7 +31,7 @@ export class UserService {
   static async findOrCreateUser(lineUser: LineUser): Promise<User> {
     await this.setUserContext(lineUser.userId)
 
-    let { data: existingUser, error: findError } = await supabase
+    const { data: existingUser, error: findError } = await supabase
       .from('users')
       .select('*')
       .eq('line_user_id', lineUser.userId)

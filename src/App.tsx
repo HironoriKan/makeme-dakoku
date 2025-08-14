@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, MapPin, User, Coffee, LogIn, LogOut, Menu } from 'lucide-react';
+import { Clock, MapPin, Coffee, LogIn, LogOut, Menu } from 'lucide-react';
 import CalendarTabs from './components/CalendarTabs';
 import CheckoutReportModal from './components/CheckoutReportModal';
 import ClockoutConfirmModal from './components/ClockoutConfirmModal';
@@ -29,11 +29,11 @@ const TimeTrackingApp: React.FC = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [dbRecords, setDbRecords] = useState<any[]>([]);
+  const [dbRecords, setDbRecords] = useState<TimeEntry[]>([]);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showClockoutModal, setShowClockoutModal] = useState(false);
   const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
-  const [pendingClockoutData, setPendingClockoutData] = useState<{
+  const [, setPendingClockoutData] = useState<{
     hasExtraWork: boolean;
     overtimeMinutes?: number;
     earlyStartMinutes?: number;

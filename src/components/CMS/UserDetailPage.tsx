@@ -307,7 +307,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       // 一時的なユーザーオブジェクトを作成
       const tempUser = { userId };
       const now = new Date();
-      let data: ChartDataPoint[] = [];
+      const data: ChartDataPoint[] = [];
 
       if (selectedPeriod === 'day') {
         // 過去31日間のデータを取得
@@ -539,14 +539,16 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
             {/* バーチャート */}
             {chartData.map((point, index) => {
               const barHeight = adjustedMaxValue > 0 ? (point.value / adjustedMaxValue) * chartHeight : 0;
-              const x = yAxisWidth + index * (barWidth + barSpacing) + barSpacing / 2;
+              // バーの正確な位置計算: yAxisWidth + 各バーの開始位置
+              const barX = yAxisWidth + index * (barWidth + barSpacing);
+              const barCenterX = barX + barWidth / 2;
               const y = topMargin + chartHeight - barHeight;
 
               return (
                 <g key={index}>
                   {/* バー */}
                   <rect
-                    x={x}
+                    x={barX}
                     y={y}
                     width={barWidth}
                     height={barHeight}
@@ -557,7 +559,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                   {/* 値ラベル（バーの上部） */}
                   {point.value > 0 && (
                     <text
-                      x={x + barWidth / 2}
+                      x={barCenterX}
                       y={y - 5}
                       textAnchor="middle"
                       fontSize="9"
@@ -566,9 +568,9 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                       ¥{point.value.toLocaleString()}
                     </text>
                   )}
-                  {/* 日付ラベル */}
+                  {/* 日付ラベル（バーの中央に正確に配置） */}
                   <text
-                    x={x + barWidth / 2}
+                    x={barCenterX}
                     y={topMargin + chartHeight + 18}
                     textAnchor="middle"
                     fontSize="10"
@@ -1191,6 +1193,17 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Shift Edit Modal */}
+      <ShiftEditModal
+        isOpen={isShiftModalOpen}
+        onClose={() => {
+          setIsShiftModalOpen(false);
+          setSelectedShift(null);
+        }}
+        shift={selectedShift}
+        onSave={handleShiftModalSave}
+      />
     </div>
   );
 };

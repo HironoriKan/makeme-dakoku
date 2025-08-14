@@ -51,16 +51,16 @@ const TodayShiftView: React.FC = () => {
         return;
       }
 
-      // ユーザーの拠点情報を取得
+      // ユーザーの拠点情報を取得（user_locationsテーブル経由）
       const userIds = shifts.map(shift => shift.user_id);
-      const { data: usersWithLocations, error: userError } = await supabase
-        .from('users')
+      const { data: userLocations, error: userError } = await supabase
+        .from('user_locations')
         .select(`
-          id,
-          location_id,
-          locations(*)
+          user_id,
+          locations!inner(*)
         `)
-        .in('id', userIds);
+        .in('user_id', userIds)
+        .eq('is_active', true);
 
       if (userError) {
         throw new Error(`ユーザー拠点情報取得エラー: ${userError.message}`);
@@ -86,8 +86,8 @@ const TodayShiftView: React.FC = () => {
         const clockOutRecord = userTimeRecords.find(record => record.record_type === 'clock_out');
         
         // ユーザーの拠点情報を取得
-        const userWithLocation = usersWithLocations?.find(u => u.id === shift.user_id);
-        const location = userWithLocation?.locations || { name: '拠点未設定', id: '', code: '', created_at: null, updated_at: null, address: null, brand_name: null, display_order: null, end_date: null, is_active: null, latitude: null, location_type: null, longitude: null, prefecture: null, start_date: null, store_name: null };
+        const userLocationData = userLocations?.find(ul => ul.user_id === shift.user_id);
+        const location = userLocationData?.locations || { name: '拠点未設定' };
 
         return {
           user: shift.users,

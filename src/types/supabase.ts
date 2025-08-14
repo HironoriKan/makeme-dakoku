@@ -7,13 +7,87 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
+      attendance_logic_settings: {
+        Row: {
+          applied_from: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_name: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          applied_from?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_name: string
+          setting_value: Json
+          updated_at?: string | null
+        }
+        Update: {
+          applied_from?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_name?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      break_time_settings: {
+        Row: {
+          applied_from: string | null
+          break_rules: Json
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          location_id: string | null
+          setting_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          applied_from?: string | null
+          break_rules: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_id?: string | null
+          setting_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          applied_from?: string | null
+          break_rules?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_id?: string | null
+          setting_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "break_time_settings_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_reports: {
         Row: {
           checkout_time: string | null
@@ -342,6 +416,54 @@ export type Database = {
           },
         ]
       }
+      user_locations: {
+        Row: {
+          created_at: string | null
+          hourly_wage: number | null
+          id: string
+          is_active: boolean | null
+          location_id: string
+          transportation_cost: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          hourly_wage?: number | null
+          id?: string
+          is_active?: boolean | null
+          location_id: string
+          transportation_cost?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          hourly_wage?: number | null
+          id?: string
+          is_active?: boolean | null
+          location_id?: string
+          transportation_cost?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_locations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           address: string | null
@@ -349,7 +471,7 @@ export type Database = {
           created_at: string | null
           display_name: string
           email: string | null
-          employee_number: number | null
+          employee_number: number
           id: string
           line_user_id: string
           picture_url: string | null
@@ -362,7 +484,7 @@ export type Database = {
           created_at?: string | null
           display_name: string
           email?: string | null
-          employee_number?: number | null
+          employee_number?: number
           id?: string
           line_user_id: string
           picture_url?: string | null
@@ -375,7 +497,7 @@ export type Database = {
           created_at?: string | null
           display_name?: string
           email?: string | null
-          employee_number?: number | null
+          employee_number?: number
           id?: string
           line_user_id?: string
           picture_url?: string | null
@@ -390,13 +512,13 @@ export type Database = {
     }
     Functions: {
       set_config: {
-        Args: { setting_name: string; new_value: string; is_local?: boolean }
+        Args: { is_local?: boolean; new_value: string; setting_name: string }
         Returns: string
       }
     }
     Enums: {
       change_type: "edit" | "delete"
-      location_type: "permanent" | "popup"
+      location_type: "permanent" | "popup" | "makeme" | "event"
       record_type: "clock_in" | "clock_out" | "break_start" | "break_end"
       shift_status: "adjusting" | "confirmed"
       shift_type: "early" | "late" | "normal" | "off"
@@ -528,7 +650,7 @@ export const Constants = {
   public: {
     Enums: {
       change_type: ["edit", "delete"],
-      location_type: ["permanent", "popup"],
+      location_type: ["permanent", "popup", "makeme", "event"],
       record_type: ["clock_in", "clock_out", "break_start", "break_end"],
       shift_status: ["adjusting", "confirmed"],
       shift_type: ["early", "late", "normal", "off"],

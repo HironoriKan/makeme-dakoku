@@ -7,6 +7,18 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'supabase-vendor': ['@supabase/supabase-js'],
+          'ui-vendor': ['lucide-react', 'react-beautiful-dnd']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  },
   // 開発環境用プロキシ設定（本番環境では不要）
   server: {
     proxy: {

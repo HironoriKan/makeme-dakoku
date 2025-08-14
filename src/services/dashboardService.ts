@@ -300,7 +300,7 @@ export class DashboardService {
   static async getTimeSeriesData(periodType: PeriodType): Promise<TimeSeriesData[]> {
     try {
       const endDate = new Date();
-      let startDate = new Date();
+      const startDate = new Date();
       
       // 期間タイプに応じて開始日を設定
       switch (periodType) {

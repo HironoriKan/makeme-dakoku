@@ -53,6 +53,38 @@ export class LocationService {
   }
 
   /**
+   * 拠点の配属ユーザー数を取得
+   */
+  static async getLocationUserCounts(): Promise<Record<string, number>> {
+    console.log('📍 拠点別配属ユーザー数を取得');
+
+    try {
+      const { data: userCounts, error } = await supabase
+        .from('user_locations')
+        .select('location_id')
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('❌ 拠点別配属ユーザー数取得エラー:', error);
+        throw new Error(`拠点別配属ユーザー数取得エラー: ${error.message}`);
+      }
+
+      // location_idごとにカウント
+      const countMap: Record<string, number> = {};
+      (userCounts || []).forEach(record => {
+        const locationId = record.location_id;
+        countMap[locationId] = (countMap[locationId] || 0) + 1;
+      });
+
+      console.log('✅ 拠点別配属ユーザー数取得成功');
+      return countMap;
+    } catch (error) {
+      console.error('❌ 拠点別配属ユーザー数取得処理エラー:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 全ての拠点一覧を取得（管理者用）
    */
   static async getAllLocations(): Promise<Location[]> {

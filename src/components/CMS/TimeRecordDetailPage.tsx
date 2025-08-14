@@ -238,8 +238,8 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         }
         
         const statuses: WorkStatus[] = [];
-        let finalClockIn = clockInTime;
-        let finalClockOut = clockOutTime;
+        const finalClockIn = clockInTime;
+        const finalClockOut = clockOutTime;
         
         // シフトあり・打刻なしの場合は欠勤
         if (shiftStart && !clockInTime) {

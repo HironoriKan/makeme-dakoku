@@ -30,7 +30,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     setIsLoading(true);
     try {
       const now = new Date();
-      let data: ChartDataPoint[] = [];
+      const data: ChartDataPoint[] = [];
 
       if (selectedPeriod === 'day') {
         // 過去31日間のデータを取得
@@ -222,14 +222,16 @@ const SalesChart: React.FC<SalesChartProps> = () => {
             {/* バーチャート */}
             {chartData.map((point, index) => {
               const barHeight = adjustedMaxValue > 0 ? (point.value / adjustedMaxValue) * chartHeight : 0;
-              const x = yAxisWidth + index * (barWidth + barSpacing) + barSpacing / 2;
+              // バーの正確な位置計算: yAxisWidth + 各バーの開始位置
+              const barX = yAxisWidth + index * (barWidth + barSpacing);
+              const barCenterX = barX + barWidth / 2;
               const y = topMargin + chartHeight - barHeight;
 
               return (
                 <g key={index}>
                   {/* バー */}
                   <rect
-                    x={x}
+                    x={barX}
                     y={y}
                     width={barWidth}
                     height={barHeight}
@@ -240,7 +242,7 @@ const SalesChart: React.FC<SalesChartProps> = () => {
                   {/* 値ラベル（バーの上部） */}
                   {point.value > 0 && (
                     <text
-                      x={x + barWidth / 2}
+                      x={barCenterX}
                       y={y - 5}
                       textAnchor="middle"
                       fontSize="9"
@@ -249,9 +251,9 @@ const SalesChart: React.FC<SalesChartProps> = () => {
                       ¥{point.value.toLocaleString()}
                     </text>
                   )}
-                  {/* 日付ラベル */}
+                  {/* 日付ラベル（バーの中央に正確に配置） */}
                   <text
-                    x={x + barWidth / 2}
+                    x={barCenterX}
                     y={topMargin + chartHeight + 18}
                     textAnchor="middle"
                     fontSize="10"
