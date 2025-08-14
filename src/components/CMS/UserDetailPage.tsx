@@ -20,15 +20,20 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Plus
+  Plus,
+  CheckCircle,
+  AlertCircle,
+  Edit2
 } from 'lucide-react';
 import { sanitizeUserName, sanitizeDisplayText } from '../../utils/textUtils';
 import { DailyReportService } from '../../services/dailyReportService';
+import ShiftEditModal from './ShiftEditModal';
 
 type User = Tables<'users'>;
 type DailyReport = Tables<'daily_reports'>;
 type TimeRecord = Tables<'time_records'>;
 type WorkPattern = Tables<'work_patterns'>;
+type Shift = Tables<'shifts'>;
 type PeriodType = 'day' | 'week' | 'month';
 
 interface ChartDataPoint {
@@ -85,21 +90,35 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   const [avgSales, setAvgSales] = useState(0);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [shifts, setShifts] = useState<Shift[]>([]);
 
   useEffect(() => {
     if (userId) {
+      console.log('🚀 UserDetailPage初期化開始:', userId);
+      // まずユーザー情報を取得してから他のデータを取得
       fetchUserDetail();
+    }
+  }, [userId]);
+
+  // ユーザー情報が取得できたら、他のデータも取得
+  useEffect(() => {
+    if (userId && user) {
+      console.log('📊 関連データ取得開始:', user.display_name);
       fetchUserStats();
       fetchUserReports();
       fetchWorkPatterns();
       fetchShiftData();
       fetchChartData();
+      fetchShifts();
     }
-  }, [userId]);
+  }, [userId, user]);
 
   useEffect(() => {
     if (userId) {
       fetchShiftData();
+      fetchShifts();
     }
   }, [currentMonth, userId]);
 
@@ -110,8 +129,13 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   }, [selectedPeriod, userId]);
 
   const fetchUserDetail = async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.error('❌ fetchUserDetail: userId が未定義です');
+      setError('ユーザーIDが指定されていません');
+      return;
+    }
 
+    console.log('🔍 fetchUserDetail開始:', userId);
     setLoading(true);
     setError(null);
 
@@ -122,8 +146,19 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
         .eq('id', userId)
         .single();
 
-      if (fetchError) throw fetchError;
+      console.log('📊 ユーザー取得結果:', { data, error: fetchError });
 
+      if (fetchError) {
+        console.error('❌ fetchUserDetail エラー:', fetchError);
+        throw fetchError;
+      }
+
+      if (!data) {
+        console.error('❌ fetchUserDetail: データがnullです');
+        throw new Error('ユーザーデータが見つかりません');
+      }
+
+      console.log('✅ fetchUserDetail成功:', data.display_name);
       setUser(data);
       setEditedData({
         display_name: data.display_name,
@@ -133,9 +168,11 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
         career: data.career || ''
       });
     } catch (err) {
+      console.error('❌ fetchUserDetail 例外:', err);
       setError(err instanceof Error ? err.message : 'ユーザー情報の取得に失敗しました');
     } finally {
       setLoading(false);
+      console.log('🏁 fetchUserDetail完了');
     }
   };
 
@@ -300,14 +337,24 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
   // データ取得（SalesChart.tsxと同じロジック）
   const fetchChartData = async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.warn('⚠️ fetchChartData: userId が未定義です');
+      return;
+    }
 
+    console.log('🔍 fetchChartData開始:', userId);
     setIsChartLoading(true);
     try {
-      // 一時的なユーザーオブジェクトを作成
-      const tempUser = { userId };
+      // 一時的なユーザーオブジェクトを作成（LineUser型に合わせる）
+      // user状態がまだ未定義の場合もあるので、安全にアクセス
+      const tempUser = { 
+        userId, 
+        displayName: user?.display_name || `User_${userId.slice(0, 8)}` 
+      };
       const now = new Date();
       const data: ChartDataPoint[] = [];
+
+      console.log('📊 チャートデータ取得開始:', { tempUser, period: selectedPeriod });
 
       if (selectedPeriod === 'day') {
         // 過去31日間のデータを取得
@@ -402,10 +449,53 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       setTimeout(() => {
         scrollToLatest();
       }, 100);
+      console.log('✅ fetchChartData成功:', data.length, '件');
     } catch (error) {
-      console.error('売上データ取得エラー:', error);
+      console.error('❌ fetchChartData エラー:', error);
+      // チャートデータの取得失敗は致命的ではないので、空データで継続
+      setChartData([]);
+      setTotalSales(0);
+      setMaxSales(0);
+      setAvgSales(0);
     } finally {
       setIsChartLoading(false);
+      console.log('🏁 fetchChartData完了');
+    }
+  };
+
+  const fetchShifts = async () => {
+    if (!userId) {
+      console.warn('⚠️ fetchShifts: userId が未定義です');
+      return;
+    }
+
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+      console.log('🔍 fetchShifts開始:', { userId, startDate, endDate });
+
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('shift_date', startDate)
+        .lte('shift_date', endDate)
+        .order('shift_date', { ascending: true });
+
+      console.log('📊 シフト取得結果:', { data: data?.length, error });
+
+      if (error) {
+        console.error('❌ fetchShifts エラー:', error);
+        throw error;
+      }
+      setShifts(data || []);
+      console.log('✅ fetchShifts成功:', data?.length || 0, '件');
+    } catch (err) {
+      console.error('❌ fetchShifts 例外:', err);
+      // シフトデータの取得失敗は致命的ではないので、エラー状態は設定しない
     }
   };
 
@@ -453,6 +543,11 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
   const handleInputChange = (field: keyof User, value: string) => {
     setEditedData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleShiftModalSave = () => {
+    fetchShifts();
+    fetchShiftData();
   };
 
   const formatCurrency = (amount: number) => {
@@ -664,31 +759,57 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     const monthDates = getMonthDates();
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
-    const getShiftStatus = (dateStr: string) => {
-      const shift = shiftData[dateStr];
-      if (!shift) return null;
+    const getShiftInfo = (dateStr: string) => {
+      const timeRecord = shiftData[dateStr];
+      const shift = shifts.find(s => s.shift_date === dateStr);
+      
+      if (!shift && !timeRecord) return null;
 
-      if (shift.clockIn && shift.clockOut) {
-        return {
-          status: '出勤完了',
-          color: 'bg-green-100 text-green-800 border-green-200',
-          time: `${shift.clockIn}-${shift.clockOut}`
+      // 打刻記録の状況
+      let timeStatus = null;
+      if (timeRecord) {
+        if (timeRecord.clockIn && timeRecord.clockOut) {
+          timeStatus = {
+            status: '出勤完了',
+            color: 'bg-green-100 text-green-800 border-green-200',
+            time: `${timeRecord.clockIn}-${timeRecord.clockOut}`
+          };
+        } else if (timeRecord.clockIn) {
+          timeStatus = {
+            status: '出勤中',
+            color: 'bg-blue-100 text-blue-800 border-blue-200',
+            time: `${timeRecord.clockIn}-`
+          };
+        }
+      }
+
+      // シフトの状況
+      let shiftStatus = null;
+      if (shift) {
+        const statusColors = {
+          adjusting: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          confirmed: 'bg-green-100 text-green-800 border-green-200'
         };
-      } else if (shift.clockIn) {
-        return {
-          status: '出勤中',
-          color: 'bg-blue-100 text-blue-800 border-blue-200',
-          time: `${shift.clockIn}-`
+        
+        const statusLabels = {
+          adjusting: '調整中',
+          confirmed: '確定済み'
         };
-      } else if (shift.workPattern) {
-        return {
-          status: 'シフト予定',
-          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          time: `${shift.workPattern.start_time.substring(0, 5)}-${shift.workPattern.end_time.substring(0, 5)}`
+
+        shiftStatus = {
+          status: statusLabels[shift.shift_status as keyof typeof statusLabels] || shift.shift_status,
+          color: statusColors[shift.shift_status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800 border-gray-200',
+          time: shift.start_time && shift.end_time ? `${shift.start_time.substring(0, 5)}-${shift.end_time.substring(0, 5)}` : '時間未設定',
+          shift
         };
       }
       
-      return null;
+      return { timeStatus, shiftStatus };
+    };
+
+    const handleShiftClick = (shift: Shift) => {
+      setSelectedShift(shift);
+      setIsShiftModalOpen(true);
     };
 
     return (
@@ -736,13 +857,13 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           
           {/* 日付セル */}
           {monthDates.map((dateInfo, index) => {
-            const shiftStatus = getShiftStatus(dateInfo.dateStr);
+            const shiftInfo = getShiftInfo(dateInfo.dateStr);
             const isWeekend = index % 7 === 0 || index % 7 === 6;
             
             return (
               <div
                 key={`${dateInfo.dateStr}-${index}`}
-                className={`min-h-24 p-2 border-2 border-dashed transition-all hover:bg-gray-50 ${
+                className={`min-h-28 p-2 border-2 border-dashed transition-all hover:bg-gray-50 ${
                   dateInfo.isCurrentMonth
                     ? dateInfo.isToday
                       ? 'bg-blue-50 border-blue-300'
@@ -766,21 +887,37 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                   }`}>
                     {dateInfo.day}
                   </span>
-                  
-                  {dateInfo.isCurrentMonth && (
-                    <button
-                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                      title="シフトを追加"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  )}
                 </div>
                 
-                {shiftStatus && dateInfo.isCurrentMonth && (
-                  <div className={`text-xs px-2 py-1 rounded-md border ${shiftStatus.color}`}>
-                    <div className="font-medium">{shiftStatus.status}</div>
-                    <div className="font-mono text-xs mt-0.5">{shiftStatus.time}</div>
+                {dateInfo.isCurrentMonth && (
+                  <div className="space-y-1">
+                    {/* シフト情報 */}
+                    {shiftInfo?.shiftStatus && (
+                      <div 
+                        className={`text-xs px-2 py-1 rounded-md border cursor-pointer hover:opacity-75 transition-opacity ${shiftInfo.shiftStatus.color}`}
+                        onClick={() => shiftInfo.shiftStatus?.shift && handleShiftClick(shiftInfo.shiftStatus.shift)}
+                        title="クリックして編集"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{shiftInfo.shiftStatus.status}</span>
+                          {shiftInfo.shiftStatus.shift?.shift_status === 'adjusting' && (
+                            <AlertCircle className="w-3 h-3" />
+                          )}
+                          {shiftInfo.shiftStatus.shift?.shift_status === 'confirmed' && (
+                            <CheckCircle className="w-3 h-3" />
+                          )}
+                        </div>
+                        <div className="font-mono text-xs mt-0.5">{shiftInfo.shiftStatus.time}</div>
+                      </div>
+                    )}
+                    
+                    {/* 打刻記録情報 */}
+                    {shiftInfo?.timeStatus && (
+                      <div className={`text-xs px-2 py-1 rounded-md border ${shiftInfo.timeStatus.color}`}>
+                        <div className="font-medium">{shiftInfo.timeStatus.status}</div>
+                        <div className="font-mono text-xs mt-0.5">{shiftInfo.timeStatus.time}</div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -789,41 +926,75 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
         </div>
         
         {/* 凡例 */}
-        <div className="mt-6 flex flex-wrap gap-4 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
-            <span className="text-gray-700">出勤完了</span>
+        <div className="mt-6 space-y-2">
+          <h4 className="text-sm font-medium text-gray-700">凡例</h4>
+          <div className="flex flex-wrap gap-4 text-xs">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
+              <span className="text-gray-700">出勤完了・確定済み</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
+              <span className="text-gray-700">出勤中</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
+              <span className="text-gray-700">調整中</span>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
-            <span className="text-gray-700">出勤中</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
-            <span className="text-gray-700">シフト予定</span>
-          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            💡 シフトをクリックして編集・確認できます
+          </p>
         </div>
       </div>
     );
   };
 
+  // ローディング状態の表示
   if (loading && !user) {
+    console.log('⏳ ローディング中...');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">読み込み中...</span>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+          <div className="text-lg font-medium text-gray-700 mb-2">ユーザー情報を読み込み中...</div>
+          <div className="text-sm text-gray-500">
+            User ID: {userId ? `${userId.slice(0, 8)}...` : 'Unknown'}
+          </div>
+        </div>
       </div>
     );
   }
 
+  // エラー状態の表示
   if (error && !user) {
+    console.log('❌ エラー状態:', error);
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">{error}</div>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-red-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <span className="text-red-600 text-2xl">⚠️</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">エラーが発生しました</h2>
+          <div className="text-red-600 mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+            {error}
+          </div>
+          <div className="text-sm text-gray-500 mb-4">
+            User ID: {userId ? `${userId.slice(0, 8)}...` : 'Unknown'}
+          </div>
+          <button
+            onClick={() => {
+              console.log('🔄 リトライ開始');
+              setError(null);
+              fetchUserDetail();
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2"
+          >
+            再試行
+          </button>
           <button
             onClick={onBack}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
           >
             戻る
           </button>
@@ -832,14 +1003,34 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     );
   }
 
+  // ユーザーが見つからない場合
   if (!user) {
+    console.log('❓ ユーザーが見つかりません:', userId);
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-600 mb-4">ユーザーが見つかりません</div>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <span className="text-gray-600 text-2xl">👤</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">ユーザーが見つかりません</h2>
+          <div className="text-gray-600 mb-4">
+            指定されたユーザーの情報を読み込めませんでした。
+          </div>
+          <div className="text-sm text-gray-500 mb-4">
+            User ID: {userId ? `${userId.slice(0, 8)}...` : 'Unknown'}
+          </div>
+          <button
+            onClick={() => {
+              console.log('🔄 再読み込み開始');
+              fetchUserDetail();
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2"
+          >
+            再読み込み
+          </button>
           <button
             onClick={onBack}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
           >
             戻る
           </button>
@@ -847,6 +1038,8 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       </div>
     );
   }
+
+  console.log('🎯 UserDetailPageレンダリング:', { userId, user: user?.display_name, loading, error });
 
   return (
     <div className="min-h-screen bg-gray-50">
