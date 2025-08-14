@@ -46,7 +46,7 @@ const LineLogin: React.FC = () => {
           showBottomSheet ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ 
-          minHeight: '50vh',
+          minHeight: '47vh',
           width: '100%',
           maxWidth: '428px' // iPhone 14 Pro Max サイズ
         }}
