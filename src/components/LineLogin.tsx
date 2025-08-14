@@ -32,10 +32,9 @@ const LineLogin: React.FC = () => {
         <img 
           src="/images/MakeMeKINTAI-サービス名2.png" 
           alt="Make Me KINTAI"
-          className="w-auto h-auto object-contain"
+          className="w-4/5 h-auto object-contain"
           style={{ 
-            maxHeight: '120px',
-            maxWidth: '280px',
+            maxWidth: '342px', // 428px * 0.8 = 342.4px
             aspectRatio: 'auto'
           }}
         />
