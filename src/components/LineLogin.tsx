@@ -108,7 +108,7 @@ const LineLogin: React.FC = () => {
           <div id="btn_animation">
             <button
               onClick={handleShowBottomSheet}
-              className="btn relative block w-[200px] h-[78px] leading-[78px] text-2xl rounded-[39px] no-underline text-white text-center transition-all duration-200"
+              className="btn relative block w-[200px] h-[62px] leading-[62px] text-xl rounded-xl no-underline text-white text-center transition-all duration-200"
               style={{
                 backgroundColor: '#63d4db',
                 color: '#fbfbfb'
@@ -127,10 +127,10 @@ const LineLogin: React.FC = () => {
             position: absolute;
             z-index: -10;
             width: 200px;
-            height: 78px;
+            height: 62px;
             top: 0;
             left: 0;
-            border-radius: 39px;
+            border-radius: 12px;
             background: #a6f9ff;
             transform: translate3d(0, 0, 0);
           }
