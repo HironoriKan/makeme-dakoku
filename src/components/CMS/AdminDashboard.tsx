@@ -25,7 +25,7 @@ interface TableData {
   daily_reports: DailyReport[];
 }
 
-type TabType = 'dashboard' | 'shift_management' | 'location_management' | 'monthly_time_records' | 'attendance_logic_settings' | 'break_time_settings' | 'transaction_management' | 'users';
+type TabType = 'dashboard' | 'users' | 'shift_management' | 'time_records' | 'location_management' | 'settings';
 
 interface AdminDashboardProps {
   onLogout?: () => void;
@@ -33,6 +33,7 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [settingsSubTab, setSettingsSubTab] = useState<'attendance_logic' | 'break_time' | 'transaction'>('attendance_logic');
   const [data, setData] = useState<TableData>({
     users: [],
     time_records: [],
@@ -72,7 +73,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   useEffect(() => {
     if (activeTab === 'users') {
-      fetchData(activeTab);
+      fetchData('users');
+    } else if (activeTab === 'time_records') {
+      fetchData('time_records');
     }
   }, [activeTab]);
 
@@ -278,13 +281,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const tabLabels = {
     dashboard: 'ダッシュボード',
+    users: 'ユーザー',
     shift_management: 'シフト管理',
+    time_records: '打刻管理',
     location_management: '拠点管理',
-    monthly_time_records: '打刻記録',
-    attendance_logic_settings: '勤怠ロジック設定',
-    break_time_settings: '休憩時間設定',
-    transaction_management: 'トランザクション管理',
-    users: 'ユーザー'
+    settings: '各種設定'
+  };
+
+  const settingsSubTabLabels = {
+    attendance_logic: '勤怠ロジック管理',
+    break_time: '休憩時間管理',
+    transaction: 'トランザクション管理'
   };
 
   return (
@@ -301,24 +308,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         <nav className="flex-1 p-4">
           <div className="space-y-2">
             {(Object.keys(tabLabels) as Array<TabType>).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === tab
-                    ? 'bg-blue-50 text-blue-700 border-blue-200 border'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span>{tabLabels[tab]}</span>
-                  {tab === 'users' && (
-                    <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
-                      {data[tab as keyof TableData].length}
-                    </span>
-                  )}
-                </div>
-              </button>
+              <div key={tab}>
+                <button
+                  onClick={() => setActiveTab(tab)}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === tab
+                      ? 'bg-blue-50 text-blue-700 border-blue-200 border'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span>{tabLabels[tab]}</span>
+                    {tab === 'users' && (
+                      <span className="bg-gray-100 text-gray-900 py-0.5 px-2 rounded-full text-xs">
+                        {data[tab as keyof TableData].length}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                
+                {/* 各種設定のサブメニュー */}
+                {tab === 'settings' && activeTab === 'settings' && (
+                  <div className="ml-4 mt-2 space-y-1">
+                    {(Object.keys(settingsSubTabLabels) as Array<keyof typeof settingsSubTabLabels>).map((subTab) => (
+                      <button
+                        key={subTab}
+                        onClick={() => setSettingsSubTab(subTab)}
+                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                          settingsSubTab === subTab
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
+                      >
+                        ∟ {settingsSubTabLabels[subTab]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </nav>
@@ -348,21 +375,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
         {/* Content */}
         <div className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'monthly_time_records' || activeTab === 'attendance_logic_settings' || activeTab === 'break_time_settings' || activeTab === 'transaction_management' ? '' : 'bg-white rounded-lg shadow p-6'}>
+          <div className={activeTab === 'dashboard' || activeTab === 'shift_management' || activeTab === 'location_management' || activeTab === 'time_records' || activeTab === 'settings' ? '' : 'bg-white rounded-lg shadow p-6'}>
             {activeTab === 'dashboard' ? (
               <CMSDashboard />
-            ) : activeTab === 'shift_management' ? (
-              <ShiftManagement />
-            ) : activeTab === 'location_management' ? (
-              <LocationManagement />
-            ) : activeTab === 'monthly_time_records' ? (
-              <MonthlyTimeRecords />
-            ) : activeTab === 'attendance_logic_settings' ? (
-              <AttendanceLogicSettings />
-            ) : activeTab === 'break_time_settings' ? (
-              <BreakTimeSettings />
-            ) : activeTab === 'transaction_management' ? (
-              <TransactionManagement />
             ) : activeTab === 'users' ? (
               <>
                 {error && (
@@ -377,13 +392,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <span className="ml-2 text-gray-600">読み込み中...</span>
                   </div>
                 ) : (
-                  <div>
+                  <div className="bg-white rounded-lg shadow p-6">
                     <div className="mb-6">
                       <h1 className="text-2xl font-bold text-gray-900 mb-2">
                         {tabLabels[activeTab]}管理
                       </h1>
                       <p className="text-gray-600">
-                        {activeTab === 'users' && 'ユーザーの情報を確認・管理できます'}
+                        ユーザーの情報を確認・管理できます
                       </p>
                     </div>
                     <div className="mb-4 flex justify-between items-center">
@@ -401,6 +416,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   </div>
                 )}
               </>
+            ) : activeTab === 'shift_management' ? (
+              <ShiftManagement />
+            ) : activeTab === 'time_records' ? (
+              <MonthlyTimeRecords />
+            ) : activeTab === 'location_management' ? (
+              <LocationManagement />
+            ) : activeTab === 'settings' ? (
+              settingsSubTab === 'attendance_logic' ? (
+                <AttendanceLogicSettings />
+              ) : settingsSubTab === 'break_time' ? (
+                <BreakTimeSettings />
+              ) : settingsSubTab === 'transaction' ? (
+                <TransactionManagement />
+              ) : null
             ) : null}
           </div>
         </div>

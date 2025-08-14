@@ -16,7 +16,7 @@ const LineLogin: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen relative overflow-hidden"
+      className="h-screen relative overflow-hidden"
       style={{
         backgroundImage: `url('/images/メイクミー勤怠FV2.png')`,
         backgroundSize: 'cover',
@@ -46,7 +46,7 @@ const LineLogin: React.FC = () => {
           showBottomSheet ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ 
-          minHeight: '60vh',
+          minHeight: '45vh',
           width: '100%',
           maxWidth: '428px' // iPhone 14 Pro Max サイズ
         }}
@@ -56,15 +56,15 @@ const LineLogin: React.FC = () => {
           <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
         </div>
 
-        <div className="px-6 pb-8">
+        <div className="px-6 pb-6">
           {/* ログイン説明 */}
-          <div className="text-center mb-8 mt-4">
+          <div className="text-center mb-6 mt-2">
             <p className="text-gray-600 text-base">LINEアカウントでログイン</p>
           </div>
 
           {/* エラーメッセージ */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
               <div className="text-sm text-red-700 mb-2">{error}</div>
               <button
                 type="button"
@@ -77,7 +77,7 @@ const LineLogin: React.FC = () => {
           )}
 
           {/* ログインボタン */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             <button
               onClick={login}
               disabled={isLoading}

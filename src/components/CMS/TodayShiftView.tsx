@@ -256,7 +256,7 @@ const TodayShiftView: React.FC = () => {
                       <div className="flex items-center space-x-3">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2">
-                            <h3 className="font-medium text-gray-900">{shiftUser.user.name}</h3>
+                            <h3 className="font-medium text-gray-900">{shiftUser.user.display_name}</h3>
                             <span 
                               className="px-2 py-1 text-xs rounded text-white"
                               style={{ backgroundColor: getShiftTypeColor(shiftUser.shift.shift_type) }}

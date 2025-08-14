@@ -1,5 +1,5 @@
 {
-  "name": "makeme-attendance",
+  "name": "makeme-dakoku",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
