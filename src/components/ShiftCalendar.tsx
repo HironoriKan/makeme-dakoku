@@ -21,6 +21,11 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editingShift, setEditingShift] = useState<ShiftData | null>(null);
+  const [lastShiftTemplate, setLastShiftTemplate] = useState({
+    startTime: '09:00',
+    endTime: '17:00',
+    note: ''
+  });
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -163,14 +168,14 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
         note: existingShift.note || ''
       });
     } else {
-      // 新規シフト作成
+      // 新規シフト作成（最後に使用した設定を使用）
       setEditingShift({
         date: dateString,
-        shiftType: '',
+        shiftType: 'normal', // デフォルトでnormalに設定
         shiftStatus: 'adjusting',
-        startTime: '09:00',
-        endTime: '17:00',
-        note: ''
+        startTime: lastShiftTemplate.startTime,
+        endTime: lastShiftTemplate.endTime,
+        note: lastShiftTemplate.note
       });
     }
   };
@@ -181,6 +186,16 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
 
     try {
       await ShiftService.createOrUpdateShift(user, editingShift);
+      
+      // 最後に使用した設定を保存（休み希望以外の場合）
+      if (editingShift.shiftType !== 'off') {
+        setLastShiftTemplate({
+          startTime: editingShift.startTime || '09:00',
+          endTime: editingShift.endTime || '17:00',
+          note: editingShift.note || ''
+        });
+      }
+      
       setEditingShift(null);
       setSelectedDate(null);
       await loadShifts(); // データを再読み込み
@@ -271,23 +286,9 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
             <div className="flex items-center space-x-1">
               <div 
                 className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: ShiftService.getShiftTypeColor('early') }}
-              />
-              <span className="text-gray-600 text-xs">早番</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: ShiftService.getShiftTypeColor('late') }}
-              />
-              <span className="text-gray-600 text-xs">遅番</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div 
-                className="w-3 h-3 rounded-full" 
                 style={{ backgroundColor: ShiftService.getShiftTypeColor('normal') }}
               />
-              <span className="text-gray-600 text-xs">通常</span>
+              <span className="text-gray-600 text-xs">勤務</span>
             </div>
             <div className="flex items-center space-x-1">
               <div 
@@ -341,23 +342,9 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
             <div className="flex items-center space-x-1">
               <div 
                 className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: ShiftService.getShiftTypeColor('early') }}
-              />
-              <span className="text-gray-600 text-xs">早番</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div 
-                className="w-3 h-3 rounded-full" 
-                style={{ backgroundColor: ShiftService.getShiftTypeColor('late') }}
-              />
-              <span className="text-gray-600 text-xs">遅番</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div 
-                className="w-3 h-3 rounded-full" 
                 style={{ backgroundColor: ShiftService.getShiftTypeColor('normal') }}
               />
-              <span className="text-gray-600 text-xs">通常</span>
+              <span className="text-gray-600 text-xs">勤務</span>
             </div>
             <div className="flex items-center space-x-1">
               <div 
@@ -391,32 +378,49 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
             </div>
             
             <div className="space-y-4">
-              {/* シフトタイプ選択 */}
+              {/* 勤務・休み選択 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  シフトタイプ
+                  勤務種別
                 </label>
-                <select
-                  value={editingShift.shiftType}
-                  onChange={(e) => setEditingShift({
-                    ...editingShift,
-                    shiftType: e.target.value as ShiftType
-                  })}
-                  disabled={editingShift.shiftStatus === 'confirmed'}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    editingShift.shiftStatus === 'confirmed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                  }`}
-                >
-                  <option value="">シフト未設定</option>
-                  <option value="early">早番(オープン)</option>
-                  <option value="late">遅番(締め)</option>
-                  <option value="normal">通常入店</option>
-                  <option value="off">休み希望</option>
-                </select>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="workType"
+                      value="work"
+                      checked={editingShift.shiftType !== 'off'}
+                      onChange={() => setEditingShift({
+                        ...editingShift,
+                        shiftType: 'normal'
+                      })}
+                      disabled={editingShift.shiftStatus === 'confirmed'}
+                      className="mr-2"
+                    />
+                    勤務
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="workType"
+                      value="off"
+                      checked={editingShift.shiftType === 'off'}
+                      onChange={() => setEditingShift({
+                        ...editingShift,
+                        shiftType: 'off',
+                        startTime: '',
+                        endTime: ''
+                      })}
+                      disabled={editingShift.shiftStatus === 'confirmed'}
+                      className="mr-2"
+                    />
+                    休み希望
+                  </label>
+                </div>
               </div>
 
               {/* 開始時間 */}
-              {editingShift.shiftType && editingShift.shiftType !== 'off' && (
+              {editingShift.shiftType !== 'off' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     開始時間
@@ -432,12 +436,13 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                     className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       editingShift.shiftStatus === 'confirmed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
                     }`}
+                    required
                   />
                 </div>
               )}
 
               {/* 終了時間 */}
-              {editingShift.shiftType && editingShift.shiftType !== 'off' && (
+              {editingShift.shiftType !== 'off' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     終了時間
@@ -453,6 +458,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
                     className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       editingShift.shiftStatus === 'confirmed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
                     }`}
+                    required
                   />
                 </div>
               )}
