@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const LineLogin: React.FC = () => {
   const { login, error, isLoading, clearError } = useAuth();
   const [showBottomSheet, setShowBottomSheet] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ y: 0, sheetY: 0 });
+  const [sheetPosition, setSheetPosition] = useState(0);
+  const bottomSheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 初期状態では何もしない（CTAボタンでボトムシートを表示する）
@@ -11,6 +15,59 @@ const LineLogin: React.FC = () => {
 
   const handleShowBottomSheet = () => {
     setShowBottomSheet(true);
+    setSheetPosition(0);
+  };
+
+  const handleHideBottomSheet = () => {
+    setShowBottomSheet(false);
+    setSheetPosition(0);
+  };
+
+  // タッチ開始
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!bottomSheetRef.current) return;
+    
+    const touch = e.touches[0];
+    const rect = bottomSheetRef.current.getBoundingClientRect();
+    
+    setIsDragging(true);
+    setDragStart({
+      y: touch.clientY,
+      sheetY: sheetPosition
+    });
+  };
+
+  // タッチ移動
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || !bottomSheetRef.current) return;
+    
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - dragStart.y;
+    const newPosition = Math.max(0, dragStart.sheetY + deltaY);
+    
+    setSheetPosition(newPosition);
+  };
+
+  // タッチ終了
+  const handleTouchEnd = () => {
+    if (!isDragging) return;
+    
+    setIsDragging(false);
+    
+    // 50px以上下にドラッグした場合は閉じる
+    if (sheetPosition > 50) {
+      handleHideBottomSheet();
+    } else {
+      // 元の位置に戻す
+      setSheetPosition(0);
+    }
+  };
+
+  // 背景タップで閉じる
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleHideBottomSheet();
+    }
   };
 
   return (
@@ -49,19 +106,34 @@ const LineLogin: React.FC = () => {
         </div>
       </div>
       
+      {/* ボトムシート背景オーバーレイ */}
+      {showBottomSheet && (
+        <div 
+          className={`fixed inset-0 bg-black bg-opacity-50 z-15 transition-opacity duration-300 ${
+            showBottomSheet ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={handleBackgroundClick}
+        />
+      )}
+
       {/* ボトムシート */}
       <div 
-        className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 bg-white rounded-t-3xl shadow-2xl transition-transform duration-500 ease-out z-20 ${
-          showBottomSheet ? 'translate-y-0' : 'translate-y-full'
-        }`}
+        ref={bottomSheetRef}
+        className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 bg-white rounded-t-3xl shadow-2xl z-20 ${
+          isDragging ? '' : 'transition-transform duration-300 ease-out'
+        } ${showBottomSheet ? 'translate-y-0' : 'translate-y-full'}`}
         style={{ 
           minHeight: '50vh',
           width: '100%',
-          maxWidth: '428px' // iPhone 14 Pro Max サイズ
+          maxWidth: '428px', // iPhone 14 Pro Max サイズ
+          transform: `translateX(-50%) translateY(${showBottomSheet ? sheetPosition : 100}%)`,
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* ボトムシートハンドル */}
-        <div className="flex justify-center pt-4 pb-2">
+        <div className="flex justify-center pt-4 pb-2 cursor-pointer" onClick={handleHideBottomSheet}>
           <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
         </div>
 
