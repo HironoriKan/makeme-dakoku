@@ -121,7 +121,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({
           {shift ? (
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
-              style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type, shift.start_time, shift.end_time) }}
+              style={{ backgroundColor: ShiftService.getShiftTypeColor(shift.shift_type) }}
             >
               {day}
             </div>

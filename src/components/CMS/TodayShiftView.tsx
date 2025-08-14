@@ -114,9 +114,9 @@ const TodayShiftView: React.FC = () => {
     return time.substring(0, 5); // HH:MM
   };
 
-  const getShiftTypeColor = (shiftType: string, startTime?: string | null, endTime?: string | null) => {
-    // ShiftServiceの動的判定を使用
-    return ShiftService.getShiftTypeColor(shiftType as any, startTime, endTime);
+  const getShiftTypeColor = (shiftType: string) => {
+    // ShiftServiceの色設定を使用（保存時に正しいshift_typeが設定される）
+    return ShiftService.getShiftTypeColor(shiftType as any);
   };
 
   const getShiftTypeLabel = (shiftType: string) => {
@@ -255,7 +255,7 @@ const TodayShiftView: React.FC = () => {
                             <h3 className="font-medium text-gray-900">{shiftUser.user.display_name}</h3>
                             <span 
                               className="px-2 py-1 text-xs rounded text-white"
-                              style={{ backgroundColor: getShiftTypeColor(shiftUser.shift.shift_type, shiftUser.shift.start_time, shiftUser.shift.end_time) }}
+                              style={{ backgroundColor: getShiftTypeColor(shiftUser.shift.shift_type) }}
                             >
                               {getShiftTypeLabel(shiftUser.shift.shift_type)}
                             </span>

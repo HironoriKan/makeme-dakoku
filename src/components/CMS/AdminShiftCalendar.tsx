@@ -136,20 +136,15 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
     return labels[shiftType] || shiftType;
   };
 
-  const getShiftTypeColor = (shiftType: ShiftType, startTime?: string | null, endTime?: string | null) => {
-    // 時間ベースで動的に判定
-    let effectiveType = shiftType;
-    if (shiftType === 'normal' && startTime && endTime) {
-      effectiveType = ShiftService.determineShiftType(startTime, endTime);
-    }
-    
+  const getShiftTypeColor = (shiftType: ShiftType) => {
+    // 保存時に正しいshift_typeが設定されるため、シンプルに返す
     const colors = {
       normal: 'bg-blue-100 text-blue-800',
       early: 'bg-yellow-100 text-yellow-800',
       late: 'bg-purple-100 text-purple-800',
       off: 'bg-gray-100 text-gray-800'
     };
-    return colors[effectiveType] || 'bg-gray-100 text-gray-800';
+    return colors[shiftType] || 'bg-gray-100 text-gray-800';
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -285,7 +280,7 @@ const AdminShiftCalendar: React.FC<AdminShiftCalendarProps> = ({
                       >
                         <div
                           className={`text-xs px-2 py-1 rounded cursor-pointer hover:shadow-sm transition-shadow ${getShiftTypeColor(
-                            shift.shift_type, shift.start_time, shift.end_time
+                            shift.shift_type
                           )}`}
                           onClick={() => onShiftEdit(shift)}
                         >

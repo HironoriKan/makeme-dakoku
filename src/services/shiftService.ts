@@ -67,10 +67,22 @@ export class ShiftService {
       throw new Error(`既存シフト確認エラー: ${findError.message}`);
     }
 
+    // 休み希望でない場合は、時間に基づいてshift_typeを自動判定
+    let finalShiftType = shiftData.shiftType;
+    if (shiftData.shiftType !== 'off' && shiftData.startTime && shiftData.endTime) {
+      finalShiftType = this.determineShiftType(shiftData.startTime, shiftData.endTime);
+      console.log('🔄 時間ベースでシフトタイプを自動判定:', {
+        original: shiftData.shiftType,
+        determined: finalShiftType,
+        startTime: shiftData.startTime,
+        endTime: shiftData.endTime
+      });
+    }
+
     const shiftRecord = {
       user_id: user.id,
       shift_date: shiftData.date,
-      shift_type: shiftData.shiftType,
+      shift_type: finalShiftType,
       shift_status: shiftData.shiftStatus || 'adjusting' as ShiftStatus,
       start_time: shiftData.startTime || null,
       end_time: shiftData.endTime || null,
@@ -200,15 +212,8 @@ export class ShiftService {
     return 'normal';
   }
 
-  static getShiftTypeColor(shiftType: ShiftType, startTime?: string | null, endTime?: string | null): string {
-    // 時間ベースで動的にタイプを判定する場合
-    if (shiftType === 'normal' && startTime && endTime) {
-      const dynamicType = this.determineShiftType(startTime, endTime);
-      if (dynamicType !== 'normal') {
-        shiftType = dynamicType;
-      }
-    }
-    
+  static getShiftTypeColor(shiftType: ShiftType): string {
+    // 保存時に正しいshift_typeが設定されるため、シンプルに色を返す
     const colors = {
       early: '#059669', // emerald-600 - 早番(オープン)
       late: '#dc2626', // red-600 - 遅番(締め)
