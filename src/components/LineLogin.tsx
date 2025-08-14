@@ -59,7 +59,11 @@ const LineLogin: React.FC = () => {
         <div className="px-6 pb-6">
           {/* ログイン説明 */}
           <div className="text-center mb-6 mt-2">
-            <p className="text-gray-600 text-base">LINEアカウントでログイン</p>
+            <p className="text-gray-800 text-lg font-semibold mb-2">ようこそ！！</p>
+            <p className="text-gray-600 text-sm leading-relaxed">
+              登録不要・LINEアカウントで、<br />
+              誰でも簡単にシフトと案件を管理!
+            </p>
           </div>
 
           {/* エラーメッセージ */}
