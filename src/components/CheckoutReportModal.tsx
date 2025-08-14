@@ -117,8 +117,18 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
 
   if (!isOpen) return null;
 
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    // サンクスページ表示時のみ背景クリックで閉じる
+    if (isSubmitted && e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={handleBackgroundClick}
+    >
       <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
         {!isSubmitted ? (
           <>
@@ -221,19 +231,11 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
 
 
               {/* 送信ボタン */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  キャンセル
-                </button>
+              <div className="flex justify-center pt-4">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-3 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full"
                   style={{ backgroundColor: '#CB8585' }}
                   onMouseEnter={(e) => {
                     if (!isSubmitting) {
@@ -263,6 +265,7 @@ const CheckoutReportModal: React.FC<CheckoutReportModalProps> = ({ isOpen, onClo
               お疲れ様でした！
             </div>
             <p className="text-sm text-gray-500">このメッセージは自動的に閉じられます</p>
+            <p className="text-xs text-gray-400 mt-2">画面外をタップして閉じることもできます</p>
           </div>
         )}
       </div>
