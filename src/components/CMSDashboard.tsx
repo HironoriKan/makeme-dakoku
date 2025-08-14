@@ -168,10 +168,10 @@ const CMSDashboard: React.FC = () => {
   }> = ({ data, metric, isLoading }) => {
     if (isLoading) {
       return (
-        <div className="flex items-center justify-center h-64">
+        <div className="flex items-center justify-center h-48">
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-gray-600 text-sm">グラフを読み込み中...</p>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600 text-xs">グラフを読み込み中...</p>
           </div>
         </div>
       );
@@ -179,8 +179,8 @@ const CMSDashboard: React.FC = () => {
 
     if (data.length === 0) {
       return (
-        <div className="flex items-center justify-center h-64 text-gray-500">
-          <p>データがありません</p>
+        <div className="flex items-center justify-center h-48 text-gray-500">
+          <p className="text-sm">データがありません</p>
         </div>
       );
     }
@@ -190,9 +190,9 @@ const CMSDashboard: React.FC = () => {
     const minValue = Math.min(...values);
     const range = maxValue - minValue || 1;
 
-    const chartWidth = 600;
-    const chartHeight = 200;
-    const padding = 40;
+    const chartWidth = 500;
+    const chartHeight = 160;
+    const padding = 30;
 
     // SVGパスを生成
     const pathData = data.map((d, index) => {
@@ -204,7 +204,7 @@ const CMSDashboard: React.FC = () => {
 
     return (
       <div className="relative">
-        <svg width={chartWidth} height={chartHeight} className="w-full h-64">
+        <svg width={chartWidth} height={chartHeight} className="w-full h-48">
           {/* グリッドライン */}
           <defs>
             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -301,85 +301,59 @@ const CMSDashboard: React.FC = () => {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-4 bg-gray-50 min-h-screen">
+      <div className="max-w-[1400px] mx-auto">
         {/* ヘッダー */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">CMSダッシュボード</h1>
-          <p className="text-gray-600 mt-2">システム全体の統計情報とパフォーマンス指標</p>
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-900">CMSダッシュボード</h1>
+          <p className="text-gray-600 text-sm">システム全体の統計情報とパフォーマンス指標</p>
         </div>
 
-        {/* 基本統計 */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">基本統計</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* 今月実績サマリー（売上トレンド分析の上に移動） */}
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">今月の売上実績</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatsCard
-              title="有効ユーザー数"
-              value={stats.totalActiveUsers}
-              icon={<Users className="w-6 h-6 text-blue-600" />}
+              title="今月の売上高"
+              value={formatCurrency(stats.currentMonthSales.totalSales)}
+              icon={<DollarSign className="w-5 h-5 text-blue-600" />}
+              trend={stats.monthOverMonthComparison.salesGrowth}
             />
             <StatsCard
-              title="有効拠点数"
-              value={stats.totalActiveLocations}
-              icon={<MapPin className="w-6 h-6 text-blue-600" />}
+              title="今月の顧客単価"
+              value={formatCurrency(stats.currentMonthSales.customerUnitPrice)}
+              icon={<ShoppingCart className="w-5 h-5 text-green-600" />}
+              trend={stats.monthOverMonthComparison.unitPriceGrowth}
             />
             <StatsCard
-              title="有効常設店数"
-              value={stats.totalActivePermanentStores}
-              icon={<Store className="w-6 h-6 text-blue-600" />}
-            />
-            <StatsCard
-              title="有効イベント数"
-              value={stats.totalActiveEvents}
-              icon={<Calendar className="w-6 h-6 text-blue-600" />}
-            />
-          </div>
-        </div>
-
-        {/* 今月のアクティビティ */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">今月のアクティビティ</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatsCard
-              title="今月のアクティブユーザー数"
-              value={stats.monthlyActiveUsers}
-              icon={<UserCheck className="w-6 h-6 text-green-600" />}
-              subtitle="今月シフトが登録されている人数"
-            />
-            <StatsCard
-              title="今月のアクティブ常設店数"
-              value={stats.monthlyActivePermanentStores}
-              icon={<Store className="w-6 h-6 text-green-600" />}
-              subtitle="シフトが入っている常設店数"
-            />
-            <StatsCard
-              title="今月のアクティブイベント数"
-              value={stats.monthlyActiveEvents}
-              icon={<Calendar className="w-6 h-6 text-green-600" />}
-              subtitle="シフトが入っているイベント数"
+              title="今月の顧客購入数"
+              value={stats.currentMonthSales.customerPurchaseCount}
+              icon={<Users className="w-5 h-5 text-purple-600" />}
+              trend={stats.monthOverMonthComparison.purchaseCountGrowth}
+              subtitle="人"
             />
           </div>
         </div>
 
         {/* 売上トレンド分析 */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <BarChart3 className="w-6 h-6 text-blue-600" />
+        <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">売上トレンド分析</h2>
-                <p className="text-sm text-gray-600">時系列データで売上動向を確認</p>
+                <h2 className="text-lg font-semibold text-gray-900">売上トレンド分析</h2>
+                <p className="text-xs text-gray-600">時系列データで売上動向を確認</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {/* 期間切り替え */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-700">期間:</span>
+              <div className="flex items-center space-x-1">
+                <span className="text-xs font-medium text-gray-700">期間:</span>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value as PeriodType)}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="monthly">月単位（1年）</option>
                   <option value="weekly">週単位（3ヶ月）</option>
@@ -388,12 +362,12 @@ const CMSDashboard: React.FC = () => {
               </div>
               
               {/* 指標切り替え */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-700">指標:</span>
+              <div className="flex items-center space-x-1">
+                <span className="text-xs font-medium text-gray-700">指標:</span>
                 <select
                   value={selectedMetric}
                   onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="totalSales">売上高</option>
                   <option value="customerUnitPrice">顧客単価</option>
@@ -404,12 +378,12 @@ const CMSDashboard: React.FC = () => {
           </div>
 
           {/* グラフエリア */}
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
+          <div className="border rounded-lg p-3 bg-gray-50">
+            <div className="mb-3">
+              <h3 className="text-sm font-medium text-gray-900">
                 {getMetricLabel(selectedMetric)}の推移
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs text-gray-600">
                 期間: {getPeriodLabel(selectedPeriod)} | 単位: {getMetricUnit(selectedMetric)}
               </p>
             </div>
@@ -422,37 +396,87 @@ const CMSDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 今月実績サマリー */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatsCard
-            title="今月の売上高"
-            value={formatCurrency(stats.currentMonthSales.totalSales)}
-            icon={<DollarSign className="w-6 h-6 text-blue-600" />}
-            trend={stats.monthOverMonthComparison.salesGrowth}
-          />
-          <StatsCard
-            title="今月の顧客単価"
-            value={formatCurrency(stats.currentMonthSales.customerUnitPrice)}
-            icon={<ShoppingCart className="w-6 h-6 text-green-600" />}
-            trend={stats.monthOverMonthComparison.unitPriceGrowth}
-          />
-          <StatsCard
-            title="今月の顧客購入数"
-            value={stats.currentMonthSales.customerPurchaseCount}
-            icon={<Users className="w-6 h-6 text-purple-600" />}
-            trend={stats.monthOverMonthComparison.purchaseCountGrowth}
-            subtitle="人"
-          />
-        </div>
+        {/* 2列レイアウト：基本統計と今月のアクティビティ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          {/* 基本統計 */}
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">基本統計</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600">有効ユーザー数</p>
+                    <p className="text-xl font-bold text-gray-900">{formatNumber(stats.totalActiveUsers)}</p>
+                  </div>
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600">有効拠点数</p>
+                    <p className="text-xl font-bold text-gray-900">{formatNumber(stats.totalActiveLocations)}</p>
+                  </div>
+                  <MapPin className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600">有効常設店数</p>
+                    <p className="text-xl font-bold text-gray-900">{formatNumber(stats.totalActivePermanentStores)}</p>
+                  </div>
+                  <Store className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600">有効イベント数</p>
+                    <p className="text-xl font-bold text-gray-900">{formatNumber(stats.totalActiveEvents)}</p>
+                  </div>
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+            </div>
+          </div>
 
-        {/* リフレッシュボタン */}
-        <div className="mt-8 text-center">
-          <button
-            onClick={loadDashboardData}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            データを更新
-          </button>
+          {/* 今月のアクティビティ */}
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">今月のアクティビティ</h2>
+            <div className="space-y-3">
+              <div className="bg-green-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600">今月のアクティブユーザー数</p>
+                    <p className="text-xl font-bold text-gray-900">{formatNumber(stats.monthlyActiveUsers)}</p>
+                    <p className="text-xs text-gray-500">今月シフトが登録されている人数</p>
+                  </div>
+                  <UserCheck className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600">今月のアクティブ常設店数</p>
+                    <p className="text-xl font-bold text-gray-900">{formatNumber(stats.monthlyActivePermanentStores)}</p>
+                    <p className="text-xs text-gray-500">シフトが入っている常設店数</p>
+                  </div>
+                  <Store className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-600">今月のアクティブイベント数</p>
+                    <p className="text-xl font-bold text-gray-900">{formatNumber(stats.monthlyActiveEvents)}</p>
+                    <p className="text-xs text-gray-500">シフトが入っているイベント数</p>
+                  </div>
+                  <Calendar className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

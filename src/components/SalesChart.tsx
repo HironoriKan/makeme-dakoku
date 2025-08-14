@@ -161,16 +161,20 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     const minBarWidth = 40; // 最小バー幅
     const barSpacing = 12; // バー間のスペース
     const containerWidth = 280; // コンテナ幅
-    const totalBarsWidth = chartData.length * (minBarWidth + barSpacing);
-    const chartWidth = Math.max(containerWidth, totalBarsWidth);
-    const barWidth = Math.max(minBarWidth, (chartWidth - (chartData.length * barSpacing)) / chartData.length);
+    const sideMargin = 8; // 両端のマージン
     
-    // マージン設定（縦軸ラベルは非表示）
-    const yAxisWidth = 0; // 縦軸ラベル非表示のため0に変更
+    // 改善：バーの配置計算を正確にする
+    const totalBarsWidth = chartData.length * minBarWidth + (chartData.length - 1) * barSpacing;
+    const chartWidth = Math.max(containerWidth, totalBarsWidth + (sideMargin * 2));
+    const availableWidth = chartWidth - (sideMargin * 2);
+    const totalSpacing = (chartData.length - 1) * barSpacing;
+    const barWidth = Math.max(minBarWidth, (availableWidth - totalSpacing) / chartData.length);
+    
+    // マージン設定
     const topMargin = 25; // 上部マージン（値ラベル用）
-    const bottomMargin = 25; // 下部マージン（日付ラベル用）
+    const bottomMargin = 30; // 下部マージン（日付ラベル用）
     const svgHeight = chartHeight + topMargin + bottomMargin;
-    const svgWidth = chartWidth + yAxisWidth;
+    const svgWidth = chartWidth;
     
     // 縦軸の目盛り値を計算（5段階）
     const getYAxisTicks = (maxVal: number) => {
@@ -198,18 +202,18 @@ const SalesChart: React.FC<SalesChartProps> = () => {
 
     return (
       <div ref={scrollContainerRef} className="relative overflow-x-auto">
-        <div style={{ width: `${Math.max(containerWidth, svgWidth)}px` }}>
+        <div style={{ width: `${svgWidth}px` }}>
           <svg width={svgWidth} height={svgHeight}>
-            {/* グリッドライン（縦軸ラベルは非表示） */}
+            {/* グリッドライン */}
             {yAxisTicks.map((tick, i) => {
               const y = topMargin + chartHeight * (1 - tick / adjustedMaxValue);
               return (
                 <g key={i}>
                   {/* グリッドライン */}
                   <line
-                    x1={0}
+                    x1={sideMargin}
                     y1={y}
-                    x2={svgWidth}
+                    x2={svgWidth - sideMargin}
                     y2={y}
                     stroke="#e5e7eb"
                     strokeWidth="1"
@@ -222,8 +226,9 @@ const SalesChart: React.FC<SalesChartProps> = () => {
             {/* バーチャート */}
             {chartData.map((point, index) => {
               const barHeight = adjustedMaxValue > 0 ? (point.value / adjustedMaxValue) * chartHeight : 0;
-              // バーの正確な位置計算: yAxisWidth + 各バーの開始位置
-              const barX = yAxisWidth + index * (barWidth + barSpacing);
+              
+              // 修正：バーの位置を正確に計算
+              const barX = sideMargin + index * (barWidth + barSpacing);
               const barCenterX = barX + barWidth / 2;
               const y = topMargin + chartHeight - barHeight;
 
