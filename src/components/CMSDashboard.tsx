@@ -18,20 +18,25 @@ import {
   TimeSeriesData,
   ComparisonTimeSeriesData, 
   PeriodType, 
-  MetricType 
+  MetricType,
+  LocationSalesData
 } from '../services/dashboardService';
+import SalesHeatmap from './SalesHeatmap';
 
 const CMSDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [timeSeriesData, setTimeSeriesData] = useState<ComparisonTimeSeriesData | null>(null);
+  const [locationSalesData, setLocationSalesData] = useState<LocationSalesData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isChartLoading, setIsChartLoading] = useState(false);
+  const [isHeatmapLoading, setIsHeatmapLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('monthly');
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('totalSales');
 
   useEffect(() => {
     loadDashboardData();
+    loadLocationSalesData();
   }, []);
 
   useEffect(() => {
@@ -62,6 +67,19 @@ const CMSDashboard: React.FC = () => {
       // グラフデータのエラーは全体のエラー状態には影響しない
     } finally {
       setIsChartLoading(false);
+    }
+  };
+
+  const loadLocationSalesData = async () => {
+    try {
+      setIsHeatmapLoading(true);
+      const locationData = await DashboardService.getLocationSalesData();
+      setLocationSalesData(locationData);
+    } catch (err) {
+      console.error('拠点別売上データの取得に失敗:', err);
+      // ヒートマップデータのエラーは全体のエラー状態には影響しない
+    } finally {
+      setIsHeatmapLoading(false);
     }
   };
 
@@ -425,18 +443,22 @@ const CMSDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 売上トレンド分析 */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-4 w-full">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5 text-blue-600" />
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">売上トレンド分析</h2>
-                <p className="text-xs text-gray-600">時系列データで売上動向を確認</p>
+        {/* 売上分析セクション：2列レイアウト */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          {/* 売上トレンド分析 */}
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">売上トレンド分析</h2>
+                  <p className="text-xs text-gray-600">時系列データで売上動向を確認</p>
+                </div>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-3">
+
+            {/* コンパクトな設定UI */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
               {/* 期間切り替え */}
               <div className="flex items-center space-x-1">
                 <span className="text-xs font-medium text-gray-700">期間:</span>
@@ -467,24 +489,43 @@ const CMSDashboard: React.FC = () => {
                 </select>
               </div>
             </div>
+
+            {/* グラフエリア（コンパクト） */}
+            <div className="border rounded-lg p-3 bg-gray-50 overflow-hidden">
+              <div className="mb-3">
+                <h3 className="text-sm font-medium text-gray-900">
+                  {getMetricLabel(selectedMetric)}の推移
+                </h3>
+                <p className="text-xs text-gray-600">
+                  期間: {getPeriodLabel(selectedPeriod)} | 単位: {getMetricUnit(selectedMetric)}
+                </p>
+              </div>
+              
+              <ComparisonLineChart 
+                data={timeSeriesData} 
+                metric={selectedMetric}
+                isLoading={isChartLoading}
+              />
+            </div>
           </div>
 
-          {/* グラフエリア（横幅いっぱい使用） */}
-          <div className="border rounded-lg p-3 bg-gray-50 w-full overflow-hidden">
-            <div className="mb-3">
-              <h3 className="text-sm font-medium text-gray-900">
-                {getMetricLabel(selectedMetric)}の推移
-              </h3>
-              <p className="text-xs text-gray-600">
-                期間: {getPeriodLabel(selectedPeriod)} | 単位: {getMetricUnit(selectedMetric)}
-              </p>
+          {/* 拠点別売上ヒートマップ */}
+          <div className="bg-white rounded-lg shadow-sm border p-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <BarChart3 className="w-5 h-5 text-green-600" />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">拠点別売上ヒートマップ</h2>
+                <p className="text-xs text-gray-600">売上高と前月比でサイズ・色が変化</p>
+              </div>
             </div>
             
-            <ComparisonLineChart 
-              data={timeSeriesData} 
-              metric={selectedMetric}
-              isLoading={isChartLoading}
-            />
+            {/* ヒートマップ表示 */}
+            <div className="border rounded-lg p-3 bg-gray-50">
+              <SalesHeatmap 
+                data={locationSalesData}
+                isLoading={isHeatmapLoading}
+              />
+            </div>
           </div>
         </div>
 

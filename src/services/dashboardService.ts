@@ -61,6 +61,16 @@ export interface ComparisonTimeSeriesData {
 export type PeriodType = 'daily' | 'weekly' | 'monthly';
 export type MetricType = 'totalSales' | 'customerCount' | 'itemsSold' | 'customerUnitPrice' | 'itemsPerCustomer';
 
+export interface LocationSalesData {
+  locationId: string;
+  locationName: string;
+  currentMonthSales: number;
+  lastMonthSales: number;
+  monthOverMonthGrowth: number; // パーセンテージ
+  customerCount: number;
+  isGrowing: boolean; // 前月比で成長しているか
+}
+
 export class DashboardService {
   // 有効ユーザー数を取得
   static async getActiveUsersCount(): Promise<number> {
@@ -571,6 +581,131 @@ export class DashboardService {
         return `${date.getFullYear()}年${date.getMonth() + 1}月`;
       default:
         return date.toISOString().split('T')[0];
+    }
+  }
+
+  // 拠点別売上データを取得
+  static async getLocationSalesData(): Promise<LocationSalesData[]> {
+    try {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+      // 今月と先月の開始・終了日を計算
+      const currentMonthStart = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`;
+      const currentMonthEnd = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+      const lastMonthStart = `${lastMonthYear}-${lastMonth.toString().padStart(2, '0')}-01`;
+      const lastMonthEnd = new Date(lastMonthYear, lastMonth + 1, 0).toISOString().split('T')[0];
+
+      // 今月と先月のデータを並列取得
+      const [currentMonthResult, lastMonthResult, locationsResult] = await Promise.all([
+        // 今月のデータ
+        supabase
+          .from('daily_reports')
+          .select(`
+            sales_amount,
+            customer_count,
+            users!inner(
+              user_location_access!inner(
+                locations!inner(id, name, location_type)
+              )
+            )
+          `)
+          .gte('report_date', currentMonthStart)
+          .lte('report_date', currentMonthEnd),
+        
+        // 先月のデータ
+        supabase
+          .from('daily_reports')
+          .select(`
+            sales_amount,
+            customer_count,
+            users!inner(
+              user_location_access!inner(
+                locations!inner(id, name, location_type)
+              )
+            )
+          `)
+          .gte('report_date', lastMonthStart)
+          .lte('report_date', lastMonthEnd),
+
+        // 全拠点リスト
+        supabase
+          .from('locations')
+          .select('id, name, location_type')
+          .eq('is_active', true)
+      ]);
+
+      if (currentMonthResult.error) throw new Error(`今月データ取得エラー: ${currentMonthResult.error.message}`);
+      if (lastMonthResult.error) throw new Error(`先月データ取得エラー: ${lastMonthResult.error.message}`);
+      if (locationsResult.error) throw new Error(`拠点データ取得エラー: ${locationsResult.error.message}`);
+
+      const locations = locationsResult.data || [];
+      
+      // 拠点別売上を集計
+      const locationSalesMap = new Map<string, {
+        name: string;
+        currentSales: number;
+        lastSales: number;
+        currentCustomers: number;
+      }>();
+
+      // 全拠点を初期化
+      locations.forEach(location => {
+        locationSalesMap.set(location.id, {
+          name: location.name,
+          currentSales: 0,
+          lastSales: 0,
+          currentCustomers: 0
+        });
+      });
+
+      // 今月のデータを集計
+      currentMonthResult.data?.forEach((report: any) => {
+        report.users?.user_location_access?.forEach((access: any) => {
+          const locationId = access.locations?.id;
+          if (locationId && locationSalesMap.has(locationId)) {
+            const data = locationSalesMap.get(locationId)!;
+            data.currentSales += report.sales_amount || 0;
+            data.currentCustomers += report.customer_count || 0;
+          }
+        });
+      });
+
+      // 先月のデータを集計
+      lastMonthResult.data?.forEach((report: any) => {
+        report.users?.user_location_access?.forEach((access: any) => {
+          const locationId = access.locations?.id;
+          if (locationId && locationSalesMap.has(locationId)) {
+            const data = locationSalesMap.get(locationId)!;
+            data.lastSales += report.sales_amount || 0;
+          }
+        });
+      });
+
+      // 結果を整形
+      const result: LocationSalesData[] = [];
+      locationSalesMap.forEach((data, locationId) => {
+        const growth = this.calculateGrowthRate(data.currentSales, data.lastSales);
+        result.push({
+          locationId,
+          locationName: data.name,
+          currentMonthSales: data.currentSales,
+          lastMonthSales: data.lastSales,
+          monthOverMonthGrowth: growth,
+          customerCount: data.currentCustomers,
+          isGrowing: growth > 0
+        });
+      });
+
+      // 売上高順にソート
+      return result.sort((a, b) => b.currentMonthSales - a.currentMonthSales);
+
+    } catch (error) {
+      console.error('拠点別売上データ取得エラー:', error);
+      throw error;
     }
   }
 }
