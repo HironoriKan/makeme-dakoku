@@ -217,30 +217,63 @@ export class DashboardService {
     return activeLocations.size;
   }
 
-  // 月間売上データを取得
+  // 月間売上データを取得（スタッフ日報データから算出）
   static async getMonthlySalesData(year: number, month: number) {
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
     const { data, error } = await supabase
       .from('daily_reports')
-      .select('sales_amount, customer_count, customer_unit_price, items_sold')
+      .select('user_id, report_date, sales_amount, customer_count, customer_unit_price, items_sold')
       .gte('report_date', startDate)
       .lte('report_date', endDate);
 
     if (error) throw new Error(`月間売上データの取得に失敗: ${error.message}`);
 
-    const totalSales = data?.reduce((sum, report) => sum + report.sales_amount, 0) || 0;
-    const totalCustomers = data?.reduce((sum, report) => sum + report.customer_count, 0) || 0;
-    const totalItems = data?.reduce((sum, report) => sum + report.items_sold, 0) || 0;
-    const totalUnitPriceSum = data?.reduce((sum, report) => 
-      sum + (report.customer_unit_price || 0), 0) || 0;
+    // スタッフ個人の日報を日別に集計
+    const dailyTotals = new Map<string, {
+      totalSales: number;
+      totalCustomers: number;
+      totalItems: number;
+      staffCount: number;
+    }>();
+
+    data?.forEach(report => {
+      const dateKey = report.report_date;
+      if (!dailyTotals.has(dateKey)) {
+        dailyTotals.set(dateKey, {
+          totalSales: 0,
+          totalCustomers: 0,
+          totalItems: 0,
+          staffCount: 0
+        });
+      }
+
+      const daily = dailyTotals.get(dateKey)!;
+      daily.totalSales += report.sales_amount || 0;
+      daily.totalCustomers += report.customer_count || 0;
+      daily.totalItems += report.items_sold || 0;
+      daily.staffCount += 1;
+    });
+
+    // 月間合計を算出
+    let monthlyTotalSales = 0;
+    let monthlyTotalCustomers = 0;
+    let monthlyTotalItems = 0;
+    let activeDaysCount = 0;
+
+    dailyTotals.forEach(daily => {
+      monthlyTotalSales += daily.totalSales;
+      monthlyTotalCustomers += daily.totalCustomers;
+      monthlyTotalItems += daily.totalItems;
+      activeDaysCount += 1;
+    });
 
     return {
-      totalSales,
-      customerUnitPrice: data?.length ? totalUnitPriceSum / data.length : 0,
-      customerPurchaseCount: totalCustomers,
-      itemsPerCustomer: totalCustomers > 0 ? totalItems / totalCustomers : 0
+      totalSales: monthlyTotalSales,
+      customerUnitPrice: monthlyTotalCustomers > 0 ? monthlyTotalSales / monthlyTotalCustomers : 0,
+      customerPurchaseCount: monthlyTotalCustomers,
+      itemsPerCustomer: monthlyTotalCustomers > 0 ? monthlyTotalItems / monthlyTotalCustomers : 0
     };
   }
 
@@ -337,9 +370,12 @@ export class DashboardService {
           comparisonStartDate.setMonth(comparisonEndDate.getMonth() - 3);
           break;
         case 'monthly': // 月単位: 1年分、前1年間と比較
-          startDate.setFullYear(endDate.getFullYear() - 1);
-          comparisonEndDate.setFullYear(endDate.getFullYear() - 1);
-          comparisonStartDate.setFullYear(comparisonEndDate.getFullYear() - 1);
+          startDate.setMonth(endDate.getMonth() - 11); // 過去12ヶ月
+          startDate.setDate(1); // 月の初日
+          comparisonEndDate.setMonth(endDate.getMonth() - 12);
+          comparisonEndDate.setDate(1);
+          comparisonStartDate.setMonth(comparisonEndDate.getMonth() - 11);
+          comparisonStartDate.setDate(1);
           break;
       }
 
@@ -408,8 +444,8 @@ export class DashboardService {
         case 'weekly': // 週単位: 3ヶ月分
           startDate.setMonth(endDate.getMonth() - 3);
           break;
-        case 'monthly': // 月単位: 1年分
-          startDate.setFullYear(endDate.getFullYear() - 1);
+        case 'monthly': // 月単位: 13ヶ月分（2024年8月〜2025年8月）
+          startDate.setFullYear(2024, 7, 1); // 2024年8月1日から
           break;
       }
 
@@ -430,52 +466,89 @@ export class DashboardService {
     }
   }
 
-  // 時系列データを処理
+  // 時系列データを処理（日次データから週単位・月単位を算出）
   private static processTimeSeriesData(
     reports: DailyReport[], 
     periodType: PeriodType,
     startDate: Date,
     endDate: Date
   ): TimeSeriesData[] {
-    const dataMap = new Map<string, {
+    // 日次データをまず日付でグループ化
+    const dailyDataMap = new Map<string, {
       totalSales: number;
       totalItems: number;
       totalCustomers: number;
-      reportCount: number;
+      staffCount: number; // 働いたスタッフ数
+      dailyReportCount: number;
     }>();
 
-    // レポートデータをグループ化
+    // 日次レポートデータを集計（スタッフ単位の日報を日単位に集約）
     reports.forEach(report => {
-      const reportDate = new Date(report.report_date);
-      const periodKey = this.getPeriodKey(reportDate, periodType);
+      const dateKey = report.report_date; // YYYY-MM-DD
       
-      if (!dataMap.has(periodKey)) {
-        dataMap.set(periodKey, {
+      if (!dailyDataMap.has(dateKey)) {
+        dailyDataMap.set(dateKey, {
           totalSales: 0,
           totalItems: 0,
           totalCustomers: 0,
-          reportCount: 0
+          staffCount: 0,
+          dailyReportCount: 0
         });
       }
 
-      const data = dataMap.get(periodKey)!;
-      data.totalSales += report.sales_amount;
-      data.totalItems += report.items_sold;
-      data.totalCustomers += report.customer_count;
-      data.reportCount += 1;
+      const dailyData = dailyDataMap.get(dateKey)!;
+      dailyData.totalSales += report.sales_amount || 0;
+      dailyData.totalItems += report.items_sold || 0;
+      dailyData.totalCustomers += report.customer_count || 0;
+      dailyData.staffCount += 1; // スタッフ数をカウント
+      dailyData.dailyReportCount += 1;
+    });
+
+    // 日次データから期間別データを算出
+    const periodDataMap = new Map<string, {
+      totalSales: number;
+      totalItems: number;
+      totalCustomers: number;
+      activeDays: number; // アクティブな日数
+      totalStaffDays: number; // 延べスタッフ日数
+    }>();
+
+    // 日次データを期間単位でグループ化
+    dailyDataMap.forEach((dailyData, dateKey) => {
+      const reportDate = new Date(dateKey);
+      const periodKey = this.getPeriodKey(reportDate, periodType);
+      
+      if (!periodDataMap.has(periodKey)) {
+        periodDataMap.set(periodKey, {
+          totalSales: 0,
+          totalItems: 0,
+          totalCustomers: 0,
+          activeDays: 0,
+          totalStaffDays: 0
+        });
+      }
+
+      const periodData = periodDataMap.get(periodKey)!;
+      periodData.totalSales += dailyData.totalSales;
+      periodData.totalItems += dailyData.totalItems;
+      periodData.totalCustomers += dailyData.totalCustomers;
+      periodData.activeDays += 1;
+      periodData.totalStaffDays += dailyData.staffCount;
     });
 
     // 期間の全範囲を生成（データがない期間も含む）
     const periods = this.generatePeriods(startDate, endDate, periodType);
     
     return periods.map(period => {
-      const data = dataMap.get(period.key) || {
+      const data = periodDataMap.get(period.key) || {
         totalSales: 0,
         totalItems: 0,
         totalCustomers: 0,
-        reportCount: 0
+        activeDays: 0,
+        totalStaffDays: 0
       };
 
+      // 期間別の指標を算出
       const customerUnitPrice = data.totalCustomers > 0 ? data.totalSales / data.totalCustomers : 0;
       const itemsPerCustomer = data.totalCustomers > 0 ? data.totalItems / data.totalCustomers : 0;
 
@@ -584,7 +657,7 @@ export class DashboardService {
     }
   }
 
-  // 拠点別売上データを取得
+  // 拠点別売上データを取得（スタッフ日報から拠点別に集計）
   static async getLocationSalesData(): Promise<LocationSalesData[]> {
     try {
       const now = new Date();
@@ -605,6 +678,8 @@ export class DashboardService {
         supabase
           .from('daily_reports')
           .select(`
+            user_id,
+            report_date,
             sales_amount,
             customer_count,
             users!inner(
@@ -620,6 +695,8 @@ export class DashboardService {
         supabase
           .from('daily_reports')
           .select(`
+            user_id,
+            report_date,
             sales_amount,
             customer_count,
             users!inner(
@@ -644,7 +721,48 @@ export class DashboardService {
 
       const locations = locationsResult.data || [];
       
-      // 拠点別売上を集計
+      // 拠点別の日別データを集計
+      const locationDailyMap = new Map<string, Map<string, {
+        totalSales: number;
+        totalCustomers: number;
+        staffCount: number;
+      }>>();
+
+      // データ処理関数
+      const processMonthData = (monthData: any[], isCurrentMonth: boolean) => {
+        monthData?.forEach((report: any) => {
+          report.users?.user_location_access?.forEach((access: any) => {
+            const locationId = access.locations?.id;
+            const dateKey = `${locationId}-${report.report_date}`;
+            
+            if (locationId) {
+              if (!locationDailyMap.has(locationId)) {
+                locationDailyMap.set(locationId, new Map());
+              }
+              
+              const locationMap = locationDailyMap.get(locationId)!;
+              if (!locationMap.has(dateKey)) {
+                locationMap.set(dateKey, {
+                  totalSales: 0,
+                  totalCustomers: 0,
+                  staffCount: 0
+                });
+              }
+              
+              const dailyData = locationMap.get(dateKey)!;
+              dailyData.totalSales += report.sales_amount || 0;
+              dailyData.totalCustomers += report.customer_count || 0;
+              dailyData.staffCount += 1;
+            }
+          });
+        });
+      };
+
+      // 今月と先月のデータを処理
+      processMonthData(currentMonthResult.data, true);
+      processMonthData(lastMonthResult.data, false);
+
+      // 拠点別月間売上を算出
       const locationSalesMap = new Map<string, {
         name: string;
         currentSales: number;
@@ -660,29 +778,22 @@ export class DashboardService {
           lastSales: 0,
           currentCustomers: 0
         });
-      });
 
-      // 今月のデータを集計
-      currentMonthResult.data?.forEach((report: any) => {
-        report.users?.user_location_access?.forEach((access: any) => {
-          const locationId = access.locations?.id;
-          if (locationId && locationSalesMap.has(locationId)) {
-            const data = locationSalesMap.get(locationId)!;
-            data.currentSales += report.sales_amount || 0;
-            data.currentCustomers += report.customer_count || 0;
-          }
-        });
-      });
-
-      // 先月のデータを集計
-      lastMonthResult.data?.forEach((report: any) => {
-        report.users?.user_location_access?.forEach((access: any) => {
-          const locationId = access.locations?.id;
-          if (locationId && locationSalesMap.has(locationId)) {
-            const data = locationSalesMap.get(locationId)!;
-            data.lastSales += report.sales_amount || 0;
-          }
-        });
+        // 拠点の日別データから月間合計を算出
+        const locationDailyData = locationDailyMap.get(location.id);
+        if (locationDailyData) {
+          locationDailyData.forEach((dailyData, dateKey) => {
+            const reportDate = dateKey.split('-').slice(1).join('-'); // locationId部分を除去
+            const data = locationSalesMap.get(location.id)!;
+            
+            if (reportDate >= currentMonthStart && reportDate <= currentMonthEnd) {
+              data.currentSales += dailyData.totalSales;
+              data.currentCustomers += dailyData.totalCustomers;
+            } else if (reportDate >= lastMonthStart && reportDate <= lastMonthEnd) {
+              data.lastSales += dailyData.totalSales;
+            }
+          });
+        }
       });
 
       // 結果を整形
