@@ -15,20 +15,32 @@ import {
 import { 
   DashboardService, 
   DashboardStats, 
-  LocationSalesData
+  TimeSeriesData,
+  ComparisonTimeSeriesData, 
+  LocationSalesData,
+  PeriodType, 
+  MetricType
 } from '../services/dashboardService';
 
 const CMSDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [timeSeriesData, setTimeSeriesData] = useState<ComparisonTimeSeriesData | null>(null);
   const [locationSalesData, setLocationSalesData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChartLoading, setIsChartLoading] = useState(false);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('monthly');
+  const [selectedMetric, setSelectedMetric] = useState<MetricType>('totalSales');
 
   useEffect(() => {
     loadDashboardData();
     loadLocationSalesData();
   }, []);
+
+  useEffect(() => {
+    loadTimeSeriesData();
+  }, [selectedPeriod]);
 
   const loadDashboardData = async () => {
     try {
@@ -44,6 +56,18 @@ const CMSDashboard: React.FC = () => {
     }
   };
 
+  const loadTimeSeriesData = async () => {
+    try {
+      setIsChartLoading(true);
+      const timeSeriesStats = await DashboardService.getTimeSeriesDataWithComparison(selectedPeriod);
+      setTimeSeriesData(timeSeriesStats);
+    } catch (err) {
+      console.error('時系列データの取得に失敗:', err);
+      // グラフデータのエラーは全体のエラー状態には影響しない
+    } finally {
+      setIsChartLoading(false);
+    }
+  };
 
   const loadLocationSalesData = async () => {
     try {
@@ -86,6 +110,43 @@ const CMSDashboard: React.FC = () => {
     return 'text-gray-600';
   };
 
+  const getMetricValue = (data: TimeSeriesData, metric: MetricType): number => {
+    switch (metric) {
+      case 'totalSales': return data.totalSales;
+      case 'customerCount': return data.customerCount;
+      case 'itemsSold': return data.itemsSold;
+      case 'customerUnitPrice': return data.customerUnitPrice;
+      case 'itemsPerCustomer': return data.itemsPerCustomer;
+    }
+  };
+
+  const getMetricLabel = (metric: MetricType): string => {
+    switch (metric) {
+      case 'totalSales': return '売上';
+      case 'customerCount': return '購入お客様数';
+      case 'itemsSold': return '販売アイテム数';
+      case 'customerUnitPrice': return '顧客単価';
+      case 'itemsPerCustomer': return '顧客販売個数';
+    }
+  };
+
+  const getMetricUnit = (metric: MetricType): string => {
+    switch (metric) {
+      case 'totalSales': return '円';
+      case 'customerCount': return '人';
+      case 'itemsSold': return '個';
+      case 'customerUnitPrice': return '円';
+      case 'itemsPerCustomer': return '個';
+    }
+  };
+
+  const getPeriodLabel = (period: PeriodType): string => {
+    switch (period) {
+      case 'daily': return '日単位（31日間）';
+      case 'weekly': return '週単位（3ヶ月間、月曜開始）';
+      case 'monthly': return '月単位（1年間）';
+    }
+  };
 
   if (isLoading) {
     return (
@@ -123,6 +184,246 @@ const CMSDashboard: React.FC = () => {
 
   if (!stats) return null;
 
+  // 比較折れ線グラフコンポーネント
+  const ComparisonLineChart: React.FC<{
+    data: ComparisonTimeSeriesData | null;
+    metric: MetricType;
+    isLoading: boolean;
+  }> = ({ data, metric, isLoading }) => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-48">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600 text-xs">グラフを読み込み中...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!data || data.current.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-48 text-gray-500">
+          <p className="text-sm">データがありません</p>
+        </div>
+      );
+    }
+
+    const currentValues = data.current.map(d => getMetricValue(d, metric));
+    
+    // キリの良い数値でスケーリング
+    const rawMax = Math.max(...currentValues);
+    const rawMin = Math.min(...currentValues);
+    
+    // スケールを計算（指標ごとに最適化）
+    const getScaleRange = (min: number, max: number) => {
+      const range = max - min;
+      let step: number;
+      
+      // 指標ごとにステップサイズを調整
+      switch (metric) {
+        case 'totalSales':
+          step = range > 50000 ? 10000 : range > 20000 ? 5000 : 1000;
+          break;
+        case 'customerUnitPrice':
+          step = range > 2000 ? 500 : range > 1000 ? 200 : 100;
+          break;
+        case 'customerCount':
+          step = range > 50 ? 10 : range > 20 ? 5 : 1;
+          break;
+        case 'itemsSold':
+          step = range > 100 ? 20 : range > 50 ? 10 : 5;
+          break;
+        case 'itemsPerCustomer':
+          step = range > 2 ? 0.5 : range > 1 ? 0.2 : 0.1;
+          break;
+        default:
+          const magnitude = Math.pow(10, Math.floor(Math.log10(range)));
+          const normalizedRange = range / magnitude;
+          if (normalizedRange <= 1) step = 0.2 * magnitude;
+          else if (normalizedRange <= 2) step = 0.5 * magnitude;
+          else if (normalizedRange <= 5) step = 1 * magnitude;
+          else step = 2 * magnitude;
+      }
+      
+      const scaledMin = Math.floor(min / step) * step;
+      const scaledMax = Math.ceil(max / step) * step;
+      
+      return { min: scaledMin, max: scaledMax, step };
+    };
+    
+    const { min: minValue, max: maxValue } = getScaleRange(rawMin, rawMax);
+    const range = maxValue - minValue || 1;
+
+    const chartWidth = 1200; // 固定サイズ
+    const chartHeight = 220; // データラベル用のスペースを拡張
+    const padding = 70; // Y軸ラベル用のスペースを拡張
+
+    // 現在のSVGパスを生成（実線）
+    const currentPathData = data.current.map((d, index) => {
+      const x = padding + (index * (chartWidth - 2 * padding)) / (data.current.length - 1);
+      const value = getMetricValue(d, metric);
+      const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+
+
+    return (
+      <div className="relative overflow-x-auto">
+        <div style={{ width: `${chartWidth}px` }}>
+          <svg width={chartWidth} height={chartHeight} className="h-52">
+          {/* グリッドライン */}
+          <defs>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f0f0f0" strokeWidth="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+          
+          {/* Y軸ラベル（キリの良い数値で複数表示） */}
+          {(() => {
+            const formatYAxisLabel = (value: number) => {
+              switch (metric) {
+                case 'totalSales':
+                  return value >= 10000 ? `¥${Math.round(value / 10000)}万` : `¥${Math.round(value / 1000)}k`;
+                case 'customerUnitPrice':
+                  return `¥${Math.round(value).toLocaleString()}`;
+                case 'customerCount':
+                  return `${Math.round(value)}人`;
+                case 'itemsSold':
+                  return `${Math.round(value)}個`;
+                case 'itemsPerCustomer':
+                  return `${value.toFixed(1)}個`;
+                default:
+                  return formatNumber(value);
+              }
+            };
+            
+            const midValue = (maxValue + minValue) / 2;
+            return (
+              <>
+                <text x="10" y="30" fontSize="10" fill="#666" textAnchor="start">
+                  {formatYAxisLabel(maxValue)}
+                </text>
+                <text x="10" y={(chartHeight + padding) / 2} fontSize="10" fill="#666" textAnchor="start">
+                  {formatYAxisLabel(midValue)}
+                </text>
+                <text x="10" y={chartHeight - 15} fontSize="10" fill="#666" textAnchor="start">
+                  {formatYAxisLabel(minValue)}
+                </text>
+              </>
+            );
+          })()}
+          
+          {/* 現在の折れ線（実線） */}
+          <path
+            d={currentPathData}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="3"
+            className="drop-shadow-sm"
+          />
+          
+          
+          {/* 現在のデータポイント */}
+          {data.current.map((d, index) => {
+            const x = padding + (index * (chartWidth - 2 * padding)) / (data.current.length - 1);
+            const value = getMetricValue(d, metric);
+            const y = chartHeight - padding - ((value - minValue) / range) * (chartHeight - 2 * padding);
+            
+            return (
+              <g key={`current-${index}`}>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="4"
+                  fill="#3b82f6"
+                  className="hover:fill-blue-700 cursor-pointer"
+                />
+                {/* データラベル */}
+                <text
+                  x={x}
+                  y={y - 15}
+                  fontSize="9"
+                  fill="#374151"
+                  textAnchor="middle"
+                  className="font-medium"
+                >
+                  {value > 0 ? (() => {
+                    switch (metric) {
+                      case 'totalSales':
+                        return value >= 10000 ? `¥${Math.round(value / 10000)}万` : `¥${Math.round(value / 1000)}k`;
+                      case 'customerUnitPrice':
+                        return `¥${Math.round(value).toLocaleString()}`;
+                      case 'customerCount':
+                        return `${Math.round(value)}人`;
+                      case 'itemsSold':
+                        return `${Math.round(value)}個`;
+                      case 'itemsPerCustomer':
+                        return `${value.toFixed(1)}個`;
+                      default:
+                        return formatNumber(value);
+                    }
+                  })() : ''}
+                </text>
+                <title>
+                  {d.label}: {(() => {
+                    switch (metric) {
+                      case 'totalSales':
+                        return formatCurrency(value);
+                      case 'customerUnitPrice':
+                        return formatCurrency(value);
+                      case 'customerCount':
+                        return `${Math.round(value)}人`;
+                      case 'itemsSold':
+                        return `${Math.round(value)}個`;
+                      case 'itemsPerCustomer':
+                        return `${value.toFixed(2)}個/人`;
+                      default:
+                        return formatNumber(value);
+                    }
+                  })()}
+                </title>
+              </g>
+            );
+          })}
+          
+          </svg>
+        </div>
+        
+        {/* 凡例 */}
+        <div className="mt-4 flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-0.5 bg-blue-500"></div>
+            <span className="text-sm text-gray-600">売上データ</span>
+          </div>
+        </div>
+        
+        {/* X軸ラベル */}
+        <div className="mt-2 overflow-x-auto">
+          <div className="relative" style={{ width: `${chartWidth}px`, height: '20px' }}>
+            {data.current.map((point, index) => {
+              const x = padding + (index * (chartWidth - 2 * padding)) / (data.current.length - 1);
+              return (
+                <div 
+                  key={index}
+                  className="absolute text-xs text-gray-600 text-center"
+                  style={{ 
+                    left: `${x}px`, 
+                    transform: 'translateX(-50%)',
+                    width: '50px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {point.label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // 拠点別売上横棒グラフコンポーネント
   const LocationSalesChart: React.FC<{
@@ -303,80 +604,132 @@ const CMSDashboard: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {/* 売上 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">売上</div>
-                <div className="text-2xl font-bold text-gray-900 mb-2">
-                  {formatCurrency(stats.currentMonthSales.totalSales)}
-                </div>
-                <div className="flex items-center justify-center text-sm">
-                  {getTrendIcon(stats.monthOverMonthComparison.salesGrowth)}
-                  <span className={`ml-1 font-medium ${getTrendColor(stats.monthOverMonthComparison.salesGrowth)}`}>
-                    {formatPercentage(stats.monthOverMonthComparison.salesGrowth)}
-                  </span>
-                  <span className="text-gray-500 text-xs ml-1">前月比</span>
-                </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">売上</div>
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                {formatCurrency(stats.currentMonthSales.totalSales)}
+              </div>
+              <div className="flex items-center text-sm">
+                {getTrendIcon(stats.monthOverMonthComparison.salesGrowth)}
+                <span className={`ml-1 font-medium ${getTrendColor(stats.monthOverMonthComparison.salesGrowth)}`}>
+                  {formatPercentage(stats.monthOverMonthComparison.salesGrowth)}
+                </span>
+                <span className="text-gray-500 text-xs ml-1">前月比</span>
               </div>
             </div>
 
             {/* 購入お客様数 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">購入お客様数</div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatNumber(stats.currentMonthSales.customerPurchaseCount)}
-                </div>
-                <div className="text-xs text-gray-500 mb-2">人</div>
-                <div className="flex items-center justify-center text-sm">
-                  {getTrendIcon(stats.monthOverMonthComparison.purchaseCountGrowth)}
-                  <span className={`ml-1 font-medium ${getTrendColor(stats.monthOverMonthComparison.purchaseCountGrowth)}`}>
-                    {formatPercentage(stats.monthOverMonthComparison.purchaseCountGrowth)}
-                  </span>
-                  <span className="text-gray-500 text-xs ml-1">前月比</span>
-                </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">購入お客様数</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                {formatNumber(stats.currentMonthSales.customerPurchaseCount)}
+              </div>
+              <div className="text-xs text-gray-500 mb-2">人</div>
+              <div className="flex items-center text-sm">
+                {getTrendIcon(stats.monthOverMonthComparison.purchaseCountGrowth)}
+                <span className={`ml-1 font-medium ${getTrendColor(stats.monthOverMonthComparison.purchaseCountGrowth)}`}>
+                  {formatPercentage(stats.monthOverMonthComparison.purchaseCountGrowth)}
+                </span>
+                <span className="text-gray-500 text-xs ml-1">前月比</span>
               </div>
             </div>
 
             {/* 販売アイテム数 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">販売アイテム数</div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {formatNumber(Math.round(stats.currentMonthSales.customerPurchaseCount * stats.currentMonthSales.itemsPerCustomer))}
-                </div>
-                <div className="text-xs text-gray-500">個</div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">販売アイテム数</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                {formatNumber(Math.round(stats.currentMonthSales.customerPurchaseCount * stats.currentMonthSales.itemsPerCustomer))}
               </div>
+              <div className="text-xs text-gray-500">個</div>
             </div>
 
             {/* 顧客単価 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">顧客単価</div>
-                <div className="text-2xl font-bold text-gray-900 mb-2">
-                  {formatCurrency(stats.currentMonthSales.customerUnitPrice)}
-                </div>
-                <div className="flex items-center justify-center text-sm">
-                  {getTrendIcon(stats.monthOverMonthComparison.unitPriceGrowth)}
-                  <span className={`ml-1 font-medium ${getTrendColor(stats.monthOverMonthComparison.unitPriceGrowth)}`}>
-                    {formatPercentage(stats.monthOverMonthComparison.unitPriceGrowth)}
-                  </span>
-                  <span className="text-gray-500 text-xs ml-1">前月比</span>
-                </div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">顧客単価</div>
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                {formatCurrency(stats.currentMonthSales.customerUnitPrice)}
+              </div>
+              <div className="flex items-center text-sm">
+                {getTrendIcon(stats.monthOverMonthComparison.unitPriceGrowth)}
+                <span className={`ml-1 font-medium ${getTrendColor(stats.monthOverMonthComparison.unitPriceGrowth)}`}>
+                  {formatPercentage(stats.monthOverMonthComparison.unitPriceGrowth)}
+                </span>
+                <span className="text-gray-500 text-xs ml-1">前月比</span>
               </div>
             </div>
 
             {/* 顧客販売個数 */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">顧客販売個数</div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">
-                  {(stats.currentMonthSales.itemsPerCustomer || 0).toFixed(1)}
-                </div>
-                <div className="text-xs text-gray-500">個/人</div>
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">顧客販売個数</div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                {(stats.currentMonthSales.itemsPerCustomer || 0).toFixed(1)}
               </div>
+              <div className="text-xs text-gray-500">個/人</div>
             </div>
           </div>
         </div>
 
+        {/* 売上トレンド分析 */}
+        <div className="bg-white rounded-lg shadow-sm border p-4 mb-4 w-full">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">売上トレンド分析</h2>
+                <p className="text-xs text-gray-600">時系列データで売上動向を確認</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {/* 期間切り替え */}
+              <div className="flex items-center space-x-1">
+                <span className="text-xs font-medium text-gray-700">期間:</span>
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value as PeriodType)}
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="monthly">月単位（1年間）</option>
+                  <option value="weekly">週単位（3ヶ月間）</option>
+                  <option value="daily">日単位（31日間）</option>
+                </select>
+              </div>
+              
+              {/* 指標切り替え */}
+              <div className="flex items-center space-x-1">
+                <span className="text-xs font-medium text-gray-700">指標:</span>
+                <select
+                  value={selectedMetric}
+                  onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="totalSales">売上（円）</option>
+                  <option value="customerCount">購入お客様数（人）</option>
+                  <option value="itemsSold">販売アイテム数（個）</option>
+                  <option value="customerUnitPrice">顧客単価（円）</option>
+                  <option value="itemsPerCustomer">顧客販売個数（個/人）</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* グラフエリア（横幅いっぱい使用） */}
+          <div className="border rounded-lg p-3 bg-gray-50 w-full overflow-hidden">
+            <div className="mb-3">
+              <h3 className="text-sm font-medium text-gray-900">
+                {getMetricLabel(selectedMetric)}の推移
+              </h3>
+              <p className="text-xs text-gray-600">
+                期間: {getPeriodLabel(selectedPeriod)} | 単位: {getMetricUnit(selectedMetric)}
+              </p>
+            </div>
+            
+            <ComparisonLineChart 
+              data={timeSeriesData} 
+              metric={selectedMetric}
+              isLoading={isChartLoading}
+            />
+          </div>
+        </div>
 
         {/* GA風KPIメトリクス */}
         <div className="mb-4">
@@ -523,7 +876,7 @@ const CMSDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-          </div>
+        </div>
         </div>
       </div>
     </div>

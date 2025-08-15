@@ -69,7 +69,10 @@
       "mcp__serena__replace_symbol_body",
       "mcp__serena__think_about_task_adherence",
       "mcp__ide__getDiagnostics",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
