@@ -618,6 +618,26 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     <span className="inline-block w-2 h-2 bg-blue-500 rounded-full ml-1" title="編集済み" />
   );
 
+  // 時刻フォーマットのバリデーション
+  const validateTimeFormat = (timeString: string): boolean => {
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+    return timeRegex.test(timeString);
+  };
+
+  // 時刻フォーマットの自動補完
+  const formatTimeInput = (input: string): string => {
+    // 数字のみを抽出
+    const digits = input.replace(/\D/g, '');
+    
+    if (digits.length === 0) return '';
+    if (digits.length === 1) return digits;
+    if (digits.length === 2) return digits;
+    if (digits.length === 3) return `${digits[0]}:${digits.slice(1)}`;
+    if (digits.length >= 4) return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+    
+    return input;
+  };
+
   // 洗練された入力コンポーネント
   const EditableCell = ({ 
     value, 
@@ -641,6 +661,21 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     displayValue?: string | null;
   }) => {
     const isEdited = isFieldEdited(date, field);
+    
+    const handleTimeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const input = e.target.value;
+      const formatted = formatTimeInput(input);
+      setEditValue(formatted);
+    };
+
+    const handleTimeBlur = () => {
+      if (type === 'time' && editValue && !validateTimeFormat(editValue)) {
+        // 無効な時刻形式の場合は元の値に戻す
+        setEditValue(value?.toString() || '');
+        return;
+      }
+      handleEditSave();
+    };
     
     if (isEditing) {
       if (type === 'select' && options) {
@@ -667,15 +702,25 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       return (
         <div className="relative">
           <input
-            type={type}
+            type={type === 'time' ? 'text' : type}
             value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleEditSave}
-            onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
-            className="w-full h-8 text-xs text-center bg-white border-2 border-blue-400 rounded-md shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200"
-            placeholder={type === 'number' ? '分' : ''}
+            onChange={type === 'time' ? handleTimeInput : (e) => setEditValue(e.target.value)}
+            onBlur={type === 'time' ? handleTimeBlur : handleEditSave}
+            onKeyPress={(e) => e.key === 'Enter' && (type === 'time' ? handleTimeBlur() : handleEditSave())}
+            className={`w-full h-8 text-xs text-center bg-white border-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200 ${
+              type === 'time' && editValue && !validateTimeFormat(editValue) 
+                ? 'border-red-400 focus:border-red-500' 
+                : 'border-blue-400 focus:border-blue-500'
+            }`}
+            placeholder={type === 'number' ? '分' : type === 'time' ? 'HH:MM' : ''}
+            maxLength={type === 'time' ? 5 : undefined}
             autoFocus
           />
+          {type === 'time' && editValue && !validateTimeFormat(editValue) && (
+            <div className="absolute -bottom-5 left-0 text-xs text-red-500">
+              HH:MM形式で入力
+            </div>
+          )}
         </div>
       );
     }
@@ -683,19 +728,12 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     return (
       <div
         onClick={() => onEdit(date, field, value?.toString() || '')}
-        className={`group relative h-8 flex items-center justify-center cursor-pointer rounded-md transition-all duration-200 hover:bg-opacity-80 ${className}`}
+        className={`relative h-8 flex items-center justify-center cursor-pointer rounded-md transition-all duration-200 ${className}`}
       >
         <span className="text-xs select-none">
           {displayValue || value || '-'}
         </span>
         {isEdited && <EditIndicator />}
-        
-        {/* ホバー時の編集アイコン */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black bg-opacity-5 rounded-md">
-          <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </div>
       </div>
     );
   };
