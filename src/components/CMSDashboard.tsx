@@ -578,53 +578,17 @@ const CMSDashboard: React.FC = () => {
       return `rgba(203, 133, 133, ${alpha})`;
     };
 
-    // 週次のラベルを生成（52週間）
-    const getWeekLabels = () => {
-      const labels = [];
-      const startDate = new Date(heatmapData[0]?.date);
-      
-      for (let week = 0; week < 52; week++) {
-        const weekStart = new Date(startDate);
-        weekStart.setDate(startDate.getDate() + (week * 7));
-        
-        // 月の1週目のみ月/日表示、それ以外は日のみ
-        const weekDay = weekStart.getDate();
-        if (weekDay <= 7) {
-          labels.push(`${weekStart.getMonth() + 1}/${weekStart.getDate()}`);
-        } else {
-          labels.push(`${weekStart.getDate()}`);
-        }
-      }
-      return labels;
-    };
-
-    // 日付ラベルを生成（各週の開始日）
+    // 日付ラベルを生成（364日分）
     const getDateLabels = () => {
-      const labels = [];
-      const startDate = new Date(heatmapData[0]?.date);
-      
-      for (let week = 0; week < 52; week++) {
-        const weekStart = new Date(startDate);
-        weekStart.setDate(startDate.getDate() + (week * 7));
-        
-        // 月/日 形式で表示
-        labels.push({
-          month: weekStart.getMonth() + 1,
-          day: weekStart.getDate(),
-          text: `${weekStart.getMonth() + 1}/${weekStart.getDate()}`
-        });
-      }
-      return labels;
+      return heatmapData.map(dayData => ({
+        month: dayData.month,
+        day: dayData.day,
+        date: dayData.date,
+        text: `${dayData.month}/${dayData.day}`,
+        isMonthStart: dayData.day === 1 // 月初の判定
+      }));
     };
 
-    // データを週ごとに分割（52週間）
-    const weeklyData = [];
-    for (let week = 0; week < 52; week++) {
-      const weekData = heatmapData.slice(week * 7, (week + 1) * 7);
-      weeklyData.push(weekData);
-    }
-
-    const weekLabels = getWeekLabels();
     const dateLabels = getDateLabels();
     
     // 最新（右端）にスクロールする
@@ -648,11 +612,8 @@ const CMSDashboard: React.FC = () => {
         <div className="relative">
           {/* 拠点ラベル（固定） */}
           <div className="absolute left-0 top-0 z-10 bg-white">
-            <div className="w-20 pb-1"> {/* 日付ラベル分のスペース */}
+            <div className="w-20 pb-3"> {/* 日付ラベル分のスペース */}
               <div className="text-xs text-transparent">Date</div>
-            </div>
-            <div className="w-20 pb-2"> {/* 週次ラベル分のスペース */}
-              <div className="text-xs text-transparent">Label</div>
             </div>
             <div className="w-20 flex flex-col mr-2">
               {storeData.map((store, index) => (
@@ -669,58 +630,49 @@ const CMSDashboard: React.FC = () => {
           <div 
             ref={scrollRef}
             className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-            style={{ marginLeft: '5rem' }}
+            style={{ 
+              marginLeft: '5rem',
+              maxWidth: `${31 * 16}px` // 31日分の表示幅に制限
+            }}
           >
-            <div style={{ width: `${52 * 16}px` }}> {/* 52週 × 16px */}
+            <div style={{ width: `${364 * 16}px` }}> {/* 364日データ */}
               {/* 日付ラベル */}
-              <div className="flex mb-1 gap-1">
+              <div className="flex mb-3 gap-1">
                 {dateLabels.map((dateInfo, index) => (
                   <div 
                     key={index} 
-                    className="text-center flex-shrink-0 text-gray-400"
+                    className={`text-center flex-shrink-0 ${dateInfo.isMonthStart ? 'text-gray-600 font-medium' : 'text-gray-400'}`}
                     style={{ 
                       width: '14px', 
-                      fontSize: '8px',
-                      lineHeight: '10px',
+                      fontSize: dateInfo.isMonthStart ? '9px' : '7px',
+                      lineHeight: '12px',
                       transform: 'rotate(-45deg)',
                       transformOrigin: 'center center'
                     }}
                     title={dateInfo.text}
                   >
-                    {dateInfo.month}/{dateInfo.day}
+                    {dateInfo.isMonthStart ? `${dateInfo.month}/${dateInfo.day}` : dateInfo.day}
                   </div>
                 ))}
               </div>
 
-              {/* 週次ラベル */}
-              <div className="flex mb-2 gap-1">
-                {weekLabels.map((label, index) => (
-                  <div key={index} className="text-xs text-gray-500 text-center" style={{ width: '14px' }}>
-                    {label}
-                  </div>
-                ))}
-              </div>
-
-              {/* グリッド */}
+              {/* グリッド - 日次表示 */}
               <div>
                 {storeData.map((store) => (
                   <div key={store.id} className="flex gap-1 mb-1">
-                    {weeklyData.map((week, weekIndex) => {
-                      // その週の7日間の平均売上活動を計算
-                      const weekActivity = week.reduce((sum, day) => {
-                        return sum + (day.stores[store.id] || 0);
-                      }, 0) / 7;
+                    {heatmapData.map((dayData, dayIndex) => {
+                      const dayActivity = dayData.stores[store.id] || 0;
                       
                       return (
                         <div
-                          key={weekIndex}
+                          key={dayIndex}
                           className="rounded-sm border border-gray-200 flex-shrink-0"
                           style={{ 
-                            backgroundColor: getIntensity(weekActivity),
+                            backgroundColor: getIntensity(dayActivity),
                             width: '14px',
                             height: '14px'
                           }}
-                          title={`${store.name} - 週平均売上活動: ${weekActivity.toFixed(1)}%`}
+                          title={`${store.name} - ${dayData.month}/${dayData.day} 売上活動: ${dayActivity}%`}
                         />
                       );
                     })}
