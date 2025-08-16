@@ -140,13 +140,13 @@ const storeData = [
   { id: 'shimokita', name: '下北沢店', type: 'low', rank: 7 }
 ];
 
-// 日次ベースのヒートマップデータ（84日分 = 12週、拠点別）
+// 日次ベースのヒートマップデータ（364日分 = 52週、拠点別）
 const generateHeatmapData = () => {
   const data = [];
   const today = new Date();
   
-  // 過去84日分のデータを生成
-  for (let i = 83; i >= 0; i--) {
+  // 過去364日分のデータを生成（52週 × 7日）
+  for (let i = 363; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     
@@ -154,7 +154,7 @@ const generateHeatmapData = () => {
       date: date,
       day: date.getDate(),
       month: date.getMonth() + 1,
-      weekIndex: Math.floor((83 - i) / 7),
+      weekIndex: Math.floor((363 - i) / 7),
       stores: {}
     };
     
@@ -559,6 +559,8 @@ const CMSDashboard: React.FC = () => {
 
   // Active User Heatmap
   const ActiveUserHeatmap = () => {
+    const scrollRef = React.useRef<HTMLDivElement>(null);
+    
     const getIntensity = (value: number) => {
       const max = 100;
       const intensity = value / max;
@@ -576,27 +578,41 @@ const CMSDashboard: React.FC = () => {
       return `rgba(203, 133, 133, ${alpha})`;
     };
 
-    // 週次のラベルを生成
+    // 週次のラベルを生成（52週間）
     const getWeekLabels = () => {
       const labels = [];
       const startDate = new Date(heatmapData[0]?.date);
       
-      for (let week = 0; week < 12; week++) {
+      for (let week = 0; week < 52; week++) {
         const weekStart = new Date(startDate);
         weekStart.setDate(startDate.getDate() + (week * 7));
-        labels.push(`${weekStart.getMonth() + 1}/${weekStart.getDate()}`);
+        
+        // 月の1週目のみ月/日表示、それ以外は日のみ
+        const weekDay = weekStart.getDate();
+        if (weekDay <= 7) {
+          labels.push(`${weekStart.getMonth() + 1}/${weekStart.getDate()}`);
+        } else {
+          labels.push(`${weekStart.getDate()}`);
+        }
       }
       return labels;
     };
 
-    // データを週ごとに分割
+    // データを週ごとに分割（52週間）
     const weeklyData = [];
-    for (let week = 0; week < 12; week++) {
+    for (let week = 0; week < 52; week++) {
       const weekData = heatmapData.slice(week * 7, (week + 1) * 7);
       weeklyData.push(weekData);
     }
 
     const weekLabels = getWeekLabels();
+    
+    // 最新（右端）にスクロールする
+    React.useEffect(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+      }
+    }, []);
 
     return (
       <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
@@ -608,54 +624,67 @@ const CMSDashboard: React.FC = () => {
           <MapPin className="w-5 h-5" style={{ color: '#CB8585' }} />
         </div>
         
-        {/* 週次ラベル */}
-        <div className="flex mb-2">
-          <div className="w-20"></div> {/* 拠点ラベル用のスペース */}
-          {weekLabels.map((label, index) => (
-            <div key={index} className="flex-1 text-xs text-gray-500 text-center">
-              {label}
+        {/* スクロール可能なヒートマップエリア */}
+        <div className="relative">
+          {/* 拠点ラベル（固定） */}
+          <div className="absolute left-0 top-0 z-10 bg-white">
+            <div className="w-20 pb-2"> {/* 週次ラベル分のスペース */}
+              <div className="text-xs text-transparent">Label</div>
             </div>
-          ))}
-        </div>
-
-        {/* ヒートマップグリッド */}
-        <div className="flex">
-          {/* 拠点ラベル */}
-          <div className="w-20 flex flex-col justify-around text-xs text-gray-600 mr-2">
-            {storeData.map((store, index) => (
-              <div key={store.id} className="h-3 flex items-center">
-                <span className={`text-right ${store.type === 'high' ? 'font-medium' : ''}`}>
-                  {store.name}
-                </span>
-              </div>
-            ))}
+            <div className="w-20 flex flex-col mr-2">
+              {storeData.map((store, index) => (
+                <div key={store.id} className="flex items-center mb-1" style={{ height: '16px' }}>
+                  <span className={`text-xs text-right ${store.type === 'high' ? 'font-medium' : ''}`}>
+                    {store.name}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          {/* グリッド */}
-          <div className="flex flex-col gap-1">
-            {storeData.map((store) => (
-              <div key={store.id} className="flex gap-1">
-                {weeklyData.map((week, weekIndex) => {
-                  // その週の7日間の平均売上活動を計算
-                  const weekActivity = week.reduce((sum, day) => {
-                    return sum + (day.stores[store.id] || 0);
-                  }, 0) / 7;
-                  
-                  return (
-                    <div
-                      key={weekIndex}
-                      className="rounded-sm border border-gray-200"
-                      style={{ 
-                        backgroundColor: getIntensity(weekActivity),
-                        width: '12px',
-                        height: '12px'
-                      }}
-                      title={`${store.name} - 週平均売上活動: ${weekActivity.toFixed(1)}%`}
-                    />
-                  );
-                })}
+
+          {/* スクロール可能なコンテンツエリア */}
+          <div 
+            ref={scrollRef}
+            className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+            style={{ marginLeft: '5rem' }}
+          >
+            <div style={{ width: `${52 * 16}px` }}> {/* 52週 × 16px */}
+              {/* 週次ラベル */}
+              <div className="flex mb-2 gap-1">
+                {weekLabels.map((label, index) => (
+                  <div key={index} className="text-xs text-gray-500 text-center" style={{ width: '14px' }}>
+                    {label}
+                  </div>
+                ))}
               </div>
-            ))}
+
+              {/* グリッド */}
+              <div>
+                {storeData.map((store) => (
+                  <div key={store.id} className="flex gap-1 mb-1">
+                    {weeklyData.map((week, weekIndex) => {
+                      // その週の7日間の平均売上活動を計算
+                      const weekActivity = week.reduce((sum, day) => {
+                        return sum + (day.stores[store.id] || 0);
+                      }, 0) / 7;
+                      
+                      return (
+                        <div
+                          key={weekIndex}
+                          className="rounded-sm border border-gray-200 flex-shrink-0"
+                          style={{ 
+                            backgroundColor: getIntensity(weekActivity),
+                            width: '14px',
+                            height: '14px'
+                          }}
+                          title={`${store.name} - 週平均売上活動: ${weekActivity.toFixed(1)}%`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -668,8 +697,8 @@ const CMSDashboard: React.FC = () => {
               className="rounded-sm border border-gray-200"
               style={{ 
                 backgroundColor: `rgba(229, 231, 235, 1)`,
-                width: '12px',
-                height: '12px'
+                width: '14px',
+                height: '14px'
               }}
               title="0%"
             />
@@ -680,8 +709,8 @@ const CMSDashboard: React.FC = () => {
                 className="rounded-sm border border-gray-200"
                 style={{ 
                   backgroundColor: `rgba(203, 133, 133, ${intensity})`,
-                  width: '12px',
-                  height: '12px'
+                  width: '14px',
+                  height: '14px'
                 }}
                 title={`${(intensity * 100).toFixed(0)}%`}
               />
