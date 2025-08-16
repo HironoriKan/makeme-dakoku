@@ -474,6 +474,7 @@ const CMSDashboard: React.FC = () => {
                 tickLine={false}
                 tick={{ fontSize: 12, fill: '#666' }}
                 tickFormatter={getYAxisFormatter()}
+                domain={['dataMin', 'dataMax + 15%']}
               />
               <Line 
                 type="linear" 
@@ -499,9 +500,9 @@ const CMSDashboard: React.FC = () => {
                 label={{ 
                   position: 'top',
                   fill: '#333',
-                  fontSize: 13,
-                  fontWeight: '600',
-                  offset: 10,
+                  fontSize: 10,
+                  fontWeight: '500',
+                  offset: 5,
                   formatter: (value: number) => {
                     if (activeMetric === 'sales') return `¥${(value / 1000).toFixed(0)}K`;
                     if (activeMetric === 'unitPrice') return `¥${(value / 1000).toFixed(0)}K`;
@@ -808,6 +809,136 @@ const CMSDashboard: React.FC = () => {
               width: `${percentage}%`,
               backgroundColor: color
             }}
+  // Today's Shift Users Component
+  const TodayShiftUsers = () => {
+    // 本日のシフト入りユーザーのサンプルデータ
+    const todayShiftUsers = [
+      {
+        id: 1,
+        name: '田中 美咲',
+        location: '渋谷店',
+        shiftTime: '09:00-17:00',
+        position: 'BA',
+        status: 'checked-in',
+        checkedInAt: '08:55',
+        avatar: null
+      },
+      {
+        id: 2,
+        name: '佐藤 花音',
+        location: '新宿店',
+        shiftTime: '10:00-18:00',
+        position: 'BA',
+        status: 'scheduled',
+        checkedInAt: null,
+        avatar: null
+      },
+      {
+        id: 3,
+        name: '山田 莉子',
+        location: '池袋店',
+        shiftTime: '11:00-19:00',
+        position: 'BA',
+        status: 'checked-in',
+        checkedInAt: '10:58',
+        avatar: null
+      },
+      {
+        id: 4,
+        name: '鈴木 愛美',
+        location: '銀座店',
+        shiftTime: '09:30-17:30',
+        position: 'BA',
+        status: 'checked-in',
+        checkedInAt: '09:25',
+        avatar: null
+      },
+      {
+        id: 5,
+        name: '高橋 結菜',
+        location: '表参道店',
+        shiftTime: '10:30-18:30',
+        position: 'BA',
+        status: 'scheduled',
+        checkedInAt: null,
+        avatar: null
+      }
+    ];
+
+    const getStatusBadge = (status: string) => {
+      if (status === 'checked-in') {
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            出勤中
+          </span>
+        );
+      }
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          予定
+        </span>
+      );
+    };
+
+    const getInitials = (name: string) => {
+      const nameParts = name.split(' ');
+      if (nameParts.length >= 2) {
+        return nameParts[0][0] + nameParts[1][0];
+      }
+      return name[0] + (name[1] || '');
+    };
+
+    return (
+      <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">本日のシフト</h3>
+            <p className="text-sm text-gray-600">{new Date().toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'long' })}</p>
+          </div>
+          <Calendar className="w-5 h-5" style={{ color: '#CB8585' }} />
+        </div>
+        
+        <div className="space-y-3">
+          {todayShiftUsers.map((user) => (
+            <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div className="flex items-center space-x-3">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                  style={{ backgroundColor: '#CB8585' }}
+                >
+                  {getInitials(user.name)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                  <div className="flex items-center space-x-2 text-xs text-gray-500">
+                    <MapPin className="w-3 h-3" />
+                    <span>{user.location}</span>
+                    <Clock className="w-3 h-3 ml-2" />
+                    <span>{user.shiftTime}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {user.status === 'checked-in' && user.checkedInAt && (
+                  <span className="text-xs text-gray-500">{user.checkedInAt}</span>
+                )}
+                {getStatusBadge(user.status)}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">出勤予定: {todayShiftUsers.length}名</span>
+            <span className="text-gray-600">
+              出勤済み: {todayShiftUsers.filter(u => u.status === 'checked-in').length}名
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
           />
         </div>
       );
@@ -1004,12 +1135,13 @@ const CMSDashboard: React.FC = () => {
 
         {/* Bottom Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Active User Heatmap */}
-          <div>
+          {/* Left Column: Heatmap + Today's Shift */}
+          <div className="space-y-6">
             <ActiveUserHeatmap />
+            <TodayShiftUsers />
           </div>
           
-          {/* Store Performance Chart */}
+          {/* Right Column: Store Performance Chart */}
           <div>
             <StorePerformanceChart />
           </div>
