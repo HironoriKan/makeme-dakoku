@@ -130,6 +130,15 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     }
   }, [selectedPeriod, userId]);
 
+  // 初期表示時にも最新位置にスクロール
+  useEffect(() => {
+    if (chartData.length > 0) {
+      setTimeout(() => {
+        scrollToLatest();
+      }, 100);
+    }
+  }, [chartData]);
+
   const fetchUserDetail = async () => {
     if (!userId) {
       console.error('❌ fetchUserDetail: userId が未定義です');
@@ -479,10 +488,10 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       setMaxSales(max);
       setAvgSales(avg);
 
-      // データが更新されたら最新日付にスクロール
+      // データが更新されたら最新日付（右端）にスクロール
       setTimeout(() => {
         scrollToLatest();
-      }, 100);
+      }, 300);
       console.log('✅ fetchChartData成功:', data.length, '件');
     } catch (error) {
       console.error('❌ fetchChartData エラー:', error);
@@ -536,8 +545,11 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   // 最新日付（右端）にスクロールする関数
   const scrollToLatest = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        left: scrollContainerRef.current.scrollWidth,
+      const container = scrollContainerRef.current;
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      
+      container.scrollTo({
+        left: maxScrollLeft,
         behavior: 'smooth'
       });
     }
@@ -741,7 +753,11 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     const adjustedMaxValue = Math.max(...yAxisTicks);
 
     return (
-      <div ref={scrollContainerRef} className="relative overflow-x-auto">
+      <div 
+        ref={scrollContainerRef} 
+        className="relative overflow-x-auto"
+        style={{ scrollBehavior: 'smooth' }}
+      >
         <div style={{ width: `${Math.max(containerWidth, svgWidth)}px` }}>
           <svg width={svgWidth} height={svgHeight}>
             {/* グリッドライン（縦軸ラベルは非表示） */}

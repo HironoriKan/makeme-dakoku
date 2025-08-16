@@ -121,10 +121,10 @@ const SalesChart: React.FC<SalesChartProps> = () => {
       setMaxSales(max);
       setAvgSales(avg);
 
-      // データが更新されたら最新日付にスクロール
+      // データが更新されたら最新日付（右端）にスクロール
       setTimeout(() => {
         scrollToLatest();
-      }, 100);
+      }, 300);
     } catch (error) {
       console.error('売上データ取得エラー:', error);
     } finally {
@@ -136,11 +136,23 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     fetchChartData();
   }, [user, selectedPeriod]);
 
+  // 初期表示時にも最新位置にスクロール
+  useEffect(() => {
+    if (chartData.length > 0) {
+      setTimeout(() => {
+        scrollToLatest();
+      }, 100);
+    }
+  }, [chartData]);
+
   // 最新日付（右端）にスクロールする関数
   const scrollToLatest = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        left: scrollContainerRef.current.scrollWidth,
+      const container = scrollContainerRef.current;
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      
+      container.scrollTo({
+        left: maxScrollLeft,
         behavior: 'smooth'
       });
     }
@@ -201,7 +213,11 @@ const SalesChart: React.FC<SalesChartProps> = () => {
     const adjustedMaxValue = Math.max(...yAxisTicks);
 
     return (
-      <div ref={scrollContainerRef} className="relative overflow-x-auto">
+      <div 
+        ref={scrollContainerRef} 
+        className="relative overflow-x-auto"
+        style={{ scrollBehavior: 'smooth' }}
+      >
         <div style={{ width: `${svgWidth}px` }}>
           <svg width={svgWidth} height={svgHeight}>
             {/* グリッドライン */}
