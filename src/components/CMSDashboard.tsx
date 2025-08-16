@@ -598,6 +598,25 @@ const CMSDashboard: React.FC = () => {
       return labels;
     };
 
+    // 日付ラベルを生成（各週の開始日）
+    const getDateLabels = () => {
+      const labels = [];
+      const startDate = new Date(heatmapData[0]?.date);
+      
+      for (let week = 0; week < 52; week++) {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(startDate.getDate() + (week * 7));
+        
+        // 月/日 形式で表示
+        labels.push({
+          month: weekStart.getMonth() + 1,
+          day: weekStart.getDate(),
+          text: `${weekStart.getMonth() + 1}/${weekStart.getDate()}`
+        });
+      }
+      return labels;
+    };
+
     // データを週ごとに分割（52週間）
     const weeklyData = [];
     for (let week = 0; week < 52; week++) {
@@ -606,6 +625,7 @@ const CMSDashboard: React.FC = () => {
     }
 
     const weekLabels = getWeekLabels();
+    const dateLabels = getDateLabels();
     
     // 最新（右端）にスクロールする
     React.useEffect(() => {
@@ -628,6 +648,9 @@ const CMSDashboard: React.FC = () => {
         <div className="relative">
           {/* 拠点ラベル（固定） */}
           <div className="absolute left-0 top-0 z-10 bg-white">
+            <div className="w-20 pb-1"> {/* 日付ラベル分のスペース */}
+              <div className="text-xs text-transparent">Date</div>
+            </div>
             <div className="w-20 pb-2"> {/* 週次ラベル分のスペース */}
               <div className="text-xs text-transparent">Label</div>
             </div>
@@ -649,6 +672,26 @@ const CMSDashboard: React.FC = () => {
             style={{ marginLeft: '5rem' }}
           >
             <div style={{ width: `${52 * 16}px` }}> {/* 52週 × 16px */}
+              {/* 日付ラベル */}
+              <div className="flex mb-1 gap-1">
+                {dateLabels.map((dateInfo, index) => (
+                  <div 
+                    key={index} 
+                    className="text-center flex-shrink-0 text-gray-400"
+                    style={{ 
+                      width: '14px', 
+                      fontSize: '8px',
+                      lineHeight: '10px',
+                      transform: 'rotate(-45deg)',
+                      transformOrigin: 'center center'
+                    }}
+                    title={dateInfo.text}
+                  >
+                    {dateInfo.month}/{dateInfo.day}
+                  </div>
+                ))}
+              </div>
+
               {/* 週次ラベル */}
               <div className="flex mb-2 gap-1">
                 {weekLabels.map((label, index) => (
