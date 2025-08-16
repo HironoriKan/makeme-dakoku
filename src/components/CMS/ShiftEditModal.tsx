@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Tables, Enums } from '../../types/supabase';
 import { X, Calendar, Clock, User, Save, Trash2 } from 'lucide-react';
 import { sanitizeUserName } from '../../utils/textUtils';
+import { Button, Input, DateInput, TimeInput, Select, Textarea } from '../ui';
 
 type Shift = Tables<'shifts'>;
 type ShiftType = Enums<'shift_type'>;
@@ -247,132 +248,109 @@ const ShiftEditModal: React.FC<ShiftEditModalProps> = ({
           {/* Form */}
           <div className="space-y-4">
             {/* Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                日付
-              </label>
-              <input
-                type="date"
-                value={formData.shift_date}
-                onChange={(e) => handleInputChange('shift_date', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            <DateInput
+              label="日付"
+              value={formData.shift_date}
+              onChange={(e) => handleInputChange('shift_date', e.target.value)}
+              fullWidth
+              required
+            />
 
             {/* Shift Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                シフトタイプ
-              </label>
-              <select
-                value={formData.shift_type}
-                onChange={(e) => handleInputChange('shift_type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="normal">通常</option>
-                <option value="early">早番</option>
-                <option value="late">遅番</option>
-                <option value="off">休み</option>
-              </select>
-            </div>
+            <Select
+              label="シフトタイプ"
+              value={formData.shift_type}
+              onChange={(e) => handleInputChange('shift_type', e.target.value)}
+              fullWidth
+              required
+            >
+              <option value="normal">通常</option>
+              <option value="early">早番</option>
+              <option value="late">遅番</option>
+              <option value="off">休み</option>
+            </Select>
 
             {/* Time Range */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  開始時間
-                </label>
-                <input
-                  type="time"
-                  value={formData.start_time}
-                  onChange={(e) => handleInputChange('start_time', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  終了時間
-                </label>
-                <input
-                  type="time"
-                  value={formData.end_time}
-                  onChange={(e) => handleInputChange('end_time', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+              <TimeInput
+                label="開始時間"
+                value={formData.start_time}
+                onChange={(e) => handleInputChange('start_time', e.target.value)}
+                fullWidth
+              />
+              <TimeInput
+                label="終了時間"
+                value={formData.end_time}
+                onChange={(e) => handleInputChange('end_time', e.target.value)}
+                fullWidth
+              />
             </div>
 
             {/* Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                ステータス
-              </label>
-              <select
-                value={formData.shift_status}
-                onChange={(e) => handleInputChange('shift_status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="adjusting">調整中</option>
-                <option value="confirmed">承認済み</option>
-              </select>
-            </div>
+            <Select
+              label="ステータス"
+              value={formData.shift_status}
+              onChange={(e) => handleInputChange('shift_status', e.target.value)}
+              fullWidth
+              required
+            >
+              <option value="adjusting">調整中</option>
+              <option value="confirmed">承認済み</option>
+            </Select>
 
             {/* Note */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                備考
-              </label>
-              <textarea
-                value={formData.note}
-                onChange={(e) => handleInputChange('note', e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="備考を入力（任意）"
-              />
-            </div>
+            <Textarea
+              label="備考"
+              value={formData.note}
+              onChange={(e) => handleInputChange('note', e.target.value)}
+              rows={3}
+              placeholder="備考を入力（任意）"
+              fullWidth
+            />
           </div>
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-6 border-t border-gray-200">
             <div className="flex space-x-3">
               {formData.shift_status === 'adjusting' && (
-                <button
+                <Button
+                  variant="success"
                   onClick={handleApprove}
                   disabled={loading}
-                  className="flex items-center px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  leftIcon={<Clock className="w-4 h-4" />}
                 >
-                  <Clock className="w-4 h-4 mr-2" />
                   承認
-                </button>
+                </Button>
               )}
               {shift?.id && (
-                <button
+                <Button
+                  variant="error"
                   onClick={handleDelete}
                   disabled={loading}
-                  className="flex items-center px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  leftIcon={<Trash2 className="w-4 h-4" />}
                 >
-                  <Trash2 className="w-4 h-4 mr-2" />
                   削除
-                </button>
+                </Button>
               )}
             </div>
 
             <div className="flex space-x-3">
-              <button
+              <Button
+                variant="secondary"
                 onClick={onClose}
                 disabled={loading}
-                className="px-4 py-2 text-gray-700 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={handleSave}
                 disabled={loading}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                loading={loading}
+                leftIcon={<Save className="w-4 h-4" />}
               >
-                <Save className="w-4 h-4 mr-2" />
-                {loading ? '保存中...' : '保存'}
-              </button>
+                保存
+              </Button>
             </div>
           </div>
         </div>
