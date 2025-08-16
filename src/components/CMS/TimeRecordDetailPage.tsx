@@ -863,46 +863,214 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     setError(null);
 
     try {
+      console.log('保存処理開始...');
+      
       // 変更されたレコードを実際にSupabaseに保存
       const promises = dailyRecords.map(async (record) => {
         const original = originalRecords.find(o => o.date === record.date);
+        if (!original) return;
         
-        // 変更があったレコードのみ処理
-        if (original && (
-          original.clockIn !== record.clockIn ||
-          original.clockOut !== record.clockOut ||
-          original.breakTime !== record.breakTime ||
-          original.workStatus !== record.workStatus
-        )) {
-          // 出勤記録の更新
-          if (original.clockIn !== record.clockIn && record.clockIn && record.records.clockInId) {
+        const savePromises: Promise<any>[] = [];
+
+        // 1. シフト時間の更新（shiftsテーブル）
+        if (original.shiftStartTime !== record.shiftStartTime || original.shiftEndTime !== record.shiftEndTime) {
+          console.log(`シフト時間更新: ${record.date}`, {
+            original: { start: original.shiftStartTime, end: original.shiftEndTime },
+            new: { start: record.shiftStartTime, end: record.shiftEndTime }
+          });
+
+          // 既存のシフトレコードを確認
+          const { data: existingShift } = await supabase
+            .from('shifts')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('shift_date', record.date)
+            .single();
+
+          if (existingShift) {
+            // 既存シフトの更新
+            savePromises.push(
+              supabase
+                .from('shifts')
+                .update({
+                  start_time: record.shiftStartTime || null,
+                  end_time: record.shiftEndTime || null,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', existingShift.id)
+            );
+          } else if (record.shiftStartTime || record.shiftEndTime) {
+            // 新規シフトの作成
+            savePromises.push(
+              supabase
+                .from('shifts')
+                .insert({
+                  user_id: userId,
+                  shift_date: record.date,
+                  start_time: record.shiftStartTime || null,
+                  end_time: record.shiftEndTime || null,
+                  location_id: null, // デフォルト値
+                  shift_type: 'フリー', // デフォルト値
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+            );
+          }
+        }
+
+        // 2. 出勤記録の更新・作成
+        if (original.clockIn !== record.clockIn) {
+          console.log(`出勤時間更新: ${record.date}`, { original: original.clockIn, new: record.clockIn });
+          
+          if (record.records.clockInId && record.clockIn) {
+            // 既存レコードの更新
             const clockInTime = new Date(`${record.date}T${record.clockIn}:00`);
-            
-            const { error: clockInError } = await supabase
-              .from('time_records')
-              .update({
-                recorded_at: clockInTime.toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', record.records.clockInId);
-
-            if (clockInError) throw clockInError;
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .update({
+                  recorded_at: clockInTime.toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', record.records.clockInId)
+            );
+          } else if (record.clockIn && !record.records.clockInId) {
+            // 新規レコードの作成
+            const clockInTime = new Date(`${record.date}T${record.clockIn}:00`);
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .insert({
+                  user_id: userId,
+                  recorded_at: clockInTime.toISOString(),
+                  record_type: 'clock_in',
+                  location_id: null,
+                  location_name: null,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+            );
           }
+        }
 
-          // 退勤記録の更新
-          if (original.clockOut !== record.clockOut && record.clockOut && record.records.clockOutId) {
+        // 3. 退勤記録の更新・作成
+        if (original.clockOut !== record.clockOut) {
+          console.log(`退勤時間更新: ${record.date}`, { original: original.clockOut, new: record.clockOut });
+          
+          if (record.records.clockOutId && record.clockOut) {
+            // 既存レコードの更新
             const clockOutTime = new Date(`${record.date}T${record.clockOut}:00`);
-            
-            const { error: clockOutError } = await supabase
-              .from('time_records')
-              .update({
-                recorded_at: clockOutTime.toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', record.records.clockOutId);
-
-            if (clockOutError) throw clockOutError;
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .update({
+                  recorded_at: clockOutTime.toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', record.records.clockOutId)
+            );
+          } else if (record.clockOut && !record.records.clockOutId) {
+            // 新規レコードの作成
+            const clockOutTime = new Date(`${record.date}T${record.clockOut}:00`);
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .insert({
+                  user_id: userId,
+                  recorded_at: clockOutTime.toISOString(),
+                  record_type: 'clock_out',
+                  location_id: null,
+                  location_name: null,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+            );
           }
+        }
+
+        // 4. 休憩開始記録の更新・作成
+        if (original.records.breakStart !== record.records.breakStart) {
+          console.log(`休憩開始時間更新: ${record.date}`, { original: original.records.breakStart, new: record.records.breakStart });
+          
+          if (record.records.breakStartId && record.records.breakStart) {
+            // 既存レコードの更新
+            const breakStartTime = new Date(`${record.date}T${record.records.breakStart}:00`);
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .update({
+                  recorded_at: breakStartTime.toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', record.records.breakStartId)
+            );
+          } else if (record.records.breakStart && !record.records.breakStartId) {
+            // 新規レコードの作成
+            const breakStartTime = new Date(`${record.date}T${record.records.breakStart}:00`);
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .insert({
+                  user_id: userId,
+                  recorded_at: breakStartTime.toISOString(),
+                  record_type: 'break_start',
+                  location_id: null,
+                  location_name: null,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+            );
+          }
+        }
+
+        // 5. 休憩終了記録の更新・作成
+        if (original.records.breakEnd !== record.records.breakEnd) {
+          console.log(`休憩終了時間更新: ${record.date}`, { original: original.records.breakEnd, new: record.records.breakEnd });
+          
+          if (record.records.breakEndId && record.records.breakEnd) {
+            // 既存レコードの更新
+            const breakEndTime = new Date(`${record.date}T${record.records.breakEnd}:00`);
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .update({
+                  recorded_at: breakEndTime.toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', record.records.breakEndId)
+            );
+          } else if (record.records.breakEnd && !record.records.breakEndId) {
+            // 新規レコードの作成
+            const breakEndTime = new Date(`${record.date}T${record.records.breakEnd}:00`);
+            savePromises.push(
+              supabase
+                .from('time_records')
+                .insert({
+                  user_id: userId,
+                  recorded_at: breakEndTime.toISOString(),
+                  record_type: 'break_end',
+                  location_id: null,
+                  location_name: null,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+            );
+          }
+        }
+
+        // 全ての保存処理を実行
+        if (savePromises.length > 0) {
+          const results = await Promise.all(savePromises);
+          
+          // エラーチェック
+          results.forEach((result) => {
+            if (result.error) {
+              console.error('保存エラー:', result.error);
+              throw new Error(`保存に失敗: ${result.error.message}`);
+            }
+          });
+          
+          console.log(`${record.date}の保存完了:`, results.length, '件');
         }
       });
 

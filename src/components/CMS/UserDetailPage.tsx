@@ -93,6 +93,8 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [editingReport, setEditingReport] = useState<string | null>(null);
+  const [editedReportData, setEditedReportData] = useState<Partial<DailyReport>>({});
 
   useEffect(() => {
     if (userId) {
@@ -550,6 +552,104 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     fetchShiftData();
   };
 
+  const handleQuickApproval = async (shift: Shift) => {
+    if (!shift.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('shifts')
+        .update({ 
+          shift_status: 'confirmed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', shift.id);
+
+      if (error) throw error;
+
+      // シフトデータを再取得
+      fetchShifts();
+      fetchShiftData();
+      
+      // 成功メッセージを表示
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
+      successDiv.textContent = 'シフトを承認しました';
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        if (document.body.contains(successDiv)) {
+          document.body.removeChild(successDiv);
+        }
+      }, 3000);
+    } catch (err) {
+      console.error('シフト承認エラー:', err);
+      setError(err instanceof Error ? err.message : 'シフトの承認に失敗しました');
+    }
+  };
+
+  const handleReportEdit = (report: DailyReport) => {
+    setEditingReport(report.id);
+    setEditedReportData({
+      sales_amount: report.sales_amount,
+      customer_count: report.customer_count,
+      customer_unit_price: report.customer_unit_price,
+      items_sold: report.items_sold,
+      notes: report.notes
+    });
+  };
+
+  const handleReportSave = async (reportId: string) => {
+    if (!editedReportData) return;
+
+    try {
+      const { error } = await supabase
+        .from('daily_reports')
+        .update({
+          sales_amount: editedReportData.sales_amount || 0,
+          customer_count: editedReportData.customer_count || 0,
+          customer_unit_price: editedReportData.customer_unit_price || 0,
+          items_sold: editedReportData.items_sold || 0,
+          notes: editedReportData.notes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reportId);
+
+      if (error) throw error;
+
+      // データを再取得
+      fetchUserReports();
+      fetchUserStats();
+      fetchChartData();
+
+      setEditingReport(null);
+      setEditedReportData({});
+
+      // 成功メッセージを表示
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
+      successDiv.textContent = '日報を更新しました';
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        if (document.body.contains(successDiv)) {
+          document.body.removeChild(successDiv);
+        }
+      }, 3000);
+    } catch (err) {
+      console.error('日報更新エラー:', err);
+      setError(err instanceof Error ? err.message : '日報の更新に失敗しました');
+    }
+  };
+
+  const handleReportCancel = () => {
+    setEditingReport(null);
+    setEditedReportData({});
+  };
+
+  const handleReportFieldChange = (field: keyof DailyReport, value: string | number) => {
+    setEditedReportData(prev => ({ ...prev, [field]: value }));
+  };
+
   const formatCurrency = (amount: number) => {
     return `¥${amount.toLocaleString()}`;
   };
@@ -812,6 +912,25 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
       setIsShiftModalOpen(true);
     };
 
+    const handleCreateNewShift = (dateStr: string) => {
+      // 新規シフト用のダミーオブジェクトを作成
+      const newShift: Shift = {
+        id: '',
+        user_id: userId,
+        shift_date: dateStr,
+        shift_type: 'normal',
+        shift_status: 'adjusting',
+        start_time: null,
+        end_time: null,
+        location_id: null,
+        note: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setSelectedShift(newShift);
+      setIsShiftModalOpen(true);
+    };
+
     return (
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-6">
@@ -892,7 +1011,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                 {dateInfo.isCurrentMonth && (
                   <div className="space-y-1">
                     {/* シフト情報 */}
-                    {shiftInfo?.shiftStatus && (
+                    {shiftInfo?.shiftStatus ? (
                       <div 
                         className={`text-xs px-2 py-1 rounded-md border cursor-pointer hover:opacity-75 transition-opacity ${shiftInfo.shiftStatus.color}`}
                         onClick={() => shiftInfo.shiftStatus?.shift && handleShiftClick(shiftInfo.shiftStatus.shift)}
@@ -900,15 +1019,30 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">{shiftInfo.shiftStatus.status}</span>
-                          {shiftInfo.shiftStatus.shift?.shift_status === 'adjusting' && (
-                            <AlertCircle className="w-3 h-3" />
-                          )}
-                          {shiftInfo.shiftStatus.shift?.shift_status === 'confirmed' && (
-                            <CheckCircle className="w-3 h-3" />
-                          )}
+                          <div className="flex items-center space-x-1">
+                            {shiftInfo.shiftStatus.shift?.shift_status === 'adjusting' && (
+                              <AlertCircle className="w-3 h-3" />
+                            )}
+                            {shiftInfo.shiftStatus.shift?.shift_status === 'confirmed' && (
+                              <CheckCircle className="w-3 h-3" />
+                            )}
+                            <Edit2 className="w-3 h-3 opacity-50" />
+                          </div>
                         </div>
                         <div className="font-mono text-xs mt-0.5">{shiftInfo.shiftStatus.time}</div>
                       </div>
+                    ) : (
+                      /* 新規シフト作成ボタン */
+                      <button
+                        onClick={() => handleCreateNewShift(dateInfo.dateStr)}
+                        className="w-full text-xs px-2 py-2 border-2 border-dashed border-gray-300 rounded-md text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all group"
+                        title="新規シフトを追加"
+                      >
+                        <div className="flex items-center justify-center space-x-1">
+                          <Plus className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                          <span className="font-medium">シフト追加</span>
+                        </div>
+                      </button>
                     )}
                     
                     {/* 打刻記録情報 */}
@@ -925,6 +1059,65 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           })}
         </div>
         
+        {/* 承認待ちシフト一覧 */}
+        {shifts.filter(s => s.shift_status === 'adjusting').length > 0 && (
+          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-yellow-800 mb-3 flex items-center">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              承認待ちシフト ({shifts.filter(s => s.shift_status === 'adjusting').length}件)
+            </h4>
+            <div className="space-y-2">
+              {shifts
+                .filter(s => s.shift_status === 'adjusting')
+                .slice(0, 5)
+                .map(shift => (
+                  <div 
+                    key={shift.id}
+                    className="flex items-center justify-between bg-white rounded-md p-3 border border-yellow-200"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Calendar className="w-4 h-4 text-yellow-600" />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {new Date(shift.shift_date).toLocaleDateString('ja-JP', {
+                            month: 'short',
+                            day: 'numeric',
+                            weekday: 'short'
+                          })}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {shift.start_time && shift.end_time 
+                            ? `${shift.start_time.substring(0, 5)}-${shift.end_time.substring(0, 5)}`
+                            : '時間未設定'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleShiftClick(shift)}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={() => handleQuickApproval(shift)}
+                        className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                      >
+                        承認
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              {shifts.filter(s => s.shift_status === 'adjusting').length > 5 && (
+                <div className="text-xs text-gray-500 text-center pt-2">
+                  他 {shifts.filter(s => s.shift_status === 'adjusting').length - 5} 件...
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 凡例 */}
         <div className="mt-6 space-y-2">
           <h4 className="text-sm font-medium text-gray-700">凡例</h4>
@@ -939,7 +1132,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
-              <span className="text-gray-700">調整中</span>
+              <span className="text-gray-700">調整中（承認待ち）</span>
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2">
@@ -1328,7 +1521,12 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
 
             {/* 最近の日報 */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">最近の日報</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">最近の日報</h3>
+                <div className="text-xs text-gray-500">
+                  クリックして編集
+                </div>
+              </div>
               {dailyReports.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -1349,6 +1547,9 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           販売個数
                         </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          操作
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1357,17 +1558,99 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
                           <td className="px-4 py-2 text-sm text-gray-900">
                             {formatDate(report.report_date)}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
-                            {formatCurrency(report.sales_amount)}
+                          <td className="px-4 py-2 text-sm">
+                            {editingReport === report.id ? (
+                              <input
+                                type="number"
+                                value={editedReportData.sales_amount || 0}
+                                onChange={(e) => handleReportFieldChange('sales_amount', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            ) : (
+                              <span 
+                                className="text-gray-900 cursor-pointer hover:bg-blue-50 px-2 py-1 rounded"
+                                onClick={() => handleReportEdit(report)}
+                              >
+                                {formatCurrency(report.sales_amount)}
+                              </span>
+                            )}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
-                            {report.customer_count}人
+                          <td className="px-4 py-2 text-sm">
+                            {editingReport === report.id ? (
+                              <input
+                                type="number"
+                                value={editedReportData.customer_count || 0}
+                                onChange={(e) => handleReportFieldChange('customer_count', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            ) : (
+                              <span 
+                                className="text-gray-900 cursor-pointer hover:bg-blue-50 px-2 py-1 rounded"
+                                onClick={() => handleReportEdit(report)}
+                              >
+                                {report.customer_count}人
+                              </span>
+                            )}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
-                            {formatCurrency(report.customer_unit_price || 0)}
+                          <td className="px-4 py-2 text-sm">
+                            {editingReport === report.id ? (
+                              <input
+                                type="number"
+                                value={editedReportData.customer_unit_price || 0}
+                                onChange={(e) => handleReportFieldChange('customer_unit_price', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            ) : (
+                              <span 
+                                className="text-gray-900 cursor-pointer hover:bg-blue-50 px-2 py-1 rounded"
+                                onClick={() => handleReportEdit(report)}
+                              >
+                                {formatCurrency(report.customer_unit_price || 0)}
+                              </span>
+                            )}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
-                            {report.items_sold}個
+                          <td className="px-4 py-2 text-sm">
+                            {editingReport === report.id ? (
+                              <input
+                                type="number"
+                                value={editedReportData.items_sold || 0}
+                                onChange={(e) => handleReportFieldChange('items_sold', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            ) : (
+                              <span 
+                                className="text-gray-900 cursor-pointer hover:bg-blue-50 px-2 py-1 rounded"
+                                onClick={() => handleReportEdit(report)}
+                              >
+                                {report.items_sold}個
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm">
+                            {editingReport === report.id ? (
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => handleReportSave(report.id)}
+                                  className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                                >
+                                  保存
+                                </button>
+                                <button
+                                  onClick={handleReportCancel}
+                                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                                >
+                                  キャンセル
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleReportEdit(report)}
+                                className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                title="編集"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
