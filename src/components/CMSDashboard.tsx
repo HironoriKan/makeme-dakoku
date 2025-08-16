@@ -163,21 +163,36 @@ const generateHeatmapData = () => {
       // 売上TOP店舗は高めの活動レベル、低い店舗は低めに設定
       let baseActivity;
       if (store.type === 'high') {
-        baseActivity = 60 + Math.floor(Math.random() * 40); // 60-100%
+        // TOP店舗：40-100%の範囲、たまに0も含む
+        const rand = Math.random();
+        if (rand < 0.05) { // 5%の確率で0（定休日等）
+          baseActivity = 0;
+        } else {
+          baseActivity = 40 + Math.floor(Math.random() * 60); // 40-100%
+        }
       } else {
-        baseActivity = 10 + Math.floor(Math.random() * 40); // 10-50%
+        // 改善対象店舗：0-60%の範囲、0の確率も高め
+        const rand = Math.random();
+        if (rand < 0.15) { // 15%の確率で0（定休日等）
+          baseActivity = 0;
+        } else {
+          baseActivity = Math.floor(Math.random() * 60); // 0-60%
+        }
       }
       
       // 曜日による変動（土日は高め）
-      const dayOfWeek = date.getDay();
-      let dayMultiplier = 1;
-      if (dayOfWeek === 0 || dayOfWeek === 6) { // 日曜日または土曜日
-        dayMultiplier = 1.2;
-      } else if (dayOfWeek === 1) { // 月曜日は低め
-        dayMultiplier = 0.8;
+      if (baseActivity > 0) {
+        const dayOfWeek = date.getDay();
+        let dayMultiplier = 1;
+        if (dayOfWeek === 0 || dayOfWeek === 6) { // 日曜日または土曜日
+          dayMultiplier = 1.2;
+        } else if (dayOfWeek === 1) { // 月曜日は低め
+          dayMultiplier = 0.8;
+        }
+        baseActivity = Math.min(100, Math.floor(baseActivity * dayMultiplier));
       }
       
-      dayData.stores[store.id] = Math.min(100, Math.floor(baseActivity * dayMultiplier));
+      dayData.stores[store.id] = baseActivity;
     });
     
     data.push(dayData);
@@ -547,7 +562,17 @@ const CMSDashboard: React.FC = () => {
     const getIntensity = (value: number) => {
       const max = 100;
       const intensity = value / max;
-      const alpha = Math.max(0.1, intensity);
+      
+      // 10段階の濃淡（0を含む）
+      const step = Math.floor(intensity * 10) / 10;
+      
+      // 0の場合も薄いグレーで表示、それ以外は濃淡を適用
+      if (value === 0) {
+        return `rgba(229, 231, 235, 1)`; // gray-200
+      }
+      
+      // 0.1〜1.0の範囲で10段階の濃淡
+      const alpha = Math.max(0.1, step);
       return `rgba(203, 133, 133, ${alpha})`;
     };
 
@@ -638,15 +663,27 @@ const CMSDashboard: React.FC = () => {
         <div className="flex items-center justify-between mt-4 text-xs text-gray-500">
           <span>Low Sales</span>
           <div className="flex gap-1">
-            {[0, 0.2, 0.4, 0.6, 0.8, 1].map((intensity, index) => (
+            {/* 0の場合のグレー表示 */}
+            <div
+              className="rounded-sm border border-gray-200"
+              style={{ 
+                backgroundColor: `rgba(229, 231, 235, 1)`,
+                width: '12px',
+                height: '12px'
+              }}
+              title="0%"
+            />
+            {/* 1-9段階の濃淡 */}
+            {[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0].map((intensity, index) => (
               <div
                 key={index}
                 className="rounded-sm border border-gray-200"
                 style={{ 
-                  backgroundColor: `rgba(203, 133, 133, ${Math.max(0.1, intensity)})`,
+                  backgroundColor: `rgba(203, 133, 133, ${intensity})`,
                   width: '12px',
                   height: '12px'
                 }}
+                title={`${(intensity * 100).toFixed(0)}%`}
               />
             ))}
           </div>
