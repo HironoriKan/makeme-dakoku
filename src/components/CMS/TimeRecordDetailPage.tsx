@@ -78,6 +78,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [originalRecords, setOriginalRecords] = useState<DailyAttendanceRecord[]>([]);
+  const [editedFields, setEditedFields] = useState<{[date: string]: string[]}>({});
 
   useEffect(() => {
     fetchUserAndRecords();
@@ -553,11 +554,44 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   const handleEditSave = () => {
     if (!editingCell) return;
     
+    // 編集されたフィールドを記録
+    setEditedFields(prev => {
+      const dateFields = prev[editingCell.date] || [];
+      if (!dateFields.includes(editingCell.field)) {
+        return {
+          ...prev,
+          [editingCell.date]: [...dateFields, editingCell.field]
+        };
+      }
+      return prev;
+    });
+    
     setDailyRecords(prev => prev.map(record => {
       if (record.date === editingCell.date) {
+        // 打刻記録の更新処理
+        if (editingCell.field.includes('Record')) {
+          const newRecords = { ...record.records };
+          switch (editingCell.field) {
+            case 'clockInRecord':
+              newRecords.clockIn = editValue;
+              break;
+            case 'clockOutRecord':
+              newRecords.clockOut = editValue;
+              break;
+            case 'breakStartRecord':
+              newRecords.breakStart = editValue;
+              break;
+            case 'breakEndRecord':
+              newRecords.breakEnd = editValue;
+              break;
+          }
+          return { ...record, records: newRecords };
+        }
+        
+        // その他のフィールドの更新処理
         return {
           ...record,
-          [editingCell.field]: editingCell.field.includes('Time') ? 
+          [editingCell.field]: editingCell.field.includes('Time') || editingCell.field.includes('Minutes') ? 
             parseInt(editValue) || 0 : editValue
         };
       }
@@ -573,6 +607,16 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     setEditingCell(null);
     setEditValue('');
   };
+  
+  // 編集済みフィールドかどうかを判定する関数
+  const isFieldEdited = (date: string, field: string) => {
+    return editedFields[date]?.includes(field) || false;
+  };
+
+  // 編集インジケーターの表示
+  const EditIndicator = () => (
+    <span className="inline-block w-2 h-2 bg-blue-500 rounded-full ml-1" title="編集済み" />
+  );
 
   const handleSaveChanges = async () => {
     setSaving(true);
@@ -785,9 +829,6 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                 <th rowSpan={2} className="px-4 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300 align-middle">
                   日付
                 </th>
-                <th rowSpan={2} className="px-3 py-3 text-center text-sm font-medium text-gray-900 border border-gray-300 align-middle">
-                  勤怠パターン
-                </th>
                 
                 {/* シフトの情報 */}
                 <th colSpan={2} className="px-3 py-2 text-center text-sm font-medium text-white bg-blue-600 border border-gray-300">
@@ -848,12 +889,52 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                       </div>
                     </td>
                     
-                    {/* 勤怠パターン */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300">{record.workPattern || '-'}</td>
-                    
                     {/* シフトの情報 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-blue-25">{record.shiftStartTime || '-'}</td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-blue-25">{record.shiftEndTime || '-'}</td>
+                    {/* シフト出勤 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-blue-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'shiftStartTime' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'shiftStartTime', record.shiftStartTime || '')}
+                          className="cursor-pointer hover:bg-blue-100 px-1 py-1 rounded"
+                        >
+                          {record.shiftStartTime || '-'}
+                          {isFieldEdited(record.date, 'shiftStartTime') && <EditIndicator />}
+                        </div>
+                      )}
+                    </td>
+                    
+                    {/* シフト退勤 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-blue-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'shiftEndTime' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'shiftEndTime', record.shiftEndTime || '')}
+                          className="cursor-pointer hover:bg-blue-100 px-1 py-1 rounded"
+                        >
+                          {record.shiftEndTime || '-'}
+                          {isFieldEdited(record.date, 'shiftEndTime') && <EditIndicator />}
+                        </div>
+                      )}
+                    </td>
                     
                     {/* 勤怠管理の情報 */}
                     {/* 出勤 - 編集可能 */}
@@ -874,6 +955,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                           className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
                         >
                           {record.clockIn || '-'}
+                          {isFieldEdited(record.date, 'clockIn') && <EditIndicator />}
                         </div>
                       )}
                     </td>
@@ -896,34 +978,158 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                           className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
                         >
                           {record.clockOut || '-'}
+                          {isFieldEdited(record.date, 'clockOut') && <EditIndicator />}
                         </div>
                       )}
                     </td>
                     
-                    {/* その他の時間項目 - 表示のみ */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
-                      {record.breakTime > 0 ? formatTime(record.breakTime) : '-'}
+                    {/* 休憩時間 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'breakTime' ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          placeholder="分"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'breakTime', record.breakTime?.toString() || '0')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.breakTime > 0 ? formatTime(record.breakTime) : '-'}
+                          {isFieldEdited(record.date, 'breakTime') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
-                      {record.totalWorkTime > 0 ? formatTime(record.totalWorkTime) : '-'}
+                    {/* 拘束時間 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'totalWorkTime' ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          placeholder="分"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'totalWorkTime', record.totalWorkTime?.toString() || '0')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.totalWorkTime > 0 ? formatTime(record.totalWorkTime) : '-'}
+                          {isFieldEdited(record.date, 'totalWorkTime') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
-                      {record.actualWorkTime > 0 ? formatTime(record.actualWorkTime) : '-'}
+                    
+                    {/* 実働時間 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'actualWorkTime' ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          placeholder="分"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'actualWorkTime', record.actualWorkTime?.toString() || '0')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.actualWorkTime > 0 ? formatTime(record.actualWorkTime) : '-'}
+                          {isFieldEdited(record.date, 'actualWorkTime') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
-                      {record.overtimeMinutes > 0 ? (
-                        <span className="text-red-600 font-medium">{formatTime(record.overtimeMinutes)}</span>
-                      ) : '-'}
+                    
+                    {/* 残業時間 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'overtimeMinutes' ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          placeholder="分"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'overtimeMinutes', record.overtimeMinutes?.toString() || '0')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.overtimeMinutes > 0 ? (
+                            <span className="text-red-600 font-medium">{formatTime(record.overtimeMinutes)}</span>
+                          ) : '-'}
+                          {isFieldEdited(record.date, 'overtimeMinutes') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
-                      {record.lateMinutes > 0 ? (
-                        <span className="text-orange-600 font-medium">{formatTime(record.lateMinutes)}</span>
-                      ) : '-'}
+                    
+                    {/* 遅刻時間 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'lateMinutes' ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          placeholder="分"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'lateMinutes', record.lateMinutes?.toString() || '0')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.lateMinutes > 0 ? (
+                            <span className="text-orange-600 font-medium">{formatTime(record.lateMinutes)}</span>
+                          ) : '-'}
+                          {isFieldEdited(record.date, 'lateMinutes') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-green-25">
-                      {record.earlyLeaveMinutes > 0 ? (
-                        <span className="text-orange-600 font-medium">{formatTime(record.earlyLeaveMinutes)}</span>
-                      ) : '-'}
+                    
+                    {/* 早退時間 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-green-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'earlyLeaveMinutes' ? (
+                        <input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          placeholder="分"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'earlyLeaveMinutes', record.earlyLeaveMinutes?.toString() || '0')}
+                          className="cursor-pointer hover:bg-green-100 px-1 py-1 rounded"
+                        >
+                          {record.earlyLeaveMinutes > 0 ? (
+                            <span className="text-orange-600 font-medium">{formatTime(record.earlyLeaveMinutes)}</span>
+                          ) : '-'}
+                          {isFieldEdited(record.date, 'earlyLeaveMinutes') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
                     
                     {/* 稼働ステータス - 編集可能 */}
@@ -948,22 +1154,102 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
                           className={`cursor-pointer hover:bg-green-100 px-1 py-1 rounded text-xs ${getStatusColor(record.workStatus)}`}
                         >
                           {record.workStatus || '未設定'}
+                          {isFieldEdited(record.date, 'workStatus') && <EditIndicator />}
                         </div>
                       )}
                     </td>
                     
                     {/* 打刻時刻の情報 */}
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
-                      {record.records.clockIn || '-'}
+                    {/* 出勤打刻 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-orange-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'clockInRecord' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'clockInRecord', record.records.clockIn || '')}
+                          className="cursor-pointer hover:bg-orange-100 px-1 py-1 rounded"
+                        >
+                          {record.records.clockIn || '-'}
+                          {isFieldEdited(record.date, 'clockInRecord') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
-                      {record.records.clockOut || '-'}
+                    
+                    {/* 退勤打刻 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-orange-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'clockOutRecord' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'clockOutRecord', record.records.clockOut || '')}
+                          className="cursor-pointer hover:bg-orange-100 px-1 py-1 rounded"
+                        >
+                          {record.records.clockOut || '-'}
+                          {isFieldEdited(record.date, 'clockOutRecord') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
-                      {record.records.breakStart || '-'}
+                    
+                    {/* 休憩開始 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-orange-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'breakStartRecord' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'breakStartRecord', record.records.breakStart || '')}
+                          className="cursor-pointer hover:bg-orange-100 px-1 py-1 rounded"
+                        >
+                          {record.records.breakStart || '-'}
+                          {isFieldEdited(record.date, 'breakStartRecord') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-center text-sm border border-gray-300 bg-orange-25">
-                      {record.records.breakEnd || '-'}
+                    
+                    {/* 休憩終了 - 編集可能 */}
+                    <td className="px-1 py-2 text-center text-sm border border-gray-300 bg-orange-25">
+                      {editingCell?.date === record.date && editingCell?.field === 'breakEndRecord' ? (
+                        <input
+                          type="time"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={handleEditSave}
+                          onKeyPress={(e) => e.key === 'Enter' && handleEditSave()}
+                          className="w-full text-xs text-center border-0 bg-transparent focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      ) : (
+                        <div
+                          onClick={() => handleCellEdit(record.date, 'breakEndRecord', record.records.breakEnd || '')}
+                          className="cursor-pointer hover:bg-orange-100 px-1 py-1 rounded"
+                        >
+                          {record.records.breakEnd || '-'}
+                          {isFieldEdited(record.date, 'breakEndRecord') && <EditIndicator />}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
