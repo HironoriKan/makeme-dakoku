@@ -337,7 +337,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     }
   };
 
-  // データ取得（SalesChart.tsxと同じロジック）
+  // データ取得（直接userIdを使用してDB連携）
   const fetchChartData = async () => {
     if (!userId) {
       console.warn('⚠️ fetchChartData: userId が未定義です');
@@ -347,22 +347,30 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
     console.log('🔍 fetchChartData開始:', userId);
     setIsChartLoading(true);
     try {
-      // 一時的なユーザーオブジェクトを作成（LineUser型に合わせる）
-      // user状態がまだ未定義の場合もあるので、安全にアクセス
-      const tempUser = { 
-        userId, 
-        displayName: user?.display_name || `User_${userId.slice(0, 8)}` 
-      };
       const now = new Date();
       const data: ChartDataPoint[] = [];
 
-      console.log('📊 チャートデータ取得開始:', { tempUser, period: selectedPeriod });
+      console.log('📊 チャートデータ取得開始:', { userId, period: selectedPeriod });
 
       if (selectedPeriod === 'day') {
         // 過去31日間のデータを取得
-        const currentMonth = await DailyReportService.getMonthlyReports(tempUser, now.getFullYear(), now.getMonth() + 1);
-        const previousMonth = await DailyReportService.getMonthlyReports(tempUser, now.getFullYear(), now.getMonth());
-        const allReports = [...currentMonth, ...previousMonth];
+        const startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - 30);
+        
+        const { data: reports, error } = await supabase
+          .from('daily_reports')
+          .select('*')
+          .eq('user_id', userId)
+          .gte('report_date', startDate.toISOString().split('T')[0])
+          .lte('report_date', now.toISOString().split('T')[0])
+          .order('report_date', { ascending: true });
+
+        if (error) {
+          console.error('❌ 日次データ取得エラー:', error);
+          throw error;
+        }
+
+        console.log('✅ 日次データ取得成功:', reports?.length, '件');
         
         // 過去31日分のデータを作成
         for (let i = 30; i >= 0; i--) {
@@ -370,7 +378,7 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           date.setDate(date.getDate() - i);
           const dateString = date.toISOString().split('T')[0];
           
-          const dayReport = allReports.find(r => r.report_date === dateString);
+          const dayReport = reports?.find(r => r.report_date === dateString);
           data.push({
             label: date.getDate().toString(),
             value: dayReport?.sales_amount || 0,
@@ -378,22 +386,25 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           });
         }
       } else if (selectedPeriod === 'week') {
-        // 過去3ヶ月分の週単位データを取得（約12-13週間）
-        const weeksToShow = 12; // 3ヶ月分の週数
+        // 過去12週間のデータを取得
+        const weeksToShow = 12;
+        const startDate = new Date(now);
+        startDate.setDate(startDate.getDate() - (weeksToShow * 7));
         
-        // 過去3ヶ月分の全データを取得
-        const allReports: any[] = [];
-        for (let i = 2; i >= 0; i--) {
-          const monthDate = new Date(now);
-          monthDate.setMonth(monthDate.getMonth() - i);
-          
-          const monthReports = await DailyReportService.getMonthlyReports(
-            tempUser, 
-            monthDate.getFullYear(), 
-            monthDate.getMonth() + 1
-          );
-          allReports.push(...monthReports);
+        const { data: reports, error } = await supabase
+          .from('daily_reports')
+          .select('*')
+          .eq('user_id', userId)
+          .gte('report_date', startDate.toISOString().split('T')[0])
+          .lte('report_date', now.toISOString().split('T')[0])
+          .order('report_date', { ascending: true });
+
+        if (error) {
+          console.error('❌ 週次データ取得エラー:', error);
+          throw error;
         }
+
+        console.log('✅ 週次データ取得成功:', reports?.length, '件');
         
         // 週単位でグループ化
         for (let weekIndex = weeksToShow - 1; weekIndex >= 0; weekIndex--) {
@@ -403,12 +414,12 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           weekEnd.setDate(weekStart.getDate() + 6);
           
           // その週の売上を集計
-          const weekSales = allReports
-            .filter(r => {
+          const weekSales = reports
+            ?.filter(r => {
               const reportDate = new Date(r.report_date);
               return reportDate >= weekStart && reportDate <= weekEnd;
             })
-            .reduce((sum, r) => sum + r.sales_amount, 0);
+            .reduce((sum, r) => sum + r.sales_amount, 0) || 0;
 
           data.push({
             label: `${weekStart.getMonth() + 1}/${weekStart.getDate()}`,
@@ -417,18 +428,39 @@ const UserDetailPage: React.FC<UserDetailPageProps> = ({
           });
         }
       } else if (selectedPeriod === 'month') {
-        // 過去12ヶ月（1年）のデータを取得
+        // 過去12ヶ月のデータを取得
+        const monthsToShow = 12;
+        const startDate = new Date(now);
+        startDate.setMonth(startDate.getMonth() - monthsToShow);
+        
+        const { data: reports, error } = await supabase
+          .from('daily_reports')
+          .select('*')
+          .eq('user_id', userId)
+          .gte('report_date', startDate.toISOString().split('T')[0])
+          .lte('report_date', now.toISOString().split('T')[0])
+          .order('report_date', { ascending: true });
+
+        if (error) {
+          console.error('❌ 月次データ取得エラー:', error);
+          throw error;
+        }
+
+        console.log('✅ 月次データ取得成功:', reports?.length, '件');
+        
+        // 月単位でグループ化
         for (let i = 11; i >= 0; i--) {
           const monthDate = new Date(now);
           monthDate.setMonth(monthDate.getMonth() - i);
+          const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+          const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
           
-          const monthReports = await DailyReportService.getMonthlyReports(
-            tempUser, 
-            monthDate.getFullYear(), 
-            monthDate.getMonth() + 1
-          );
-          
-          const monthSales = monthReports.reduce((sum, r) => sum + r.sales_amount, 0);
+          const monthSales = reports
+            ?.filter(r => {
+              const reportDate = new Date(r.report_date);
+              return reportDate >= monthStart && reportDate <= monthEnd;
+            })
+            .reduce((sum, r) => sum + r.sales_amount, 0) || 0;
           
           data.push({
             label: `${monthDate.getFullYear()}/${monthDate.getMonth() + 1}`,
