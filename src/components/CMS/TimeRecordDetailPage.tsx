@@ -669,7 +669,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     };
 
     const handleTimeBlur = () => {
-      if (type === 'time' && editValue && !validateTimeFormat(editValue)) {
+      if (editValue && !validateTimeFormat(editValue)) {
         // 無効な時刻形式の場合は元の値に戻す
         setEditValue(value?.toString() || '');
         return;
@@ -702,21 +702,21 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       return (
         <div className="relative">
           <input
-            type={type === 'time' ? 'text' : type}
+            type="text"
             value={editValue}
-            onChange={type === 'time' ? handleTimeInput : (e) => setEditValue(e.target.value)}
-            onBlur={type === 'time' ? handleTimeBlur : handleEditSave}
-            onKeyPress={(e) => e.key === 'Enter' && (type === 'time' ? handleTimeBlur() : handleEditSave())}
+            onChange={handleTimeInput}
+            onBlur={handleTimeBlur}
+            onKeyPress={(e) => e.key === 'Enter' && handleTimeBlur()}
             className={`w-full h-8 text-xs text-center bg-white border-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200 ${
-              type === 'time' && editValue && !validateTimeFormat(editValue) 
+              editValue && !validateTimeFormat(editValue) 
                 ? 'border-red-400 focus:border-red-500' 
                 : 'border-blue-400 focus:border-blue-500'
             }`}
-            placeholder={type === 'number' ? '分' : type === 'time' ? 'HH:MM' : ''}
-            maxLength={type === 'time' ? 5 : undefined}
+            placeholder="HH:MM"
+            maxLength={5}
             autoFocus
           />
-          {type === 'time' && editValue && !validateTimeFormat(editValue) && (
+          {editValue && !validateTimeFormat(editValue) && (
             <div className="absolute -bottom-5 left-0 text-xs text-red-500">
               HH:MM形式で入力
             </div>
