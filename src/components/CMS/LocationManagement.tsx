@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { LocationService, Location } from '../../services/locationService';
 import AddLocationModal from './AddLocationModal';
@@ -23,7 +24,12 @@ import {
 
 type LocationType = 'makeme' | 'permanent' | 'event';
 
-const LocationManagement: React.FC = () => {
+interface LocationManagementProps {
+  defaultTab?: LocationType;
+}
+
+const LocationManagement: React.FC<LocationManagementProps> = ({ defaultTab }) => {
+  const navigate = useNavigate();
   const [locations, setLocations] = useState<Location[]>([]);
   const [userCounts, setUserCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -32,12 +38,25 @@ const LocationManagement: React.FC = () => {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editedData, setEditedData] = useState<Partial<Location>>({});
-  const [activeTab, setActiveTab] = useState<LocationType>('permanent');
+  const [activeTab, setActiveTab] = useState<LocationType>(defaultTab || 'permanent');
+
+  // タブ変更時の処理（URLも更新）
+  const handleTabChange = (tab: LocationType) => {
+    setActiveTab(tab);
+    navigate(`/admin/location-management/${tab}`, { replace: true });
+  };
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLocations();
   }, []);
+
+  // defaultTabが変更されたときに、activeTabを更新
+  useEffect(() => {
+    if (defaultTab && defaultTab !== activeTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab, activeTab]);
 
   const fetchLocations = async () => {
     setLoading(true);
@@ -283,7 +302,7 @@ const LocationManagement: React.FC = () => {
               return (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleTabChange(tab)}
                   className={`group relative min-w-0 flex-1 overflow-hidden py-4 px-4 text-sm font-medium text-center border-b-2 focus:z-10 transition-colors ${
                     isActive
                       ? 'border-blue-500 text-blue-600'

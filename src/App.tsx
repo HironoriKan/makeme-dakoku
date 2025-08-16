@@ -14,6 +14,7 @@ import AuthCallback from './components/AuthCallback';
 import AdminPage from './pages/AdminPage';
 import { TimeRecordService } from './services/timeRecordService';
 import { LocationService, Location } from './services/locationService';
+import AppRoutes from './routes/AppRoutes';
 
 interface TimeEntry {
   id: string;
@@ -642,10 +643,11 @@ function App() {
           <AdminProvider>
             <RealtimeProvider>
               <Routes>
-                <Route path="/" element={<TimeTrackingApp />} />
-                <Route path="/admin/*" element={<AdminPage />} />
+                <Route path="/employee" element={<TimeTrackingApp />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="/admin/*" element={<AdminPage />} />
+                <Route path="/" element={<Navigate to="/employee" replace />} />
+                <Route path="*" element={<Navigate to="/employee" replace />} />
               </Routes>
             </RealtimeProvider>
           </AdminProvider>
