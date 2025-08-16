@@ -203,12 +203,64 @@ const generateHeatmapData = () => {
 
 const heatmapData = generateHeatmapData();
 
-const recentTransactions = [
-  { id: '001', customer: '田中美咲', amount: 15600, status: 'completed', location: '渋谷店', time: '14:32' },
-  { id: '002', customer: '佐藤花音', amount: 8900, status: 'pending', location: '新宿店', time: '14:15' },
-  { id: '003', customer: '鈴木麻衣', amount: 23400, status: 'completed', location: '池袋店', time: '13:58' },
-  { id: '004', customer: '高橋梨花', amount: 12300, status: 'cancelled', location: '原宿店', time: '13:45' },
-  { id: '005', customer: '山田愛美', amount: 18750, status: 'completed', location: '表参道店', time: '13:22' }
+// 拠点別パフォーマンスデータ（売上高順）
+const storePerformanceData = [
+  { 
+    store: '渋谷店', 
+    sales: 2450000, 
+    unitPrice: 18500, 
+    itemsPerCustomer: 2.8,
+    rank: 1,
+    change: +12.5
+  },
+  { 
+    store: '新宿店', 
+    sales: 2280000, 
+    unitPrice: 16800, 
+    itemsPerCustomer: 2.4,
+    rank: 2,
+    change: +8.2
+  },
+  { 
+    store: '銀座店', 
+    sales: 2150000, 
+    unitPrice: 22300, 
+    itemsPerCustomer: 3.1,
+    rank: 3,
+    change: +15.3
+  },
+  { 
+    store: '池袋店', 
+    sales: 1980000, 
+    unitPrice: 15200, 
+    itemsPerCustomer: 2.2,
+    rank: 4,
+    change: +5.7
+  },
+  { 
+    store: '原宿店', 
+    sales: 1850000, 
+    unitPrice: 19800, 
+    itemsPerCustomer: 2.6,
+    rank: 5,
+    change: +9.4
+  },
+  { 
+    store: '吉祥寺店', 
+    sales: 980000, 
+    unitPrice: 12400, 
+    itemsPerCustomer: 1.8,
+    rank: 6,
+    change: -2.3
+  },
+  { 
+    store: '下北沢店', 
+    sales: 720000, 
+    unitPrice: 11200, 
+    itemsPerCustomer: 1.5,
+    rank: 7,
+    change: -5.8
+  }
 ];
 
 const CMSDashboard: React.FC = () => {
@@ -725,64 +777,125 @@ const CMSDashboard: React.FC = () => {
     );
   };
 
-  // Recent Transaction Table
-  const RecentTransactionTable = () => (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100">
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Recent Transaction</h3>
-            <p className="text-sm text-gray-600">最新の取引履歴</p>
+  // Store Performance Chart (横棒グラフ)
+  const StorePerformanceChart = () => {
+    // 各指標の最大値を取得（正規化用）
+    const maxSales = Math.max(...storePerformanceData.map(d => d.sales));
+    const maxUnitPrice = Math.max(...storePerformanceData.map(d => d.unitPrice));
+    const maxItemsPerCustomer = Math.max(...storePerformanceData.map(d => d.itemsPerCustomer));
+
+    const formatCurrency = (amount: number) => {
+      return new Intl.NumberFormat('ja-JP', {
+        style: 'currency',
+        currency: 'JPY',
+        minimumFractionDigits: 0
+      }).format(amount);
+    };
+
+    const HorizontalBar = ({ value, maxValue, color, width = '100%' }: {
+      value: number;
+      maxValue: number;
+      color: string;
+      width?: string;
+    }) => {
+      const percentage = (value / maxValue) * 100;
+      
+      return (
+        <div className="relative bg-gray-100 rounded-full h-2" style={{ width }}>
+          <div
+            className="h-2 rounded-full transition-all duration-500 ease-out"
+            style={{
+              width: `${percentage}%`,
+              backgroundColor: color
+            }}
+          />
+        </div>
+      );
+    };
+
+    return (
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Store Performance</h3>
+              <p className="text-sm text-gray-600">拠点別パフォーマンス分析</p>
+            </div>
+            <BarChart3 className="w-5 h-5" style={{ color: '#CB8585' }} />
           </div>
-          <MapPin className="w-5 h-5" style={{ color: '#CB8585' }} />
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {storePerformanceData.map((store, index) => (
+            <div key={store.store} className="space-y-3">
+              {/* 拠点名とランク */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-900">{store.store}</span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    #{store.rank}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    store.change > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {store.change > 0 ? '+' : ''}{store.change}%
+                  </span>
+                </div>
+              </div>
+
+              {/* 3つの指標 */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* 売上 */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">売上</span>
+                    <span className="text-xs font-medium text-gray-900">
+                      {formatCurrency(store.sales)}
+                    </span>
+                  </div>
+                  <HorizontalBar 
+                    value={store.sales} 
+                    maxValue={maxSales} 
+                    color="#CB8585"
+                  />
+                </div>
+
+                {/* 顧客単価 */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">顧客単価</span>
+                    <span className="text-xs font-medium text-gray-900">
+                      {formatCurrency(store.unitPrice)}
+                    </span>
+                  </div>
+                  <HorizontalBar 
+                    value={store.unitPrice} 
+                    maxValue={maxUnitPrice} 
+                    color="#E8A87C"
+                  />
+                </div>
+
+                {/* 一人当たり購入数 */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">購入数/人</span>
+                    <span className="text-xs font-medium text-gray-900">
+                      {store.itemsPerCustomer}個
+                    </span>
+                  </div>
+                  <HorizontalBar 
+                    value={store.itemsPerCustomer} 
+                    maxValue={maxItemsPerCustomer} 
+                    color="#60A5FA"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">顧客</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金額</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">拠点</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ステータス</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">時間</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {recentTransactions.map((transaction) => (
-              <tr key={transaction.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{transaction.customer}</div>
-                  <div className="text-xs text-gray-500">ID: {transaction.id}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-bold text-gray-900">{formatCurrency(transaction.amount)}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-600">{transaction.location}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    transaction.status === 'completed' 
-                      ? 'bg-green-100 text-green-800'
-                      : transaction.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {transaction.status === 'completed' ? '完了' : 
-                     transaction.status === 'pending' ? '処理中' : 'キャンセル'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {transaction.time}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
@@ -896,9 +1009,9 @@ const CMSDashboard: React.FC = () => {
             <ActiveUserHeatmap />
           </div>
           
-          {/* Recent Transaction Table */}
+          {/* Store Performance Chart */}
           <div>
-            <RecentTransactionTable />
+            <StorePerformanceChart />
           </div>
         </div>
       </div>
