@@ -14,7 +14,6 @@ import AuthCallback from './components/AuthCallback';
 import AdminPage from './pages/AdminPage';
 import { TimeRecordService } from './services/timeRecordService';
 import { LocationService, Location } from './services/locationService';
-import AppRoutes from './routes/AppRoutes';
 
 interface TimeEntry {
   id: string;

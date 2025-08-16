@@ -43,7 +43,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, children }) =
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Left Sidebar Navigation */}
-      <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col flex-shrink-0">
+      <div className="w-80 bg-white shadow-lg border-r border-gray-200 flex flex-col flex-shrink-0 rounded-2xl mr-4 my-4 ml-4">
         {/* Navigation Header */}
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">メニュー</h2>
@@ -57,11 +57,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, children }) =
               <div key={tab.key}>
                 <Link
                   to={tab.path}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors block ${
+                  className={`w-full text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors block shadow-sm ${
                     activeTab === tab.key
-                      ? 'bg-blue-50 text-blue-700 border-blue-200 border'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'text-white border border-gray-200'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900 bg-white'
                   }`}
+                  style={activeTab === tab.key ? { backgroundColor: '#CB8585' } : {}}
                 >
                   <div className="flex items-center justify-between">
                     <span>{tab.label}</span>
@@ -75,11 +76,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, children }) =
                       <Link
                         key={subTab.key}
                         to={subTab.path}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors block ${
+                        className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors block ${
                           location.pathname === subTab.path
-                            ? 'bg-blue-100 text-blue-700'
+                            ? 'text-white'
                             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                         }`}
+                        style={location.pathname === subTab.path ? { backgroundColor: '#E8A87C' } : {}}
                       >
                         ∟ {subTab.label}
                       </Link>
@@ -97,7 +99,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, children }) =
           {onLogout && (
             <button
               onClick={onLogout}
-              className="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              className="w-full flex items-center justify-center px-4 py-2 text-white text-sm font-medium rounded-2xl shadow-md transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#CB8585' }}
             >
               <LogOut className="w-4 h-4 mr-2" />
               ログアウト
@@ -115,7 +118,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, children }) =
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 max-w-screen-2xl mx-auto">
         {/* Content */}
-        <div className="flex-1 p-4 sm:p-6 lg:p-8">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 bg-white rounded-2xl shadow-md my-4 mr-4 border border-gray-100">
           {children || <Outlet />}
         </div>
       </div>
