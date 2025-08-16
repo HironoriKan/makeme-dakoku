@@ -809,6 +809,95 @@ const CMSDashboard: React.FC = () => {
               width: `${percentage}%`,
               backgroundColor: color
             }}
+          />
+        </div>
+      );
+    };
+
+    return (
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Store Performance</h3>
+              <p className="text-sm text-gray-600">拠点別パフォーマンス分析</p>
+            </div>
+            <BarChart3 className="w-5 h-5" style={{ color: '#CB8585' }} />
+          </div>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {storePerformanceData.map((store, index) => (
+            <div key={store.store} className="space-y-3">
+              {/* 拠点名とランク */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-900">{store.store}</span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    #{store.rank}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    store.change > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {store.change > 0 ? '+' : ''}{store.change}%
+                  </span>
+                </div>
+              </div>
+
+              {/* 3つの指標 */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* 売上 */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">売上</span>
+                    <span className="text-xs font-medium text-gray-900">
+                      {formatCurrency(store.sales)}
+                    </span>
+                  </div>
+                  <HorizontalBar 
+                    value={store.sales} 
+                    maxValue={maxSales} 
+                    color="#CB8585"
+                  />
+                </div>
+
+                {/* 顧客単価 */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">顧客単価</span>
+                    <span className="text-xs font-medium text-gray-900">
+                      {formatCurrency(store.unitPrice)}
+                    </span>
+                  </div>
+                  <HorizontalBar 
+                    value={store.unitPrice} 
+                    maxValue={maxUnitPrice} 
+                    color="#E8A87C"
+                  />
+                </div>
+
+                {/* 一人当たり購入数 */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">購入数/人</span>
+                    <span className="text-xs font-medium text-gray-900">
+                      {store.itemsPerCustomer}個
+                    </span>
+                  </div>
+                  <HorizontalBar 
+                    value={store.itemsPerCustomer} 
+                    maxValue={maxItemsPerCustomer} 
+                    color="#60A5FA"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // Today's Shift Users Component
   const TodayShiftUsers = () => {
     // 本日のシフト入りユーザーのサンプルデータ
@@ -935,94 +1024,6 @@ const CMSDashboard: React.FC = () => {
               出勤済み: {todayShiftUsers.filter(u => u.status === 'checked-in').length}名
             </span>
           </div>
-        </div>
-      </div>
-    );
-  };
-          />
-        </div>
-      );
-    };
-
-    return (
-      <div className="bg-white rounded-2xl shadow-md border border-gray-100">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Store Performance</h3>
-              <p className="text-sm text-gray-600">拠点別パフォーマンス分析</p>
-            </div>
-            <BarChart3 className="w-5 h-5" style={{ color: '#CB8585' }} />
-          </div>
-        </div>
-        
-        <div className="p-6 space-y-6">
-          {storePerformanceData.map((store, index) => (
-            <div key={store.store} className="space-y-3">
-              {/* 拠点名とランク */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-900">{store.store}</span>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                    #{store.rank}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    store.change > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {store.change > 0 ? '+' : ''}{store.change}%
-                  </span>
-                </div>
-              </div>
-
-              {/* 3つの指標 */}
-              <div className="grid grid-cols-3 gap-4">
-                {/* 売上 */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">売上</span>
-                    <span className="text-xs font-medium text-gray-900">
-                      {formatCurrency(store.sales)}
-                    </span>
-                  </div>
-                  <HorizontalBar 
-                    value={store.sales} 
-                    maxValue={maxSales} 
-                    color="#CB8585"
-                  />
-                </div>
-
-                {/* 顧客単価 */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">顧客単価</span>
-                    <span className="text-xs font-medium text-gray-900">
-                      {formatCurrency(store.unitPrice)}
-                    </span>
-                  </div>
-                  <HorizontalBar 
-                    value={store.unitPrice} 
-                    maxValue={maxUnitPrice} 
-                    color="#E8A87C"
-                  />
-                </div>
-
-                {/* 一人当たり購入数 */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">購入数/人</span>
-                    <span className="text-xs font-medium text-gray-900">
-                      {store.itemsPerCustomer}個
-                    </span>
-                  </div>
-                  <HorizontalBar 
-                    value={store.itemsPerCustomer} 
-                    maxValue={maxItemsPerCustomer} 
-                    color="#60A5FA"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     );
