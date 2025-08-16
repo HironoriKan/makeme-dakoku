@@ -27,16 +27,75 @@ import {
   DashboardStats
 } from '../services/dashboardService';
 
-// Mock data for charts
-const transactionData = [
-  { name: '1月', value: 1200000 },
-  { name: '2月', value: 1100000 },
-  { name: '3月', value: 1400000 },
-  { name: '4月', value: 1300000 },
-  { name: '5月', value: 1600000 },
-  { name: '6月', value: 1450000 },
-  { name: '7月', value: 1750000 },
-  { name: '8月', value: 1650000 }
+// Mock data for charts - monthly data
+const monthlyData = [
+  { 
+    name: '1月', 
+    sales: 1200000, 
+    unitPrice: 15600, 
+    purchaseCount: 77 
+  },
+  { 
+    name: '2月', 
+    sales: 1100000, 
+    unitPrice: 14800, 
+    purchaseCount: 74 
+  },
+  { 
+    name: '3月', 
+    sales: 1400000, 
+    unitPrice: 16200, 
+    purchaseCount: 86 
+  },
+  { 
+    name: '4月', 
+    sales: 1300000, 
+    unitPrice: 15900, 
+    purchaseCount: 82 
+  },
+  { 
+    name: '5月', 
+    sales: 1600000, 
+    unitPrice: 17100, 
+    purchaseCount: 94 
+  },
+  { 
+    name: '6月', 
+    sales: 1450000, 
+    unitPrice: 16500, 
+    purchaseCount: 88 
+  },
+  { 
+    name: '7月', 
+    sales: 1750000, 
+    unitPrice: 18200, 
+    purchaseCount: 96 
+  },
+  { 
+    name: '8月', 
+    sales: 1650000, 
+    unitPrice: 17800, 
+    purchaseCount: 93 
+  }
+];
+
+// Weekly data
+const weeklyData = [
+  { name: '第1週', sales: 420000, unitPrice: 17500, purchaseCount: 24 },
+  { name: '第2週', sales: 380000, unitPrice: 16800, purchaseCount: 23 },
+  { name: '第3週', sales: 450000, unitPrice: 18200, purchaseCount: 25 },
+  { name: '第4週', sales: 400000, unitPrice: 17600, purchaseCount: 23 }
+];
+
+// Daily data (last 7 days)
+const dailyData = [
+  { name: '月', sales: 65000, unitPrice: 18100, purchaseCount: 4 },
+  { name: '火', sales: 72000, unitPrice: 17800, purchaseCount: 4 },
+  { name: '水', sales: 58000, unitPrice: 16900, purchaseCount: 3 },
+  { name: '木', sales: 68000, unitPrice: 18500, purchaseCount: 4 },
+  { name: '金', sales: 75000, unitPrice: 19200, purchaseCount: 4 },
+  { name: '土', sales: 82000, unitPrice: 19800, purchaseCount: 4 },
+  { name: '日', sales: 80000, unitPrice: 19400, purchaseCount: 4 }
 ];
 
 const pieData = [
@@ -67,6 +126,8 @@ const CMSDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chartPeriod, setChartPeriod] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
+  const [activeMetric, setActiveMetric] = useState<'sales' | 'unitPrice' | 'purchaseCount'>('sales');
 
   useEffect(() => {
     loadDashboardData();
@@ -137,19 +198,91 @@ const CMSDashboard: React.FC = () => {
     </div>
   );
 
+  // Get chart data based on selected period
+  const getChartData = () => {
+    switch (chartPeriod) {
+      case 'weekly': return weeklyData;
+      case 'daily': return dailyData;
+      default: return monthlyData;
+    }
+  };
+
+  // Get metric label
+  const getMetricLabel = () => {
+    switch (activeMetric) {
+      case 'unitPrice': return '顧客単価';
+      case 'purchaseCount': return '顧客購入数';
+      default: return '売上';
+    }
+  };
+
+  // Get Y-axis formatter
+  const getYAxisFormatter = () => {
+    switch (activeMetric) {
+      case 'unitPrice': return (value: number) => `¥${(value / 1000).toFixed(0)}K`;
+      case 'purchaseCount': return (value: number) => `${value}人`;
+      default: return (value: number) => `¥${(value / 1000000).toFixed(1)}M`;
+    }
+  };
+
   // Transaction Activity Chart
   const TransactionChart = () => (
     <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Transaction Activity</h3>
-          <p className="text-sm text-gray-600">月間売上推移</p>
+          <p className="text-sm text-gray-600">{getMetricLabel()}の推移</p>
         </div>
         <BarChart3 className="w-5 h-5" style={{ color: '#CB8585' }} />
       </div>
+      
+      {/* Period Selector */}
+      <div className="flex space-x-2 mb-4">
+        {[
+          { key: 'monthly', label: '月次' },
+          { key: 'weekly', label: '週次' },
+          { key: 'daily', label: '日次' }
+        ].map((period) => (
+          <button
+            key={period.key}
+            onClick={() => setChartPeriod(period.key as 'monthly' | 'weekly' | 'daily')}
+            className={`px-3 py-1 text-xs rounded-full transition-colors ${
+              chartPeriod === period.key
+                ? 'text-white'
+                : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+            }`}
+            style={chartPeriod === period.key ? { backgroundColor: '#CB8585' } : {}}
+          >
+            {period.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Metric Selector */}
+      <div className="flex space-x-2 mb-6">
+        {[
+          { key: 'sales', label: '売上', color: '#CB8585' },
+          { key: 'unitPrice', label: '顧客単価', color: '#E8A87C' },
+          { key: 'purchaseCount', label: '購入数', color: '#F4E4C1' }
+        ].map((metric) => (
+          <button
+            key={metric.key}
+            onClick={() => setActiveMetric(metric.key as 'sales' | 'unitPrice' | 'purchaseCount')}
+            className={`px-3 py-1 text-xs rounded-full transition-colors border ${
+              activeMetric === metric.key
+                ? 'text-white border-transparent'
+                : 'text-gray-600 bg-white border-gray-200 hover:bg-gray-50'
+            }`}
+            style={activeMetric === metric.key ? { backgroundColor: metric.color } : {}}
+          >
+            {metric.label}
+          </button>
+        ))}
+      </div>
+
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={transactionData}>
+          <LineChart data={getChartData()}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis 
               dataKey="name" 
@@ -161,15 +294,29 @@ const CMSDashboard: React.FC = () => {
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 12, fill: '#666' }}
-              tickFormatter={(value) => `¥${(value / 1000000).toFixed(1)}M`}
+              tickFormatter={getYAxisFormatter()}
             />
             <Line 
               type="monotone" 
-              dataKey="value" 
-              stroke="#CB8585" 
+              dataKey={activeMetric} 
+              stroke={
+                activeMetric === 'sales' ? '#CB8585' :
+                activeMetric === 'unitPrice' ? '#E8A87C' : '#F4E4C1'
+              }
               strokeWidth={3}
-              dot={{ fill: '#CB8585', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: '#CB8585', strokeWidth: 2, fill: '#fff' }}
+              dot={{ 
+                fill: activeMetric === 'sales' ? '#CB8585' :
+                      activeMetric === 'unitPrice' ? '#E8A87C' : '#F4E4C1',
+                strokeWidth: 2, 
+                r: 4 
+              }}
+              activeDot={{ 
+                r: 6, 
+                stroke: activeMetric === 'sales' ? '#CB8585' :
+                        activeMetric === 'unitPrice' ? '#E8A87C' : '#F4E4C1',
+                strokeWidth: 2, 
+                fill: '#fff' 
+              }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -393,27 +540,44 @@ const CMSDashboard: React.FC = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatsCard
-            title="Revenue"
-            value={formatCurrency(stats.currentMonthSales.totalSales)}
-            change={stats.monthOverMonthComparison.salesGrowth}
-            icon={<DollarSign className="w-6 h-6" />}
-            color="#CB8585"
-          />
-          <StatsCard
-            title="Avg Order"
-            value={formatCurrency(stats.currentMonthSales.customerUnitPrice)}
-            change={stats.monthOverMonthComparison.unitPriceGrowth}
-            icon={<ShoppingCart className="w-6 h-6" />}
-            color="#E8A87C"
-          />
-          <StatsCard
-            title="Total Order"
-            value={formatNumber(stats.currentMonthSales.customerPurchaseCount)}
-            change={stats.monthOverMonthComparison.purchaseCountGrowth}
-            icon={<Users className="w-6 h-6" />}
-            color="#F4E4C1"
-          />
+          <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 flex flex-col justify-between relative">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-500 mb-1">ユーザー数</p>
+                <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalActiveUsers)}</p>
+                <p className="text-xs text-gray-400 mt-1">2024年8月現在</p>
+              </div>
+              <div className="absolute top-4 right-4">
+                <TrendingUp className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 flex flex-col justify-between relative">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-500 mb-1">有効常設店数</p>
+                <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalActivePermanentStores)}</p>
+                <p className="text-xs text-gray-400 mt-1">2024年8月現在</p>
+              </div>
+              <div className="absolute top-4 right-4">
+                <TrendingUp className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100 flex flex-col justify-between relative">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-500 mb-1">有効イベント数</p>
+                <p className="text-2xl font-bold text-gray-900">{formatNumber(stats.totalActiveEvents)}</p>
+                <p className="text-xs text-gray-400 mt-1">2024年8月現在</p>
+              </div>
+              <div className="absolute top-4 right-4">
+                <TrendingUp className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Main Content Grid */}
