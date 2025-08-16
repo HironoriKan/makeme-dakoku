@@ -27,8 +27,6 @@ import {
   DashboardService, 
   DashboardStats
 } from '../services/dashboardService';
-import { SampleDataCleanup } from '../scripts/cleanupSampleData';
-import { supabase } from '../lib/supabase';
 
 // Mock data for charts - monthly data
 const monthlyData = [
@@ -131,15 +129,64 @@ const pieData = [
   { name: '保留', value: 7, color: '#F4E4C1' }
 ];
 
-const heatmapData = [
-  { day: '月', hours: [0, 2, 5, 8, 12, 15, 18, 22, 25, 28, 30, 32, 35, 38, 40, 42, 45, 48, 50, 52, 48, 45, 40, 35] },
-  { day: '火', hours: [2, 4, 6, 10, 15, 18, 22, 28, 32, 38, 42, 45, 48, 52, 55, 58, 60, 58, 55, 50, 45, 40, 35, 30] },
-  { day: '水', hours: [1, 3, 7, 12, 18, 22, 28, 35, 40, 45, 50, 55, 60, 65, 68, 70, 68, 65, 60, 55, 50, 45, 38, 32] },
-  { day: '木', hours: [3, 5, 8, 15, 20, 25, 32, 38, 45, 52, 58, 62, 65, 70, 75, 78, 75, 70, 65, 58, 52, 45, 38, 30] },
-  { day: '金', hours: [5, 8, 12, 18, 25, 32, 40, 48, 55, 62, 68, 72, 75, 80, 85, 88, 85, 80, 75, 68, 60, 52, 45, 35] },
-  { day: '土', hours: [8, 12, 18, 25, 35, 45, 55, 65, 72, 78, 82, 85, 88, 90, 92, 90, 88, 85, 80, 75, 68, 60, 50, 40] },
-  { day: '日', hours: [6, 10, 15, 22, 30, 38, 48, 58, 65, 70, 75, 78, 80, 82, 80, 78, 75, 70, 65, 58, 50, 42, 35, 28] }
+// 拠点別売上データ（常設店のみ）
+const storeData = [
+  { id: 'shibuya', name: '渋谷店', type: 'high', rank: 1 },
+  { id: 'shinjuku', name: '新宿店', type: 'high', rank: 2 },
+  { id: 'ginza', name: '銀座店', type: 'high', rank: 3 },
+  { id: 'ikebukuro', name: '池袋店', type: 'high', rank: 4 },
+  { id: 'harajuku', name: '原宿店', type: 'high', rank: 5 },
+  { id: 'kichijoji', name: '吉祥寺店', type: 'low', rank: 6 },
+  { id: 'shimokita', name: '下北沢店', type: 'low', rank: 7 }
 ];
+
+// 日次ベースのヒートマップデータ（84日分 = 12週、拠点別）
+const generateHeatmapData = () => {
+  const data = [];
+  const today = new Date();
+  
+  // 過去84日分のデータを生成
+  for (let i = 83; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    
+    const dayData = {
+      date: date,
+      day: date.getDate(),
+      month: date.getMonth() + 1,
+      weekIndex: Math.floor((83 - i) / 7),
+      stores: {}
+    };
+    
+    // 各拠点の売上活動レベルを生成
+    storeData.forEach(store => {
+      // 売上TOP店舗は高めの活動レベル、低い店舗は低めに設定
+      let baseActivity;
+      if (store.type === 'high') {
+        baseActivity = 60 + Math.floor(Math.random() * 40); // 60-100%
+      } else {
+        baseActivity = 10 + Math.floor(Math.random() * 40); // 10-50%
+      }
+      
+      // 曜日による変動（土日は高め）
+      const dayOfWeek = date.getDay();
+      let dayMultiplier = 1;
+      if (dayOfWeek === 0 || dayOfWeek === 6) { // 日曜日または土曜日
+        dayMultiplier = 1.2;
+      } else if (dayOfWeek === 1) { // 月曜日は低め
+        dayMultiplier = 0.8;
+      }
+      
+      dayData.stores[store.id] = Math.min(100, Math.floor(baseActivity * dayMultiplier));
+    });
+    
+    data.push(dayData);
+  }
+  
+  return data;
+};
+
+const heatmapData = generateHeatmapData();
 
 const recentTransactions = [
   { id: '001', customer: '田中美咲', amount: 15600, status: 'completed', location: '渋谷店', time: '14:32' },
@@ -157,15 +204,11 @@ const CMSDashboard: React.FC = () => {
   const [activeMetric, setActiveMetric] = useState<'sales' | 'unitPrice' | 'purchaseCount'>('sales');
   const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
-  const [isCleanupRunning, setIsCleanupRunning] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
     loadTimeSeriesData();
     
-    // SampleDataCleanupとsupabaseをwindowオブジェクトにexpose
-    (window as any).SampleDataCleanup = SampleDataCleanup;
-    (window as any).supabase = supabase;
   }, []);
 
   useEffect(() => {
@@ -208,31 +251,6 @@ const CMSDashboard: React.FC = () => {
     }
   };
 
-  // サンプルデータクリーンアップの実行
-  const handleCleanupSampleData = async () => {
-    if (!confirm('ユーザーID#5以降のサンプルデータを削除します。この操作は元に戻せません。実行しますか？')) {
-      return;
-    }
-
-    try {
-      setIsCleanupRunning(true);
-      console.log('サンプルデータクリーンアップを開始...');
-      
-      await SampleDataCleanup.executeFullCleanup();
-      
-      alert('✅ サンプルデータの削除が完了しました。ページを更新してください。');
-      
-      // ダッシュボードデータを再読み込み
-      await loadDashboardData();
-      await loadTimeSeriesData();
-      
-    } catch (error) {
-      console.error('クリーンアップエラー:', error);
-      alert('❌ データ削除中にエラーが発生しました。詳細はコンソールを確認してください。');
-    } finally {
-      setIsCleanupRunning(false);
-    }
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
@@ -346,7 +364,7 @@ const CMSDashboard: React.FC = () => {
         {[
           { key: 'sales', label: '売上', color: '#CB8585' },
           { key: 'unitPrice', label: '顧客単価', color: '#E8A87C' },
-          { key: 'purchaseCount', label: '一人当たり購入数', color: '#8B5A87' }
+          { key: 'purchaseCount', label: '一人当たり購入数', color: '#60A5FA' }
         ].map((metric) => (
           <button
             key={metric.key}
@@ -395,26 +413,28 @@ const CMSDashboard: React.FC = () => {
                 dataKey={activeMetric} 
                 stroke={
                   activeMetric === 'sales' ? '#CB8585' :
-                  activeMetric === 'unitPrice' ? '#E8A87C' : '#8B5A87'
+                  activeMetric === 'unitPrice' ? '#E8A87C' : '#60A5FA'
                 }
                 strokeWidth={3}
                 dot={{ 
                   fill: activeMetric === 'sales' ? '#CB8585' :
-                        activeMetric === 'unitPrice' ? '#E8A87C' : '#8B5A87',
+                        activeMetric === 'unitPrice' ? '#E8A87C' : '#60A5FA',
                   strokeWidth: 2, 
                   r: 4 
                 }}
                 activeDot={{ 
                   r: 6, 
                   stroke: activeMetric === 'sales' ? '#CB8585' :
-                          activeMetric === 'unitPrice' ? '#E8A87C' : '#8B5A87',
+                          activeMetric === 'unitPrice' ? '#E8A87C' : '#60A5FA',
                   strokeWidth: 2, 
                   fill: '#fff' 
                 }}
                 label={{ 
                   position: 'top',
-                  fill: '#666',
-                  fontSize: 10,
+                  fill: '#333',
+                  fontSize: 13,
+                  fontWeight: '600',
+                  offset: 10,
                   formatter: (value: number) => {
                     if (activeMetric === 'sales') return `¥${(value / 1000).toFixed(0)}K`;
                     if (activeMetric === 'unitPrice') return `¥${(value / 1000).toFixed(0)}K`;
@@ -446,23 +466,23 @@ const CMSDashboard: React.FC = () => {
     const attendanceColor = getAttendanceColor(attendanceRate);
 
     return (
-      <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-2xl shadow-md p-8 border border-gray-100 h-full">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Attendance Rate</h3>
             <p className="text-sm text-gray-600">今月のシフト出勤率</p>
           </div>
-          <UserCheck className="w-5 h-5" style={{ color: '#CB8585' }} />
+          <UserCheck className="w-6 h-6" style={{ color: '#CB8585' }} />
         </div>
-        <div className="flex items-center justify-center">
-          <div className="relative w-32 h-32">
-            <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
+        <div className="flex items-center justify-center mb-6">
+          <div className="relative w-40 h-40">
+            <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 100 100">
               <circle
                 cx="50"
                 cy="50"
                 r="45"
                 stroke="#f3f4f6"
-                strokeWidth="8"
+                strokeWidth="10"
                 fill="none"
               />
               <circle
@@ -470,7 +490,7 @@ const CMSDashboard: React.FC = () => {
                 cy="50"
                 r="45"
                 stroke={attendanceColor}
-                strokeWidth="8"
+                strokeWidth="10"
                 fill="none"
                 strokeLinecap="round"
                 strokeDasharray={strokeDasharray}
@@ -480,37 +500,37 @@ const CMSDashboard: React.FC = () => {
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{attendanceRate.toFixed(1)}%</div>
-                <div className="text-xs text-gray-500">出勤率</div>
+                <div className="text-3xl font-bold text-gray-900">{attendanceRate.toFixed(1)}%</div>
+                <div className="text-sm text-gray-500">出勤率</div>
               </div>
             </div>
           </div>
         </div>
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
+        <div className="mt-6 space-y-4">
+          <div className="flex items-center justify-between text-base">
             <div className="flex items-center">
               <div 
-                className="w-3 h-3 rounded-full mr-2"
+                className="w-4 h-4 rounded-full mr-3"
                 style={{ backgroundColor: '#10B981' }}
               />
               <span className="text-gray-600">出勤</span>
             </div>
             <span className="font-medium text-gray-900">{stats?.attendanceRate?.totalActualAttendance || 0}回</span>
           </div>
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-base">
             <div className="flex items-center">
               <div 
-                className="w-3 h-3 rounded-full mr-2"
+                className="w-4 h-4 rounded-full mr-3"
                 style={{ backgroundColor: '#EF4444' }}
               />
               <span className="text-gray-600">欠勤</span>
             </div>
             <span className="font-medium text-gray-900">{stats?.attendanceRate?.absenteeCount || 0}回</span>
           </div>
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-base">
             <div className="flex items-center">
               <div 
-                className="w-3 h-3 rounded-full mr-2"
+                className="w-4 h-4 rounded-full mr-3"
                 style={{ backgroundColor: '#6B7280' }}
               />
               <span className="text-gray-600">予定シフト</span>
@@ -531,36 +551,114 @@ const CMSDashboard: React.FC = () => {
       return `rgba(203, 133, 133, ${alpha})`;
     };
 
+    // 週次のラベルを生成
+    const getWeekLabels = () => {
+      const labels = [];
+      const startDate = new Date(heatmapData[0]?.date);
+      
+      for (let week = 0; week < 12; week++) {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(startDate.getDate() + (week * 7));
+        labels.push(`${weekStart.getMonth() + 1}/${weekStart.getDate()}`);
+      }
+      return labels;
+    };
+
+    // データを週ごとに分割
+    const weeklyData = [];
+    for (let week = 0; week < 12; week++) {
+      const weekData = heatmapData.slice(week * 7, (week + 1) * 7);
+      weeklyData.push(weekData);
+    }
+
+    const weekLabels = getWeekLabels();
+
     return (
       <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Active User Heatmap</h3>
-            <p className="text-sm text-gray-600">時間帯別アクティブユーザー数</p>
+            <h3 className="text-lg font-semibold text-gray-900">Store Sales Heatmap</h3>
+            <p className="text-sm text-gray-600">拠点別日次売上活動</p>
           </div>
-          <Clock className="w-5 h-5" style={{ color: '#CB8585' }} />
+          <MapPin className="w-5 h-5" style={{ color: '#CB8585' }} />
         </div>
-        <div className="space-y-2">
-          {heatmapData.map((dayData, dayIndex) => (
-            <div key={dayIndex} className="flex items-center space-x-1">
-              <div className="w-6 text-xs font-medium text-gray-600">{dayData.day}</div>
-              <div className="flex space-x-1">
-                {dayData.hours.map((value, hourIndex) => (
-                  <div
-                    key={hourIndex}
-                    className="w-3 h-6 rounded-sm border border-gray-100"
-                    style={{ backgroundColor: getIntensity(value) }}
-                    title={`${dayData.day}曜日 ${hourIndex}:00 - ${value}人`}
-                  />
-                ))}
-              </div>
+        
+        {/* 週次ラベル */}
+        <div className="flex mb-2">
+          <div className="w-20"></div> {/* 拠点ラベル用のスペース */}
+          {weekLabels.map((label, index) => (
+            <div key={index} className="flex-1 text-xs text-gray-500 text-center">
+              {label}
             </div>
           ))}
         </div>
+
+        {/* ヒートマップグリッド */}
+        <div className="flex">
+          {/* 拠点ラベル */}
+          <div className="w-20 flex flex-col justify-around text-xs text-gray-600 mr-2">
+            {storeData.map((store, index) => (
+              <div key={store.id} className="h-3 flex items-center">
+                <span className={`text-right ${store.type === 'high' ? 'font-medium' : ''}`}>
+                  {store.name}
+                </span>
+              </div>
+            ))}
+          </div>
+          
+          {/* グリッド */}
+          <div className="flex flex-col gap-1">
+            {storeData.map((store) => (
+              <div key={store.id} className="flex gap-1">
+                {weeklyData.map((week, weekIndex) => {
+                  // その週の7日間の平均売上活動を計算
+                  const weekActivity = week.reduce((sum, day) => {
+                    return sum + (day.stores[store.id] || 0);
+                  }, 0) / 7;
+                  
+                  return (
+                    <div
+                      key={weekIndex}
+                      className="rounded-sm border border-gray-200"
+                      style={{ 
+                        backgroundColor: getIntensity(weekActivity),
+                        width: '12px',
+                        height: '12px'
+                      }}
+                      title={`${store.name} - 週平均売上活動: ${weekActivity.toFixed(1)}%`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 凡例 */}
         <div className="flex items-center justify-between mt-4 text-xs text-gray-500">
-          <span>0:00</span>
-          <span>12:00</span>
-          <span>23:00</span>
+          <span>Low Sales</span>
+          <div className="flex gap-1">
+            {[0, 0.2, 0.4, 0.6, 0.8, 1].map((intensity, index) => (
+              <div
+                key={index}
+                className="rounded-sm border border-gray-200"
+                style={{ 
+                  backgroundColor: `rgba(203, 133, 133, ${Math.max(0.1, intensity)})`,
+                  width: '12px',
+                  height: '12px'
+                }}
+              />
+            ))}
+          </div>
+          <span>High Sales</span>
+        </div>
+        
+        {/* 拠点説明 */}
+        <div className="mt-3 text-xs text-gray-500">
+          <div className="flex items-center justify-between">
+            <span>🏆 売上TOP5: 渋谷・新宿・銀座・池袋・原宿</span>
+            <span>📉 改善対象: 吉祥寺・下北沢</span>
+          </div>
         </div>
       </div>
     );
@@ -672,27 +770,6 @@ const CMSDashboard: React.FC = () => {
               <p className="text-gray-600 mt-2">売上分析とパフォーマンス指標の概要</p>
             </div>
             
-            {/* 開発用: サンプルデータクリーンアップボタン */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleCleanupSampleData}
-                disabled={isCleanupRunning}
-                className={`px-4 py-2 text-white text-sm font-medium rounded-2xl shadow-md transition-opacity ${
-                  isCleanupRunning
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-red-600 hover:opacity-90'
-                }`}
-              >
-                {isCleanupRunning ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    削除中...
-                  </div>
-                ) : (
-                  '🧹 サンプルデータ削除'
-                )}
-              </button>
-            </div>
           </div>
         </div>
 
