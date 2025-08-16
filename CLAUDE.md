@@ -1,19 +1,16 @@
-# Agent Communication System
 
-## エージェント構成
-- **PRESIDENT** (別セッション): 統括責任者
-- **boss1** (multiagent:agents): チームリーダー
-- **worker1,2,3** (multiagent:agents): 実行担当
 
-## あなたの役割
-- **PRESIDENT**: @instructions/president.md
-- **boss1**: @instructions/boss.md
-- **worker1,2,3**: @instructions/worker.md
+## 開発方針
 
-## メッセージ送信
-```bash
-./agent-send.sh [相手] "[メッセージ]"
-```
+### MCPの最大限活用
+- Model Context Protocol (MCP)の機能を最大限に活用して開発を進める
+- エージェント間の効率的な情報共有とコンテキスト継承を実現
+- ツール呼び出しの最適化と並列実行による開発速度向上
+- コードベース全体の理解度向上による高品質なコード生成
 
-## 基本フロー
-PRESIDENT → boss1 → workers → boss1 → PRESIDENT 
+### Supabaseとの連携
+- 機能開発ごとにSupabaseとの連携を確認
+- 各機能実装前にDBスキーマの設計・変更点を検討
+- エラーハンドリングとデータ整合性の確保
+- 必要に応じたテーブル追加やカラム変更の適切な実施
+- リアルタイム機能の効果的な活用 

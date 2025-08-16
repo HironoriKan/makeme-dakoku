@@ -9,7 +9,8 @@ import {
   BarChart3,
   Activity,
   Clock,
-  MapPin
+  MapPin,
+  UserCheck
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -26,6 +27,8 @@ import {
   DashboardService, 
   DashboardStats
 } from '../services/dashboardService';
+import { SampleDataCleanup } from '../scripts/cleanupSampleData';
+import { supabase } from '../lib/supabase';
 
 // Mock data for charts - monthly data
 const monthlyData = [
@@ -154,10 +157,15 @@ const CMSDashboard: React.FC = () => {
   const [activeMetric, setActiveMetric] = useState<'sales' | 'unitPrice' | 'purchaseCount'>('sales');
   const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
+  const [isCleanupRunning, setIsCleanupRunning] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
     loadTimeSeriesData();
+    
+    // SampleDataCleanupとsupabaseをwindowオブジェクトにexpose
+    (window as any).SampleDataCleanup = SampleDataCleanup;
+    (window as any).supabase = supabase;
   }, []);
 
   useEffect(() => {
@@ -197,6 +205,32 @@ const CMSDashboard: React.FC = () => {
       console.error('時系列データの取得に失敗:', err);
     } finally {
       setIsChartLoading(false);
+    }
+  };
+
+  // サンプルデータクリーンアップの実行
+  const handleCleanupSampleData = async () => {
+    if (!confirm('ユーザーID#5以降のサンプルデータを削除します。この操作は元に戻せません。実行しますか？')) {
+      return;
+    }
+
+    try {
+      setIsCleanupRunning(true);
+      console.log('サンプルデータクリーンアップを開始...');
+      
+      await SampleDataCleanup.executeFullCleanup();
+      
+      alert('✅ サンプルデータの削除が完了しました。ページを更新してください。');
+      
+      // ダッシュボードデータを再読み込み
+      await loadDashboardData();
+      await loadTimeSeriesData();
+      
+    } catch (error) {
+      console.error('クリーンアップエラー:', error);
+      alert('❌ データ削除中にエラーが発生しました。詳細はコンソールを確認してください。');
+    } finally {
+      setIsCleanupRunning(false);
     }
   };
 
@@ -395,21 +429,30 @@ const CMSDashboard: React.FC = () => {
     </div>
   );
 
-  // Sale Performance Card
-  const SalePerformanceCard = () => {
-    const performance = 78; // パーセンテージ
+  // Attendance Performance Card
+  const AttendancePerformanceCard = () => {
+    const attendanceRate = stats?.attendanceRate?.currentMonth || 0;
     const circumference = 2 * Math.PI * 45; // 半径45の円周
     const strokeDasharray = circumference;
-    const strokeDashoffset = circumference - (performance / 100) * circumference;
+    const strokeDashoffset = circumference - (attendanceRate / 100) * circumference;
+
+    // 出勤率に基づく色分け
+    const getAttendanceColor = (rate: number) => {
+      if (rate >= 95) return '#10B981'; // 緑色（優秀）
+      if (rate >= 85) return '#F59E0B'; // 黄色（普通）
+      return '#EF4444'; // 赤色（要改善）
+    };
+
+    const attendanceColor = getAttendanceColor(attendanceRate);
 
     return (
       <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Sale Performance</h3>
-            <p className="text-sm text-gray-600">今月の目標達成率</p>
+            <h3 className="text-lg font-semibold text-gray-900">Attendance Rate</h3>
+            <p className="text-sm text-gray-600">今月のシフト出勤率</p>
           </div>
-          <Activity className="w-5 h-5" style={{ color: '#CB8585' }} />
+          <UserCheck className="w-5 h-5" style={{ color: '#CB8585' }} />
         </div>
         <div className="flex items-center justify-center">
           <div className="relative w-32 h-32">
@@ -426,7 +469,7 @@ const CMSDashboard: React.FC = () => {
                 cx="50"
                 cy="50"
                 r="45"
-                stroke="#CB8585"
+                stroke={attendanceColor}
                 strokeWidth="8"
                 fill="none"
                 strokeLinecap="round"
@@ -437,25 +480,43 @@ const CMSDashboard: React.FC = () => {
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{performance}%</div>
-                <div className="text-xs text-gray-500">達成率</div>
+                <div className="text-2xl font-bold text-gray-900">{attendanceRate.toFixed(1)}%</div>
+                <div className="text-xs text-gray-500">出勤率</div>
               </div>
             </div>
           </div>
         </div>
         <div className="mt-4 space-y-2">
-          {pieData.map((item, index) => (
-            <div key={index} className="flex items-center justify-between text-sm">
-              <div className="flex items-center">
-                <div 
-                  className="w-3 h-3 rounded-full mr-2"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="text-gray-600">{item.name}</span>
-              </div>
-              <span className="font-medium text-gray-900">{item.value}%</span>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center">
+              <div 
+                className="w-3 h-3 rounded-full mr-2"
+                style={{ backgroundColor: '#10B981' }}
+              />
+              <span className="text-gray-600">出勤</span>
             </div>
-          ))}
+            <span className="font-medium text-gray-900">{stats?.attendanceRate?.totalActualAttendance || 0}回</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center">
+              <div 
+                className="w-3 h-3 rounded-full mr-2"
+                style={{ backgroundColor: '#EF4444' }}
+              />
+              <span className="text-gray-600">欠勤</span>
+            </div>
+            <span className="font-medium text-gray-900">{stats?.attendanceRate?.absenteeCount || 0}回</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center">
+              <div 
+                className="w-3 h-3 rounded-full mr-2"
+                style={{ backgroundColor: '#6B7280' }}
+              />
+              <span className="text-gray-600">予定シフト</span>
+            </div>
+            <span className="font-medium text-gray-900">{stats?.attendanceRate?.totalScheduledShifts || 0}回</span>
+          </div>
         </div>
       </div>
     );
@@ -605,8 +666,34 @@ const CMSDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Sales Dashboard</h1>
-          <p className="text-gray-600 mt-2">売上分析とパフォーマンス指標の概要</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Sales Dashboard</h1>
+              <p className="text-gray-600 mt-2">売上分析とパフォーマンス指標の概要</p>
+            </div>
+            
+            {/* 開発用: サンプルデータクリーンアップボタン */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleCleanupSampleData}
+                disabled={isCleanupRunning}
+                className={`px-4 py-2 text-white text-sm font-medium rounded-2xl shadow-md transition-opacity ${
+                  isCleanupRunning
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-red-600 hover:opacity-90'
+                }`}
+              >
+                {isCleanupRunning ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    削除中...
+                  </div>
+                ) : (
+                  '🧹 サンプルデータ削除'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -658,9 +745,9 @@ const CMSDashboard: React.FC = () => {
             <TransactionChart />
           </div>
           
-          {/* Sale Performance Card */}
+          {/* Attendance Performance Card */}
           <div>
-            <SalePerformanceCard />
+            <AttendancePerformanceCard />
           </div>
         </div>
 

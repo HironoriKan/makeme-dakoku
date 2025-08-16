@@ -18,6 +18,14 @@ export interface DashboardStats {
   monthlyActivePermanentStores: number;
   monthlyActiveEvents: number;
   
+  // 出勤率データ
+  attendanceRate: {
+    currentMonth: number; // 今月の出勤率（パーセンテージ）
+    totalScheduledShifts: number; // 予定シフト数
+    totalActualAttendance: number; // 実際の出勤数
+    absenteeCount: number; // 欠勤数
+  };
+  
   // 売上データ（前月・今月）
   lastMonthSales: {
     totalSales: number;
@@ -217,6 +225,83 @@ export class DashboardService {
     return activeLocations.size;
   }
 
+  // 今月の出勤率を計算（シフト予定に対する実際の出勤率）
+  static async getMonthlyAttendanceRate(year: number, month: number) {
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+    try {
+      // 今月のシフト予定を取得（off以外のシフト）
+      const { data: scheduledShifts, error: shiftsError } = await supabase
+        .from('shifts')
+        .select('id, user_id, shift_date, shift_type')
+        .gte('shift_date', startDate)
+        .lte('shift_date', endDate)
+        .neq('shift_type', 'off');
+
+      if (shiftsError) throw new Error(`シフトデータ取得エラー: ${shiftsError.message}`);
+
+      // 実際の出勤記録を取得（clock_inがあるかどうかで判定）
+      const { data: timeRecords, error: timeError } = await supabase
+        .from('time_records')
+        .select('user_id, recorded_at, record_type')
+        .gte('recorded_at', startDate + 'T00:00:00Z')
+        .lte('recorded_at', endDate + 'T23:59:59Z')
+        .eq('record_type', 'clock_in');
+
+      if (timeError) throw new Error(`打刻データ取得エラー: ${timeError.message}`);
+
+      const totalScheduledShifts = scheduledShifts?.length || 0;
+      
+      if (totalScheduledShifts === 0) {
+        return {
+          currentMonth: 100, // シフトがない場合は100%
+          totalScheduledShifts: 0,
+          totalActualAttendance: 0,
+          absenteeCount: 0
+        };
+      }
+
+      // シフト予定日と実際の出勤日をマッピング
+      const scheduledShiftMap = new Map<string, boolean>(); // key: "userId-date", value: attended
+      scheduledShifts?.forEach(shift => {
+        const key = `${shift.user_id}-${shift.shift_date}`;
+        scheduledShiftMap.set(key, false); // 初期値は未出勤
+      });
+
+      // 実際の出勤記録をマーク
+      timeRecords?.forEach(record => {
+        const recordDate = record.recorded_at.split('T')[0]; // YYYY-MM-DD部分を取得
+        const key = `${record.user_id}-${recordDate}`;
+        if (scheduledShiftMap.has(key)) {
+          scheduledShiftMap.set(key, true); // 出勤済みとマーク
+        }
+      });
+
+      // 出勤率を計算
+      const actualAttendance = Array.from(scheduledShiftMap.values()).filter(attended => attended).length;
+      const absenteeCount = totalScheduledShifts - actualAttendance;
+      const attendanceRate = (actualAttendance / totalScheduledShifts) * 100;
+
+      return {
+        currentMonth: Math.round(attendanceRate * 10) / 10, // 小数点第1位まで
+        totalScheduledShifts,
+        totalActualAttendance: actualAttendance,
+        absenteeCount
+      };
+
+    } catch (error) {
+      console.error('出勤率計算エラー:', error);
+      // エラー時はデフォルト値を返す
+      return {
+        currentMonth: 0,
+        totalScheduledShifts: 0,
+        totalActualAttendance: 0,
+        absenteeCount: 0
+      };
+    }
+  }
+
   // 月間売上データを取得（スタッフ日報データから算出）
   static async getMonthlySalesData(year: number, month: number) {
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
@@ -301,6 +386,7 @@ export class DashboardService {
         monthlyActiveUsers,
         monthlyActivePermanentStores,
         monthlyActiveEvents,
+        attendanceRate,
         currentMonthSales,
         lastMonthSales
       ] = await Promise.all([
@@ -311,6 +397,7 @@ export class DashboardService {
         this.getMonthlyActiveUsers(),
         this.getMonthlyActivePermanentStores(),
         this.getMonthlyActiveEvents(),
+        this.getMonthlyAttendanceRate(currentYear, currentMonth),
         this.getMonthlySalesData(currentYear, currentMonth),
         this.getMonthlySalesData(lastMonthYear, lastMonth)
       ]);
@@ -339,6 +426,7 @@ export class DashboardService {
         monthlyActiveUsers,
         monthlyActivePermanentStores,
         monthlyActiveEvents,
+        attendanceRate,
         currentMonthSales,
         lastMonthSales,
         monthOverMonthComparison
