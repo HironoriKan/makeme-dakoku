@@ -554,17 +554,85 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   const handleEditSave = () => {
     if (!editingCell) return;
     
-    // 編集されたフィールドを記録
-    setEditedFields(prev => {
-      const dateFields = prev[editingCell.date] || [];
-      if (!dateFields.includes(editingCell.field)) {
-        return {
-          ...prev,
-          [editingCell.date]: [...dateFields, editingCell.field]
-        };
+    // 元の値を取得
+    const originalRecord = originalRecords.find(r => r.date === editingCell.date);
+    if (!originalRecord) return;
+    
+    let originalValue: string | number = '';
+    let newValue: string | number = '';
+    
+    // フィールドに応じて元の値と新しい値を取得
+    if (editingCell.field.includes('Record')) {
+      switch (editingCell.field) {
+        case 'clockInRecord':
+          originalValue = originalRecord.records.clockIn || '';
+          newValue = editValue;
+          break;
+        case 'clockOutRecord':
+          originalValue = originalRecord.records.clockOut || '';
+          newValue = editValue;
+          break;
+        case 'breakStartRecord':
+          originalValue = originalRecord.records.breakStart || '';
+          newValue = editValue;
+          break;
+        case 'breakEndRecord':
+          originalValue = originalRecord.records.breakEnd || '';
+          newValue = editValue;
+          break;
       }
-      return prev;
-    });
+    } else {
+      originalValue = (originalRecord as any)[editingCell.field] || '';
+      if (editingCell.field.includes('Time') || editingCell.field.includes('Minutes')) {
+        // 時刻形式の場合は分数に変換
+        if (validateTimeFormat(editValue)) {
+          newValue = timeFormatToMinutes(editValue);
+        } else {
+          // 数字のみの場合はそのまま分数として扱う
+          newValue = parseInt(editValue) || 0;
+        }
+      } else {
+        newValue = editValue;
+      }
+    }
+    
+    // 値が実際に変更された場合のみ編集フィールドとして記録
+    const isValueChanged = originalValue !== newValue;
+    
+    if (isValueChanged) {
+      setEditedFields(prev => {
+        const dateFields = prev[editingCell.date] || [];
+        if (!dateFields.includes(editingCell.field)) {
+          const newEditedFields = {
+            ...prev,
+            [editingCell.date]: [...dateFields, editingCell.field]
+          };
+          // 編集されたフィールドがある場合はhasChangesをtrue
+          setHasChanges(Object.values(newEditedFields).some(fields => fields.length > 0));
+          return newEditedFields;
+        }
+        return prev;
+      });
+    } else {
+      // 値が変更されていない場合は編集フィールドから削除
+      setEditedFields(prev => {
+        const dateFields = prev[editingCell.date] || [];
+        const updatedFields = dateFields.filter(field => field !== editingCell.field);
+        let newEditedFields;
+        if (updatedFields.length === 0) {
+          const { [editingCell.date]: removed, ...rest } = prev;
+          newEditedFields = rest;
+        } else {
+          newEditedFields = {
+            ...prev,
+            [editingCell.date]: updatedFields
+          };
+        }
+        // 編集されたフィールドがない場合はhasChangesをfalse
+        setHasChanges(Object.values(newEditedFields).some(fields => fields.length > 0));
+        return newEditedFields;
+      });
+    }
     
     setDailyRecords(prev => prev.map(record => {
       if (record.date === editingCell.date) {
@@ -591,8 +659,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
         // その他のフィールドの更新処理
         return {
           ...record,
-          [editingCell.field]: editingCell.field.includes('Time') || editingCell.field.includes('Minutes') ? 
-            parseInt(editValue) || 0 : editValue
+          [editingCell.field]: newValue
         };
       }
       return record;
@@ -600,7 +667,6 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
     
     setEditingCell(null);
     setEditValue('');
-    setHasChanges(true);
   };
 
   const handleEditCancel = () => {
@@ -622,6 +688,44 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   const validateTimeFormat = (timeString: string): boolean => {
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
     return timeRegex.test(timeString);
+  };
+
+  // 分数から時刻形式への変換
+  const minutesToTimeFormat = (minutes: number): string => {
+    if (minutes === 0) return '00:00';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  // 時刻形式から分数への変換
+  const timeFormatToMinutes = (timeString: string): number => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // 入力値の柔軟な処理（分数またはHH:MM形式）
+  const parseFlexibleInput = (input: string): string => {
+    // 空の場合
+    if (!input.trim()) return '';
+    
+    // 数字のみの場合（分数として扱う）
+    const digitsOnly = input.replace(/\D/g, '');
+    if (input === digitsOnly && digitsOnly.length > 0) {
+      const minutes = parseInt(digitsOnly, 10);
+      // 分数が1440分（24時間）未満の場合のみ変換
+      if (minutes < 1440) {
+        return minutesToTimeFormat(minutes);
+      }
+    }
+    
+    // コロンが含まれている場合（時刻形式として扱う）
+    if (input.includes(':')) {
+      return input;
+    }
+    
+    // その他の場合は自動フォーマット
+    return formatTimeInput(input);
   };
 
   // 時刻フォーマットの自動補完
@@ -662,19 +766,35 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   }) => {
     const isEdited = isFieldEdited(date, field);
     
-    const handleTimeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
       const input = e.target.value;
-      const formatted = formatTimeInput(input);
-      setEditValue(formatted);
+      setEditValue(input);
     };
 
-    const handleTimeBlur = () => {
-      if (editValue && !validateTimeFormat(editValue)) {
-        // 無効な時刻形式の場合は元の値に戻す
-        setEditValue(value?.toString() || '');
+    const handleBlur = () => {
+      if (!editValue.trim()) {
+        handleEditSave();
         return;
       }
-      handleEditSave();
+
+      // 時刻形式のフィールドまたは分数フィールドの場合は柔軟な入力形式を処理
+      if (type === 'time' || type === 'number') {
+        const formatted = parseFlexibleInput(editValue);
+        
+        if (formatted && validateTimeFormat(formatted)) {
+          setEditValue(formatted);
+          handleEditSave();
+        } else {
+          // 無効な形式の場合は元の値に戻す
+          const originalDisplayValue = type === 'number' && typeof value === 'number' && value > 0 
+            ? minutesToTimeFormat(value) 
+            : value?.toString() || '';
+          setEditValue(originalDisplayValue);
+          handleEditSave();
+        }
+      } else {
+        handleEditSave();
+      }
     };
     
     if (isEditing) {
@@ -704,19 +824,19 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
           <input
             type="text"
             value={editValue}
-            onChange={handleTimeInput}
-            onBlur={handleTimeBlur}
-            onKeyPress={(e) => e.key === 'Enter' && handleTimeBlur()}
+            onChange={handleInput}
+            onBlur={handleBlur}
+            onKeyPress={(e) => e.key === 'Enter' && handleBlur()}
             className={`w-full h-8 text-xs text-center bg-white border-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200 ${
-              editValue && !validateTimeFormat(editValue) 
+              editValue && !validateTimeFormat(parseFlexibleInput(editValue)) 
                 ? 'border-red-400 focus:border-red-500' 
                 : 'border-blue-400 focus:border-blue-500'
             }`}
             placeholder="HH:MM"
-            maxLength={5}
+            maxLength={type === 'number' ? 10 : 5}
             autoFocus
           />
-          {editValue && !validateTimeFormat(editValue) && (
+          {editValue && !validateTimeFormat(parseFlexibleInput(editValue)) && (
             <div className="absolute -bottom-5 left-0 text-xs text-red-500">
               HH:MM形式で入力
             </div>
@@ -791,6 +911,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
       // 状態を更新
       setOriginalRecords(JSON.parse(JSON.stringify(dailyRecords)));
       setHasChanges(false);
+      setEditedFields({}); // 編集済みフィールドをリセット
       
       // データを再取得して同期
       await fetchUserAndRecords();
@@ -818,6 +939,7 @@ const TimeRecordDetailPage: React.FC<TimeRecordDetailPageProps> = ({
   const handleResetChanges = () => {
     setDailyRecords(JSON.parse(JSON.stringify(originalRecords)));
     setHasChanges(false);
+    setEditedFields({}); // 編集済みフィールドをリセット
     setEditingCell(null);
     setEditValue('');
   };
