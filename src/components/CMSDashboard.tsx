@@ -87,15 +87,39 @@ const weeklyData = [
   { name: '第4週', sales: 400000, unitPrice: 17600, purchaseCount: 23 }
 ];
 
-// Daily data (last 7 days)
+// Daily data (31 days)
 const dailyData = [
-  { name: '月', sales: 65000, unitPrice: 18100, purchaseCount: 4 },
-  { name: '火', sales: 72000, unitPrice: 17800, purchaseCount: 4 },
-  { name: '水', sales: 58000, unitPrice: 16900, purchaseCount: 3 },
-  { name: '木', sales: 68000, unitPrice: 18500, purchaseCount: 4 },
-  { name: '金', sales: 75000, unitPrice: 19200, purchaseCount: 4 },
-  { name: '土', sales: 82000, unitPrice: 19800, purchaseCount: 4 },
-  { name: '日', sales: 80000, unitPrice: 19400, purchaseCount: 4 }
+  { name: '1', sales: 65000, unitPrice: 18100, purchaseCount: 4 },
+  { name: '2', sales: 72000, unitPrice: 17800, purchaseCount: 4 },
+  { name: '3', sales: 58000, unitPrice: 16900, purchaseCount: 3 },
+  { name: '4', sales: 68000, unitPrice: 18500, purchaseCount: 4 },
+  { name: '5', sales: 75000, unitPrice: 19200, purchaseCount: 4 },
+  { name: '6', sales: 82000, unitPrice: 19800, purchaseCount: 4 },
+  { name: '7', sales: 80000, unitPrice: 19400, purchaseCount: 4 },
+  { name: '8', sales: 71000, unitPrice: 17600, purchaseCount: 4 },
+  { name: '9', sales: 69000, unitPrice: 18300, purchaseCount: 4 },
+  { name: '10', sales: 77000, unitPrice: 19100, purchaseCount: 4 },
+  { name: '11', sales: 63000, unitPrice: 17200, purchaseCount: 4 },
+  { name: '12', sales: 85000, unitPrice: 20100, purchaseCount: 4 },
+  { name: '13', sales: 78000, unitPrice: 18900, purchaseCount: 4 },
+  { name: '14', sales: 74000, unitPrice: 18600, purchaseCount: 4 },
+  { name: '15', sales: 81000, unitPrice: 19700, purchaseCount: 4 },
+  { name: '16', sales: 67000, unitPrice: 17800, purchaseCount: 4 },
+  { name: '17', sales: 73000, unitPrice: 18400, purchaseCount: 4 },
+  { name: '18', sales: 79000, unitPrice: 19300, purchaseCount: 4 },
+  { name: '19', sales: 66000, unitPrice: 17500, purchaseCount: 4 },
+  { name: '20', sales: 84000, unitPrice: 20000, purchaseCount: 4 },
+  { name: '21', sales: 76000, unitPrice: 18800, purchaseCount: 4 },
+  { name: '22', sales: 70000, unitPrice: 18000, purchaseCount: 4 },
+  { name: '23', sales: 88000, unitPrice: 20500, purchaseCount: 4 },
+  { name: '24', sales: 72000, unitPrice: 18200, purchaseCount: 4 },
+  { name: '25', sales: 75000, unitPrice: 18700, purchaseCount: 4 },
+  { name: '26', sales: 83000, unitPrice: 19800, purchaseCount: 4 },
+  { name: '27', sales: 77000, unitPrice: 19100, purchaseCount: 4 },
+  { name: '28', sales: 71000, unitPrice: 18300, purchaseCount: 4 },
+  { name: '29', sales: 86000, unitPrice: 20200, purchaseCount: 4 },
+  { name: '30', sales: 74000, unitPrice: 18500, purchaseCount: 4 },
+  { name: '31', sales: 82000, unitPrice: 19600, purchaseCount: 4 }
 ];
 
 const pieData = [
@@ -128,10 +152,17 @@ const CMSDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [chartPeriod, setChartPeriod] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
   const [activeMetric, setActiveMetric] = useState<'sales' | 'unitPrice' | 'purchaseCount'>('sales');
+  const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
+  const [isChartLoading, setIsChartLoading] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
+    loadTimeSeriesData();
   }, []);
+
+  useEffect(() => {
+    loadTimeSeriesData();
+  }, [chartPeriod]);
 
   const loadDashboardData = async () => {
     try {
@@ -144,6 +175,28 @@ const CMSDashboard: React.FC = () => {
       setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadTimeSeriesData = async () => {
+    try {
+      setIsChartLoading(true);
+      const periodType = chartPeriod === 'monthly' ? 'monthly' : chartPeriod === 'weekly' ? 'weekly' : 'daily';
+      const timeSeriesResult = await DashboardService.getTimeSeriesData(periodType);
+      
+      // データをチャート用に変換
+      const chartData = timeSeriesResult.map(item => ({
+        name: item.label,
+        sales: item.totalSales,
+        unitPrice: item.customerUnitPrice,
+        purchaseCount: item.itemsPerCustomer // 一人当たりの購入数を使用
+      }));
+      
+      setTimeSeriesData(chartData);
+    } catch (err) {
+      console.error('時系列データの取得に失敗:', err);
+    } finally {
+      setIsChartLoading(false);
     }
   };
 
@@ -198,20 +251,16 @@ const CMSDashboard: React.FC = () => {
     </div>
   );
 
-  // Get chart data based on selected period
+  // Get chart data - use real data from database
   const getChartData = () => {
-    switch (chartPeriod) {
-      case 'weekly': return weeklyData;
-      case 'daily': return dailyData;
-      default: return monthlyData;
-    }
+    return timeSeriesData.length > 0 ? timeSeriesData : [];
   };
 
   // Get metric label
   const getMetricLabel = () => {
     switch (activeMetric) {
       case 'unitPrice': return '顧客単価';
-      case 'purchaseCount': return '顧客購入数';
+      case 'purchaseCount': return '一人当たり購入数';
       default: return '売上';
     }
   };
@@ -220,7 +269,7 @@ const CMSDashboard: React.FC = () => {
   const getYAxisFormatter = () => {
     switch (activeMetric) {
       case 'unitPrice': return (value: number) => `¥${(value / 1000).toFixed(0)}K`;
-      case 'purchaseCount': return (value: number) => `${value}人`;
+      case 'purchaseCount': return (value: number) => `${value.toFixed(1)}個`;
       default: return (value: number) => `¥${(value / 1000000).toFixed(1)}M`;
     }
   };
@@ -263,7 +312,7 @@ const CMSDashboard: React.FC = () => {
         {[
           { key: 'sales', label: '売上', color: '#CB8585' },
           { key: 'unitPrice', label: '顧客単価', color: '#E8A87C' },
-          { key: 'purchaseCount', label: '購入数', color: '#F4E4C1' }
+          { key: 'purchaseCount', label: '一人当たり購入数', color: '#8B5A87' }
         ].map((metric) => (
           <button
             key={metric.key}
@@ -281,45 +330,67 @@ const CMSDashboard: React.FC = () => {
       </div>
 
       <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={getChartData()}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis 
-              dataKey="name" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 12, fill: '#666' }}
-            />
-            <YAxis 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 12, fill: '#666' }}
-              tickFormatter={getYAxisFormatter()}
-            />
-            <Line 
-              type="monotone" 
-              dataKey={activeMetric} 
-              stroke={
-                activeMetric === 'sales' ? '#CB8585' :
-                activeMetric === 'unitPrice' ? '#E8A87C' : '#F4E4C1'
-              }
-              strokeWidth={3}
-              dot={{ 
-                fill: activeMetric === 'sales' ? '#CB8585' :
-                      activeMetric === 'unitPrice' ? '#E8A87C' : '#F4E4C1',
-                strokeWidth: 2, 
-                r: 4 
-              }}
-              activeDot={{ 
-                r: 6, 
-                stroke: activeMetric === 'sales' ? '#CB8585' :
-                        activeMetric === 'unitPrice' ? '#E8A87C' : '#F4E4C1',
-                strokeWidth: 2, 
-                fill: '#fff' 
-              }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        {isChartLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center">
+              <div 
+                className="animate-spin rounded-full h-8 w-8 border-b-2" 
+                style={{ borderColor: '#CB8585' }}
+              />
+              <p className="mt-2 text-gray-600 text-sm">チャートデータを読み込み中...</p>
+            </div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={getChartData()}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: '#666' }}
+              />
+              <YAxis 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: '#666' }}
+                tickFormatter={getYAxisFormatter()}
+              />
+              <Line 
+                type="linear" 
+                dataKey={activeMetric} 
+                stroke={
+                  activeMetric === 'sales' ? '#CB8585' :
+                  activeMetric === 'unitPrice' ? '#E8A87C' : '#8B5A87'
+                }
+                strokeWidth={3}
+                dot={{ 
+                  fill: activeMetric === 'sales' ? '#CB8585' :
+                        activeMetric === 'unitPrice' ? '#E8A87C' : '#8B5A87',
+                  strokeWidth: 2, 
+                  r: 4 
+                }}
+                activeDot={{ 
+                  r: 6, 
+                  stroke: activeMetric === 'sales' ? '#CB8585' :
+                          activeMetric === 'unitPrice' ? '#E8A87C' : '#8B5A87',
+                  strokeWidth: 2, 
+                  fill: '#fff' 
+                }}
+                label={{ 
+                  position: 'top',
+                  fill: '#666',
+                  fontSize: 10,
+                  formatter: (value: number) => {
+                    if (activeMetric === 'sales') return `¥${(value / 1000).toFixed(0)}K`;
+                    if (activeMetric === 'unitPrice') return `¥${(value / 1000).toFixed(0)}K`;
+                    return `${value.toFixed(1)}個`;
+                  }
+                }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
